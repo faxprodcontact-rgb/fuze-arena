@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018005253';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018010327';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;
@@ -234,6 +234,14 @@ export async function getRaid(week) {
   const { data, error } = await c.from('raids').select('*').eq('week', week).maybeSingle();
   if (error) throw new Error(frError(error));
   return data;
+}
+
+/** Les 2 derniers raids (le raid en cours et le précédent) */
+export async function fetchLatestRaids() {
+  const c = await client();
+  const { data, error } = await c.from('raids').select('*').order('created_at', { ascending: false }).limit(2);
+  if (error) throw new Error(frError(error));
+  return data || [];
 }
 
 /** Ouvre le raid de la semaine (si quelqu'un l'a déjà ouvert, on garde le sien) */

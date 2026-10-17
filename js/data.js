@@ -400,9 +400,9 @@ SPELL_LIST.push(...S('monster', [
 SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
 
 export const RAID = {
-  attemptsPerDay: 3,
+  attemptsPerDay: 1,              // chacun peut le taper 1 fois par jour
   maxActions: 24,                 // un assaut dure au plus 24 actions (on ne peut pas le tuer d'un coup)
-  participation: 0.5,             // PV calculés pour qu'il tombe si chacun joue ~la moitié de ses assauts
+  participation: 0.75,            // PV calculés pour qu'il tombe si le groupe tape ~3 jours sur 4
   rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
   boss: {
     id: 'melenchon', name: 'Mélenchon', sprite: 'melenchon', theme: 'meeting',
@@ -422,7 +422,7 @@ export const MISSION_POOL = [
   { id: 'chest', text: 'Ouvre {n} coffres', n: [2, 4], reward: 2 },
   { id: 'dungeon_win', text: 'Bats {n} boss de donjon', n: [1, 2], reward: 3 },
   { id: 'tower', text: 'Monte {n} étage(s) de la Tour', n: [1, 3], reward: 3 },
-  { id: 'raid', text: 'Attaque Mélenchon {n} fois', n: [1, 3], reward: 3 },
+  { id: 'raid', text: 'Attaque Mélenchon aujourd’hui', n: [1, 1], reward: 3 },
   { id: 'war', text: 'Fais {n} attaques de guerre', n: [1, 3], reward: 3 },
   { id: 'fuse', text: 'Fusionne {n} objet(s)', n: [1, 2], reward: 3 },
   { id: 'chat', text: 'Envoie {n} message(s) dans le tchat', n: [1, 3], reward: 1 },

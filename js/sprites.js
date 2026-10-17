@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC } from './data.js?v=20261018005253';
+import { ITEMS, RARITIES, COSMETIC } from './data.js?v=20261018010327';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -266,6 +266,17 @@ const MONSTERS = {
       '.....mm..mm..mm..............', '....mmm.mmm.mmm..............',
     ],
   },
+};
+
+MONSTERS.scarecrow = {
+  pal: { h: '#d9a441', H: '#b8862f', s: '#c9a26b', k: '#3b2a20', y: '#f1d27a', r: '#b5452f', b: '#3d6fd1', p: '#7a4e2a' },
+  rows: [
+    '......hhhhhh......', '.....hhhhhhhh.....', '...HHHHHHHHHHHH...', '.....ssssssss.....', '.....sskssskss....',
+    '.....ssssssss.....', '.....sskkkkss.....', '......ssssss......', '.y.......pp.....y.', 'yyyrrrrrrrrrrrryyy',
+    '..rrrrrrrrrrrrrr..', '......rrrrrr......', '......rrbbrr......', '......rrbbrr......', '......rrrrrr......',
+    '......yyyyyy......', '.......y..y.......', '........pp........', '........pp........', '........pp........',
+    '........pp........', '.......pppp.......', '......pppppp......',
+  ],
 };
 
 MONSTERS.melenchon = {

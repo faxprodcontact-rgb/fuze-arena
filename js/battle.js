@@ -1,14 +1,11 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018005253';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018005253';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018005253';
+import { CLASSES } from './data.js?v=20261018010327';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018010327';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018010327';
 
-// Taille « logique » de la scène : recalculée selon l'écran.
-// Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
-let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
-let SAFE_TOP = 0, SAFE_BOT = 0;
+
 const S = 3;                      // taille d'un pixel de sprite
 const FONT = '"Press Start 2P", monospace';
 const IDLE_ANGLE = { sword: 25, staff: 8, bow: 0, hammer: 20 };
@@ -42,6 +39,8 @@ const THEMES = {
     r1: '#a8c8e0', r2: '#8fb3d0', grass: ['#d8ecf8', '#ffffff'], ground: ['#e6f2fa', '#d4e6f2', '#b8d0e2', '#c8dcea'] },
   castle: { sky: ['#0f0d1a', '#151226', '#1c1733', '#241c40', '#2c214d', '#35265a', '#3e2b66', '#473073'], sun: ['#f4f0ff', '#ffffff'],
     r1: '#251d3a', r2: '#1b152c', walls: ['#3a3348', '#4a4258', '#2a2436'], banners: true, grass: ['#2e2a3a', '#403a50'], ground: ['#3d3548', '#362f40', '#2c2636', '#322b3d'] },
+  training: { sky: ['#5aa0d8', '#68aadd', '#76b4e2', '#84bee7', '#92c8ec', '#a0d2f1', '#aedcf6', '#bce6fb'], sun: ['#fff3b0', '#ffffff'], cloud: '#ffffff',
+    r1: '#6fa86a', r2: '#5a9456', trees: ['#2f6b3a', '#3a7d45'], grass: ['#4f8f43', '#6fb35a'], ground: ['#8fbf5a', '#83b352', '#6f9d45', '#7aa94c'] },
   meeting: { sky: ['#2a0a12', '#3a0d18', '#4d1220', '#601628', '#741a30', '#8a2038', '#a02640', '#b82e48'], sun: ['#ffd84a', '#fff3b0'],
     r1: '#3a1020', r2: '#2a0a16', walls: ['#5a1424', '#7a1c30', '#3a0d18'], banners: true, crowd: '#1f0a12',
     grass: ['#5a1424', '#7a1c30'], ground: ['#8a2038', '#7a1c30', '#5a1424', '#6a1828'] },
@@ -138,7 +137,18 @@ function background(themeId = 'arena') {
 /**
  * Joue un combat dans le canvas. Renvoie { promise, setSpeed, skip, destroy }.
  */
-export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null } = {}) {
+const NO_SFX = new Proxy({}, { get: () => () => {} });
+
+/**
+ * Joue un combat dans le canvas.
+ * training = entraînement silencieux (pas de musique ni de bruitages) ; onEntry = appelé à chaque étape.
+ */
+export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null } = {}) {
+  // Taille « logique » de la scène, recalculée selon l'écran (propre à chaque combat).
+  // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
+  let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
+  let SAFE_TOP = 0, SAFE_BOT = 0;
+  const sfx = training ? NO_SFX : SFX;
   const ctx = canvas.getContext('2d');
   let k = 1, speed = 1, alive = true, last = performance.now(), time = 0, shake = 0;
   const tweens = [], timers = [], effects = [], texts = [];
@@ -232,7 +242,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   const STATUS_COLOR = { burn: '#ff9f43', poison: '#7bed6f', stun: '#feca57', buff: '#ffd84a', debuff: '#c38bff' };
 
   async function hitFx(T, crit) {
-    (crit ? SFX.crit : SFX.hit)();
+    (crit ? sfx.crit : sfx.hit)();
     T.flash = 1;
     shake = Math.max(shake, crit ? 7 : 3);
     const c = center(T);
@@ -252,23 +262,23 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       float(String(r.dmg - r.absorbed), c.x + (Math.random() * 20 - 10), c.y - 34, r.crit ? '#ffd84a' : '#ffffff', r.crit ? 16 : 12);
       if (r.absorbed > 0) { float(`(${r.absorbed})`, c.x + 26 * T.dir * -1, c.y - 14, '#7fd6ff', 7); burst(c.x, c.y, 8, ['#7fd6ff', '#e0f7ff'], { speed: 160 }); }
     } else if (r.type === 'dodge') {
-      SFX.dodge();
+      sfx.dodge();
       tween(T, { offX: -26, offY: -14 }, 140).then(() => tween(T, { offX: 0, offY: 0 }, 260, 'outQuad'));
       float('Esquive !', c.x, c.y - 40, '#e0f7ff', 8);
     } else if (r.type === 'heal') {
-      SFX.heal();
+      sfx.heal();
       T.hp = r.hp;
       float('+' + r.amount, c.x, c.y - 34, '#7bed6f', 12);
       for (let j = 0; j < 14; j++) effects.push({ kind: 'plus', x: c.x + (Math.random() * 50 - 25), y: c.y + 20 - Math.random() * 30, vy: -50 - Math.random() * 40, life: 900, max: 900 });
       T.glow = 1; T.glowColor = '#7bed6f'; tween(T, { glow: 0 }, 600, 'linear');
     } else if (r.type === 'shield') {
-      SFX.shield();
+      sfx.shield();
       T.shield = r.shield;
       float('Bouclier', c.x, c.y - 40, '#7fd6ff', 8);
       burst(c.x, c.y, 14, ['#7fd6ff', '#e0f7ff', '#ffffff'], { speed: 90, grav: -40 });
     } else if (r.type === 'status') {
       float(r.n, c.x, c.y - 56, STATUS_COLOR[r.k] || '#fff', 7, { vy: -18, life: 1200 });
-      if (r.k === 'stun') { T.stars = 1; SFX.stun(); }
+      if (r.k === 'stun') { T.stars = 1; sfx.stun(); }
     }
   }
 
@@ -304,28 +314,28 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   async function skyStrike(kind, T, dur) {
     const c = center(T);
     if (kind === 'lightning') {
-      SFX.bolt();
+      sfx.bolt();
       effects.push({ kind: 'bolt', x: c.x, y: c.y, life: 260, max: 260, seed: Math.random() });
       effects.push({ kind: 'flashScreen', life: 120, max: 120, color: '#e8f4ff' });
       await wait(80);
     } else if (kind === 'holy') {
-      SFX.magic();
+      sfx.magic();
       effects.push({ kind: 'pillar', x: c.x, life: 520, max: 520 });
       await wait(260);
       burst(c.x, c.y, 16, ['#fff3b0', '#ffd84a', '#ffffff'], { speed: 120, grav: -60 });
     } else if (kind === 'meteor') {
-      SFX.fire();
+      sfx.fire();
       await projectile('meteor', { x: c.x - 160 * T.dir * -1, y: -30 }, { x: c.x, y: c.y + 10 }, dur);
-      SFX.boom();
+      sfx.boom();
       burst(c.x, c.y + 10, 30, ['#ff9f43', '#ffd84a', '#ff3a1a', '#555'], { speed: 260, up: 80, size: 4 });
       shake = 12;
     } else if (kind === 'firerain') {
-      SFX.fire();
+      sfx.fire();
       const ox = Math.random() * 40 - 20;
       await projectile('fireball', { x: c.x + ox - 40, y: -10 }, { x: c.x + ox / 2, y: c.y }, dur);
       burst(c.x, c.y, 10, ['#ff9f43', '#ffd84a'], { speed: 140 });
     } else if (kind === 'rain') {
-      SFX.arrow();
+      sfx.arrow();
       const ox = Math.random() * 40 - 20;
       await projectile('arrow', { x: c.x + ox + 20 * T.dir, y: -10 }, { x: c.x + ox / 3, y: c.y }, dur);
     } else if (kind === 'trap') {
@@ -337,13 +347,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   async function selfFx(f, fxk) {
     const c = center(f);
     if (fxk === 'roar') {
-      SFX.roar();
+      sfx.roar();
       for (let j = 0; j < 3; j++) { effects.push({ kind: 'ring', x: c.x, y: c.y, r0: 10, r1: 90, color: '#ff6b6b', life: 500, max: 500 }); await wait(110); }
       shake = 5;
     } else if (fxk === 'shield') {
       effects.push({ kind: 'ring', x: c.x, y: c.y, r0: 60, r1: 44, color: '#7fd6ff', life: 400, max: 400 });
     } else if (fxk === 'buff') {
-      SFX.buff();
+      sfx.buff();
       for (let j = 0; j < 10; j++) effects.push({ kind: 'up', x: c.x + (Math.random() * 50 - 25), y: c.y + 30, vy: -70 - Math.random() * 40, life: 800, max: 800 });
       f.glow = 1; f.glowColor = '#ffd84a'; tween(f, { glow: 0 }, 700, 'linear');
     } else if (fxk === 'heal') {
@@ -355,7 +365,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   const byStep = (results, s) => results.filter(r => r.step === s);
 
   async function swing(f) {
-    SFX.swing();
+    sfx.swing();
     if (!f.weapon) {
       await tween(f, { offX: f.offX - 8, squash: 0.15 }, 120);
       await tween(f, { offX: f.offX + 20, squash: -0.1 }, 80, 'inQuad');
@@ -407,7 +417,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
         const to = center(T);
         const type = e.fx;
         if (!f.weapon) tween(f, { squash: -0.08, offX: 4 }, 100);
-        ({ arrow: SFX.arrow, poisonArrow: SFX.arrow, fireball: SFX.fire, rock: SFX.swing }[type] || SFX.magic)();
+        ({ arrow: sfx.arrow, poisonArrow: sfx.arrow, fireball: sfx.fire, rock: sfx.swing }[type] || sfx.magic)();
         await projectile(type, { x: from.x, y: from.y - 6 }, to, type === 'arrow' || type === 'poisonArrow' ? 260 : 340);
         if (e.fx === 'fireball') burst(to.x, to.y, 12, ['#ff9f43', '#ffd84a', '#ff5e3a'], { speed: 150 });
         if (e.fx === 'ice') burst(to.x, to.y, 12, ['#bff3ff', '#ffffff', '#6fe3ff'], { speed: 150 });
@@ -448,7 +458,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       else await doRanged(f, T, e);
       await wait(180);
     } else if (e.type === 'dot') {
-      SFX.dot();
+      sfx.dot();
       const T = F[e.target], c = center(T);
       T.hp = e.hp;
       const cols = e.k === 'burn' ? ['#ff9f43', '#ffd84a', '#ff5e3a'] : ['#7bed6f', '#3fbf3f', '#b8ffb0'];
@@ -463,19 +473,17 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       await wait(700);
       T.stars = 0;
     } else if (e.type === 'rage') {
-      SFX.rage();
+      sfx.rage();
       banner = { text: 'RAGE DE L’ARÈNE !', sub: 'Les dégâts augmentent', life: 1600, max: 1600 };
       shake = 6;
       await wait(1200);
     } else if (e.type === 'end' && e.winner < 0) {
       // fin d'un assaut de raid : personne ne tombe
-      stopMusic();
-      setQuiet(false);
+      if (!training) { stopMusic(); setQuiet(false); }
       await wait(300);
     } else if (e.type === 'end') {
-      stopMusic();
-      setQuiet(false);
-      (e.winner === 0 ? SFX.win : SFX.lose)();
+      if (!training) { stopMusic(); setQuiet(false); }
+      (e.winner === 0 ? sfx.win : sfx.lose)();
       const win = F[e.winner], lose = F[1 - e.winner];
       lose.dead = true;
       tween(lose, { rot: -85, alpha: 0.35, offX: -20 }, 600, 'outQuad');
@@ -743,6 +751,12 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
 
   function drawHud() {
     F.forEach((f, i) => {
+      if (training && i === 1) {
+        ctx.font = `8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+        ctx.strokeText(f.snap.name, W - 12, 14); ctx.fillStyle = '#f1d27a'; ctx.fillText(f.snap.name, W - 12, 14);
+        return;
+      }
       const left = PORTRAIT || i === 0;
       const bw = PORTRAIT ? W - 24 : 190, bh = PORTRAIT ? 14 : 12;
       const x = PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
@@ -843,20 +857,21 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
 
   const promise = (async () => {
     await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
-    startMusic();
-    await wait(600);
+    if (!training) startMusic();
+    await wait(training ? 200 : 600);
     for (const e of result.log) {
       if (!alive) return;
       await playEntry(e);
+      if (onEntry && alive) onEntry(e);
     }
     await wait(400);
   })();
 
   return {
     promise,
-    setSpeed(v) { speed = v; setQuiet(v > 3); },
-    skip() { speed = 40; setQuiet(true); },
-    destroy() { alive = false; ro.disconnect(); stopMusic(); setQuiet(false); },
+    setSpeed(v) { speed = v; if (!training) setQuiet(v > 3); },
+    skip() { speed = 40; if (!training) setQuiet(true); },
+    destroy() { alive = false; ro.disconnect(); if (!training) { stopMusic(); setQuiet(false); } },
   };
 }
 
@@ -892,4 +907,21 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   }
   requestAnimationFrame(loop);
   return () => { alive = false; };
+}
+
+/**
+ * Entraînement en boucle (écran Héros) : mkFight() fabrique un nouveau combat à chaque manche.
+ * Renvoie une fonction pour tout arrêter.
+ */
+export function playTraining(canvas, mkFight, { onEntry = null, speed = 1.3 } = {}) {
+  let ctl = null, stopped = false;
+  const next = () => {
+    if (stopped || !canvas.isConnected) return;
+    const { me, foe, result } = mkFight();
+    ctl = playBattle(canvas, me, foe, result, { theme: 'training', training: true, onEntry });
+    ctl.setSpeed(speed);
+    ctl.promise.then(() => { if (ctl) ctl.destroy(); next(); });
+  };
+  next();
+  return () => { stopped = true; if (ctl) ctl.destroy(); };
 }

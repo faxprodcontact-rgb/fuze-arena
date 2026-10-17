@@ -5,14 +5,14 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-} from './data.js?v=20261018005253';
-import * as E from './engine.js?v=20261018005253';
-import { playBattle, idlePreview } from './battle.js?v=20261018005253';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018005253';
-import { hashStr, makeRng } from './rng.js?v=20261018005253';
-import { APP_VERSION } from './version.js?v=20261018005253';
-import * as NET from './net.js?v=20261018005253';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018005253';
+} from './data.js?v=20261018010327';
+import * as E from './engine.js?v=20261018010327';
+import { playBattle, playTraining, idlePreview } from './battle.js?v=20261018010327';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018010327';
+import { hashStr, makeRng } from './rng.js?v=20261018010327';
+import { APP_VERSION } from './version.js?v=20261018010327';
+import * as NET from './net.js?v=20261018010327';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018010327';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -132,6 +132,67 @@ function render() {
   paintTabIcons();
   if (tab === 'chat') { markChatSeen(); scrollChat(); }
   if (tab === 'journal') markJournalSeen();
+  if (tab === 'hero') startTraining();
+}
+
+// ------------------------------ Entraînement (onglet Héros) ------------------------------
+// Ton perso tape un épouvantail en continu ; les compteurs montrent l'effet de tes stats.
+let T = null;
+const resetTraining = () => { T = { acts: 0, foeActs: 0, hits: 0, dmg: 0, crits: 0, maxHit: 0, foeHits: 0, dodges: 0, taken: 0, heal: 0 }; };
+
+function dummySnap(level) {
+  const p = Math.round(4 + level * 0.8);   // tape doucement : il montre ta défense sans te tuer
+  return {
+    name: 'Épouvantail', monster: 'scarecrow', classId: null, level,
+    stats: { vit: 999, atk: p, mag: p, def: 0, spd: 25, lck: 0 }, maxHp: 99999999, spells: [],
+    basic: { name: 'Coup de balai', scale: 'atk', mult: 1, melee: true, fx: 'bash' }, pet: null,
+  };
+}
+
+function trainingStatsHtml() {
+  if (!T) resetTraining();
+  const st = E.computeStats(hero);
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+  const box = (ico, label, val, sub) => `<div class="ts"><span>${ico} ${label}</span><b>${val}</b><small>${sub}</small></div>`;
+  const speedRatio = T.foeActs ? (T.acts / T.foeActs).toFixed(1) : '—';
+  return [
+    box('⚔', 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
+    box('💥', 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.critChance(st.lck) * 100)} %`),
+    box('💨', 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.dodgeChance(st.lck) * 100)} %`),
+    box('🛡', 'Défense', `−${Math.round((1 - 100 / (100 + st.def)) * 100)} %`, `dégâts reçus ${T.foeHits ? Math.round(T.taken / T.foeHits) : '—'}`),
+    box('⚡', 'Vitesse', `×${speedRatio}`, 'actions par coup reçu'),
+    box('❤', 'Soins', T.heal, `PV max ${E.maxHp(st, hero.level)}`),
+  ].join('');
+}
+
+function onTrainingEntry(e) {
+  if (!T || e.type !== 'action') return;
+  if (e.actor === 0) {
+    T.acts++;
+    for (const r of e.results) {
+      if (r.target === 1 && r.type === 'hit') { T.hits++; T.dmg += r.dmg; if (r.crit) T.crits++; T.maxHit = Math.max(T.maxHit, r.dmg); }
+      if (r.target === 0 && r.type === 'heal') T.heal += r.amount;
+    }
+  } else {
+    T.foeActs++;
+    for (const r of e.results) {
+      if (r.target === 0 && r.type === 'hit') { T.foeHits++; T.taken += r.dmg; }
+      if (r.target === 0 && r.type === 'dodge') T.dodges++;
+    }
+  }
+  const el = document.getElementById('train-stats');
+  if (el) el.innerHTML = trainingStatsHtml();
+}
+
+function startTraining() {
+  const cv = document.getElementById('train-cv');
+  if (!cv) return;
+  resetTraining();
+  stopPreviews.push(playTraining(cv, () => {
+    const me = mySnap();
+    const foe = dummySnap(hero.level);
+    return { me, foe, result: E.simulate(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false }) };
+  }, { onEntry: onTrainingEntry }));
 }
 
 function tabBtn(id, label, badge) {
@@ -267,6 +328,12 @@ function viewHero() {
   const others = all.filter(s => !hero.spells.includes(s.id));
   const need = E.xpForLevel(hero.level);
   return `
+    <section class="card train">
+      <div class="row"><h2 style="margin:0">Entraînement</h2><span class="spacer"></span><span class="pill">Tes stats en action</span></div>
+      <div class="train-wrap"><canvas id="train-cv"></canvas></div>
+      <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
+    </section>
+
     <section class="card chars">
       <div class="row"><h2 style="margin:0">Mes personnages</h2><span class="spacer"></span><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
       <div class="char-row">
@@ -1128,45 +1195,59 @@ function groupLevels() {
   return [mine, ...opponents().map(o => o.level)];
 }
 
-function localRaid(week, prevWeek) {
+const RAID_DAYS = 7;
+const raidEndOf = (startMs) => startMs + RAID_DAYS * 86400000;
+
+/** Raid hors ligne (bots) : dure 7 jours à partir de son ouverture */
+function localRaid() {
   const L = acc.raid.local;
-  if (!L[week]) {
+  const keys = Object.keys(L).filter(k => L[k].start).sort((a, b) => L[b].start - L[a].start);
+  let curKey = keys.find(k => Date.now() < raidEndOf(L[k].start));
+  if (!curKey) {
+    curKey = E.dayKey();
     const lv = groupLevels();
-    L[week] = { hp: E.raidHp(lv), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
-    for (const k of Object.keys(L)) if (k !== week && k !== prevWeek) delete L[k];
+    L[curKey] = { start: Date.now(), hp: E.raidHp(lv), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
   }
-  const botHits = (wk, days, level) => FRIENDS.flatMap(f => {
+  const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start && Date.now() >= raidEndOf(L[k].start)).sort((a, b) => L[b].start - L[a].start)[0] || '';
+  for (const k of Object.keys(L)) if (k !== curKey && k !== prevKey) delete L[k];
+  const botHits = (key, days, level) => FRIENDS.flatMap(f => {
     const out = [];
     for (let d = 0; d < days; d++) {
-      const r = makeRng(hashStr('raid' + wk + f.id + d));
+      const r = makeRng(hashStr('raid' + key + f.id + d));
       const n = Math.floor(r() * 4);
       for (let i = 0; i < n; i++) out.push({ user_id: f.id, pseudo: f.name, damage: Math.round(E.raidExpectedDamage(level) * (0.6 + r() * 0.8)) });
     }
     return out;
   });
-  const days = ((new Date().getDay() + 6) % 7) + 1;
-  const res = { week, prevWeek, raid: { hp: L[week].hp, level: L[week].level }, hits: [...L[week].hits, ...botHits(week, days, L[week].level)], prev: null, prevHits: [] };
-  if (L[prevWeek]) { res.prev = { hp: L[prevWeek].hp, level: L[prevWeek].level }; res.prevHits = [...L[prevWeek].hits, ...botHits(prevWeek, 7, L[prevWeek].level)]; }
+  const cur = L[curKey];
+  const days = Math.min(RAID_DAYS, Math.floor((Date.now() - cur.start) / 86400000) + 1);
+  const res = { week: curKey, prevWeek: prevKey, endsAt: raidEndOf(cur.start), raid: { hp: cur.hp, level: cur.level }, hits: [...cur.hits, ...botHits(curKey, days, cur.level)], prev: null, prevHits: [] };
+  if (prevKey) { const P = L[prevKey]; res.prev = { hp: P.hp, level: P.level }; res.prevHits = [...P.hits, ...botHits(prevKey, RAID_DAYS, P.level)]; }
   return res;
 }
 
+// Les raids ouverts avant le passage à 1 assaut par jour avaient 2× trop de PV : on les corrige pour tout le monde
+const RAID_TAG = RAID.boss.id + ':v2';
+const fixRaid = (r) => (r && r.boss === RAID.boss.id ? { ...r, hp: Math.round(r.hp * 0.5) } : r);
+
+/** Raid en ligne : le plus récent encore actif (7 jours après son ouverture), sinon on en ouvre un nouveau */
 function loadRaid() {
-  const week = E.weekKey();
-  const prevWeek = E.weekKey(new Date(Date.now() - 7 * 86400000));
-  if (!NET.online) { raidInfo = localRaid(week, prevWeek); return Promise.resolve(); }
+  if (!NET.online) { raidInfo = localRaid(); return Promise.resolve(); }
   if (raidLoading) return raidLoading;   // déjà en route : on attend la même réponse
   raidError = '';
   raidLoading = (async () => {
     try {
-      let raid = await NET.getRaid(week);
+      const list = (await NET.fetchLatestRaids()).map(fixRaid);
+      const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
+      let raid = list.find(r => Date.now() < endOf(r)) || null;
+      const prev = list.find(r => r !== raid && Date.now() >= endOf(r)) || null;
       if (!raid) {
         const lv = groupLevels();
-        raid = await NET.openRaid(week, RAID.boss.id, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length));
+        raid = fixRaid(await NET.openRaid(E.dayKey(), RAID_TAG, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
-      const [hits, prev] = await Promise.all([NET.fetchRaidHits(week), NET.getRaid(prevWeek)]);
-      const prevHits = prev ? await NET.fetchRaidHits(prevWeek) : [];
-      raidInfo = { week, raid, hits, prev, prevHits, prevWeek };
+      const [hits, prevHits] = await Promise.all([NET.fetchRaidHits(raid.week), prev ? NET.fetchRaidHits(prev.week) : []]);
+      raidInfo = { week: raid.week, raid, hits, prev, prevHits, prevWeek: prev ? prev.week : '', endsAt: endOf(raid) };
     } catch (e) {
       raidError = e.message || 'Erreur inconnue';
     } finally {
@@ -1186,7 +1267,7 @@ function raidSummary(raid, hits) {
 }
 
 function viewRaid() {
-  if (!raidInfo.raid || raidInfo.week !== E.weekKey()) {
+  if (!raidInfo.raid || Date.now() >= raidInfo.endsAt) {
     // Important : ne lancer le chargement qu'une fois (sinon l'écran se redessine en boucle et l'appli se fige)
     if (raidError) {
       return `<section class="card"><h2>Raid : ${RAID.boss.name}</h2>
@@ -1208,7 +1289,7 @@ function viewRaid() {
     const pm = P.board.find(b => b.id === me);
     if (pm) prevCard = `
       <section class="card war-reward">
-        <h2>Raid de la semaine dernière</h2>
+        <h2>Raid précédent</h2>
         <div class="big-res">${P.killed ? `${RAID.boss.name} est tombé !` : `${RAID.boss.name} a résisté…`}</div>
         <p class="hint">Tu lui as infligé ${fmtNum(pm.dmg)} dégâts.</p>
         <button class="btn primary block" data-act="claimRaid" data-week="${raidInfo.prevWeek}">Récupérer ma récompense</button>
@@ -1218,22 +1299,22 @@ function viewRaid() {
   return `
     ${prevCard}
     <section class="card raid">
-      <h2>Raid de la semaine</h2>
+      <h2>Raid en cours</h2>
       <div class="raid-boss"><canvas class="px" data-monster="${RAID.boss.sprite}"></canvas></div>
       <div class="raid-name">${RAID.boss.name} <span class="pill">Nv.${raidInfo.raid.level}</span></div>
       <div class="score-bar raid-bar"><div style="width:${(S.remaining / raidInfo.raid.hp) * 100}%;background:#ff5d6c"></div><div style="flex:1;background:#3a2f45"></div></div>
       <div class="o-sub" style="text-align:center;margin-top:6px">${S.killed ? '<b style="color:var(--green)">VAINCU !</b>' : `${fmtNum(S.remaining)} / ${fmtNum(raidInfo.raid.hp)} PV`}</div>
       <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px">
         <span class="pill gold">Assauts : ${left} / ${RAID.attemptsPerDay}</span>
-        <span class="pill" data-timer="week">Fin dans ${fmtLong(E.msToWeekEnd())}</span>
+        <span class="pill">Fin dans <b data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</b></span>
       </div>
       ${canClaim
         ? `<button class="btn primary block" style="margin-top:12px" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
         : `<button class="btn danger block" style="margin-top:12px" data-act="attackRaid" ${left > 0 && !S.killed ? '' : 'disabled'}>${S.killed ? 'Boss vaincu' : 'Attaquer'}</button>`}
-      <p class="hint" style="margin:12px 0 0">Tout le groupe tape le même boss. S’il tombe avant dimanche : <b>${R.killChests} coffre de guerre + ${R.killClat} Pierres Clat</b> pour chaque participant, et un coffre de guerre en plus pour le meilleur. Sinon, ${R.failClat} Pierres Clat de consolation.</p>
+      <p class="hint" style="margin:12px 0 0">Tout le groupe tape le même boss. Le raid dure 7 jours. S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Pierres Clat</b> pour chaque participant, et un coffre de guerre en plus pour le meilleur. Sinon, ${R.failClat} Pierres Clat de consolation.</p>
     </section>
     <section class="card">
-      <h2>Dégâts de la semaine</h2>
+      <h2>Dégâts du raid</h2>
       ${S.board.length ? S.board.map((b, i) => `
         <div class="opp rank ${b.id === me ? 'me' : ''}"><div class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</div>
           <div class="o-body"><div class="o-name">${nameHtml(b.pseudo, dataOfPseudo(b.pseudo))}</div></div><div class="score">${fmtNum(b.dmg)}</div></div>`).join('')
@@ -1470,6 +1551,8 @@ let battleCtl = null;
 
 /** Affiche un combat en plein écran puis le panneau de résultat */
 function runBattle({ me, foe, result, theme, title, rewardsHtml, rewards, victory = null, headline = null, headClass = null }) {
+  stopPreviews.forEach(f => f());
+  stopPreviews = [];
   const won = result.winner === 0;
   const ov = document.createElement('div');
   ov.className = 'battle';
@@ -1892,6 +1975,7 @@ setInterval(() => {
   const d2 = document.querySelector('[data-timer="day2"]');
   if (d2) d2.textContent = fmt(msToMidnight());
   document.querySelectorAll('[data-countdown]').forEach(el => { el.textContent = fmt(+el.dataset.countdown - Date.now()); });
+  document.querySelectorAll('[data-endlong]').forEach(el => { el.textContent = fmtLong(Math.max(0, +el.dataset.endlong - Date.now())); });
   const wk = document.querySelector('[data-timer="week"]');
   if (wk) wk.textContent = `Fin dans ${fmtLong(E.msToWeekEnd())}`;
   const dj = document.querySelector('[data-timer="dungeon"]');
