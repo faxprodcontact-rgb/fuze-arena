@@ -3,9 +3,12 @@
 // =====================================================================
 import { CLASSES } from './data.js';
 import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js';
 
-const W = 480, H = 270;
-const GROUND = 228;
+// Taille « logique » de la scène : recalculée selon l'écran.
+// Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
+let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
+let SAFE_TOP = 0, SAFE_BOT = 0;
 const S = 3;                      // taille d'un pixel de sprite
 const FONT = '"Press Start 2P", monospace';
 const IDLE_ANGLE = { sword: 25, staff: 8, bow: 0, hammer: 20 };
@@ -133,14 +136,35 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
   let k = 1, speed = 1, alive = true, last = performance.now(), time = 0, shake = 0;
   const tweens = [], timers = [], effects = [], texts = [];
   let banner = null;
+  let F = [];
 
   function resize() {
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const aspect = Math.max(0.3, r.height / Math.max(1, r.width));
+    PORTRAIT = aspect > 1.1;
+    W = PORTRAIT ? 240 : 480;
+    H = Math.round(W * aspect);
     canvas.width = Math.max(1, Math.round(r.width * dpr));
-    canvas.height = Math.max(1, Math.round(r.width * H / W * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
     k = canvas.width / W;
+    // zones réservées en haut (encoche) et en bas (boutons), en unités de la scène
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    SAFE_TOP = (parseFloat(cs.paddingTop) || 0) * W / r.width;
+    SAFE_BOT = (parseFloat(cs.paddingBottom) || 0) * W / r.width;
+    probe.remove();
+    GROUND = PORTRAIT ? Math.round(H * 0.62) : H - 42;
+    F.forEach(f => { f.baseX = baseXOf(f.i, f.sw); });
   }
+  // Position de départ ; un gros boss est décalé pour rester entièrement à l'écran
+  const baseXOf = (i, sw = HERO_W) => {
+    const x = (PORTRAIT ? (i === 0 ? 0.25 : 0.75) : (i === 0 ? 0.3125 : 0.6875)) * W;
+    const half = (sw * S) / 2 + 4;
+    return i === 0 ? Math.max(x, half) : Math.min(x, W - half);
+  };
   resize();
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
@@ -150,7 +174,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
     const sprite = snap.monster ? monsterCanvas(snap.monster) : heroCanvas(snap.classId);
     const idle = weapon ? IDLE_ANGLE[weapon] : 0;
     return {
-      i, snap, weapon, idle, dir: i === 0 ? 1 : -1, baseX: i === 0 ? 150 : 330,
+      i, snap, weapon, idle, dir: i === 0 ? 1 : -1, baseX: 0,
       offX: 0, offY: 0, rot: 0, flash: 0, alpha: 1, squash: 0,
       wAng: idle, wOff: 0, run: false, spin: 0, phase: i * 1.7,
       hp: snap.maxHp, max: snap.maxHp, hpShown: snap.maxHp, hpLag: snap.maxHp, shield: 0, shieldShown: 0,
@@ -161,7 +185,8 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       pet: snap.pet ? petCanvas(snap.pet.itemId) : null,
     };
   };
-  const F = [mk(A, 0), mk(B, 1)];
+  F = [mk(A, 0), mk(B, 1)];
+  F.forEach(f => { f.baseX = baseXOf(f.i, f.sw); });
 
   // ---------- tweens & timers (suivent la vitesse du combat) ----------
   function tween(obj, to, dur, ease = 'outQuad') {
@@ -200,6 +225,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
   const STATUS_COLOR = { burn: '#ff9f43', poison: '#7bed6f', stun: '#feca57', buff: '#ffd84a', debuff: '#c38bff' };
 
   async function hitFx(T, crit) {
+    (crit ? SFX.crit : SFX.hit)();
     T.flash = 1;
     shake = Math.max(shake, crit ? 7 : 3);
     const c = center(T);
@@ -219,20 +245,23 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       float(String(r.dmg - r.absorbed), c.x + (Math.random() * 20 - 10), c.y - 34, r.crit ? '#ffd84a' : '#ffffff', r.crit ? 16 : 12);
       if (r.absorbed > 0) { float(`(${r.absorbed})`, c.x + 26 * T.dir * -1, c.y - 14, '#7fd6ff', 7); burst(c.x, c.y, 8, ['#7fd6ff', '#e0f7ff'], { speed: 160 }); }
     } else if (r.type === 'dodge') {
+      SFX.dodge();
       tween(T, { offX: -26, offY: -14 }, 140).then(() => tween(T, { offX: 0, offY: 0 }, 260, 'outQuad'));
       float('Esquive !', c.x, c.y - 40, '#e0f7ff', 8);
     } else if (r.type === 'heal') {
+      SFX.heal();
       T.hp = r.hp;
       float('+' + r.amount, c.x, c.y - 34, '#7bed6f', 12);
       for (let j = 0; j < 14; j++) effects.push({ kind: 'plus', x: c.x + (Math.random() * 50 - 25), y: c.y + 20 - Math.random() * 30, vy: -50 - Math.random() * 40, life: 900, max: 900 });
       T.glow = 1; T.glowColor = '#7bed6f'; tween(T, { glow: 0 }, 600, 'linear');
     } else if (r.type === 'shield') {
+      SFX.shield();
       T.shield = r.shield;
       float('Bouclier', c.x, c.y - 40, '#7fd6ff', 8);
       burst(c.x, c.y, 14, ['#7fd6ff', '#e0f7ff', '#ffffff'], { speed: 90, grav: -40 });
     } else if (r.type === 'status') {
       float(r.n, c.x, c.y - 56, STATUS_COLOR[r.k] || '#fff', 7, { vy: -18, life: 1200 });
-      if (r.k === 'stun') T.stars = 1;
+      if (r.k === 'stun') { T.stars = 1; SFX.stun(); }
     }
   }
 
@@ -268,22 +297,28 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
   async function skyStrike(kind, T, dur) {
     const c = center(T);
     if (kind === 'lightning') {
+      SFX.bolt();
       effects.push({ kind: 'bolt', x: c.x, y: c.y, life: 260, max: 260, seed: Math.random() });
       effects.push({ kind: 'flashScreen', life: 120, max: 120, color: '#e8f4ff' });
       await wait(80);
     } else if (kind === 'holy') {
+      SFX.magic();
       effects.push({ kind: 'pillar', x: c.x, life: 520, max: 520 });
       await wait(260);
       burst(c.x, c.y, 16, ['#fff3b0', '#ffd84a', '#ffffff'], { speed: 120, grav: -60 });
     } else if (kind === 'meteor') {
+      SFX.fire();
       await projectile('meteor', { x: c.x - 160 * T.dir * -1, y: -30 }, { x: c.x, y: c.y + 10 }, dur);
+      SFX.boom();
       burst(c.x, c.y + 10, 30, ['#ff9f43', '#ffd84a', '#ff3a1a', '#555'], { speed: 260, up: 80, size: 4 });
       shake = 12;
     } else if (kind === 'firerain') {
+      SFX.fire();
       const ox = Math.random() * 40 - 20;
       await projectile('fireball', { x: c.x + ox - 40, y: -10 }, { x: c.x + ox / 2, y: c.y }, dur);
       burst(c.x, c.y, 10, ['#ff9f43', '#ffd84a'], { speed: 140 });
     } else if (kind === 'rain') {
+      SFX.arrow();
       const ox = Math.random() * 40 - 20;
       await projectile('arrow', { x: c.x + ox + 20 * T.dir, y: -10 }, { x: c.x + ox / 3, y: c.y }, dur);
     } else if (kind === 'trap') {
@@ -295,11 +330,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
   async function selfFx(f, fxk) {
     const c = center(f);
     if (fxk === 'roar') {
+      SFX.roar();
       for (let j = 0; j < 3; j++) { effects.push({ kind: 'ring', x: c.x, y: c.y, r0: 10, r1: 90, color: '#ff6b6b', life: 500, max: 500 }); await wait(110); }
       shake = 5;
     } else if (fxk === 'shield') {
       effects.push({ kind: 'ring', x: c.x, y: c.y, r0: 60, r1: 44, color: '#7fd6ff', life: 400, max: 400 });
     } else if (fxk === 'buff') {
+      SFX.buff();
       for (let j = 0; j < 10; j++) effects.push({ kind: 'up', x: c.x + (Math.random() * 50 - 25), y: c.y + 30, vy: -70 - Math.random() * 40, life: 800, max: 800 });
       f.glow = 1; f.glowColor = '#ffd84a'; tween(f, { glow: 0 }, 700, 'linear');
     } else if (fxk === 'heal') {
@@ -311,6 +348,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
   const byStep = (results, s) => results.filter(r => r.step === s);
 
   async function swing(f) {
+    SFX.swing();
     if (!f.weapon) {
       await tween(f, { offX: f.offX - 8, squash: 0.15 }, 120);
       await tween(f, { offX: f.offX + 20, squash: -0.1 }, 80, 'inQuad');
@@ -362,6 +400,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
         const to = center(T);
         const type = e.fx;
         if (!f.weapon) tween(f, { squash: -0.08, offX: 4 }, 100);
+        ({ arrow: SFX.arrow, poisonArrow: SFX.arrow, fireball: SFX.fire, rock: SFX.swing }[type] || SFX.magic)();
         await projectile(type, { x: from.x, y: from.y - 6 }, to, type === 'arrow' || type === 'poisonArrow' ? 260 : 340);
         if (e.fx === 'fireball') burst(to.x, to.y, 12, ['#ff9f43', '#ffd84a', '#ff5e3a'], { speed: 150 });
         if (e.fx === 'ice') burst(to.x, to.y, 12, ['#bff3ff', '#ffffff', '#6fe3ff'], { speed: 150 });
@@ -402,6 +441,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       else await doRanged(f, T, e);
       await wait(180);
     } else if (e.type === 'dot') {
+      SFX.dot();
       const T = F[e.target], c = center(T);
       T.hp = e.hp;
       const cols = e.k === 'burn' ? ['#ff9f43', '#ffd84a', '#ff5e3a'] : ['#7bed6f', '#3fbf3f', '#b8ffb0'];
@@ -416,10 +456,14 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       await wait(700);
       T.stars = 0;
     } else if (e.type === 'rage') {
+      SFX.rage();
       banner = { text: 'RAGE DE L’ARÈNE !', sub: 'Les dégâts augmentent', life: 1600, max: 1600 };
       shake = 6;
       await wait(1200);
     } else if (e.type === 'end') {
+      stopMusic();
+      setQuiet(false);
+      (e.winner === 0 ? SFX.win : SFX.lose)();
       const win = F[e.winner], lose = F[1 - e.winner];
       lose.dead = true;
       tween(lose, { rot: -85, alpha: 0.35, offX: -20 }, 600, 'outQuad');
@@ -683,18 +727,20 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
 
   function drawHud() {
     F.forEach((f, i) => {
-      const bw = 190, bh = 12;
-      const x = i === 0 ? 12 : W - 12 - bw, y = 18;
-      ctx.font = `8px ${FONT}`; ctx.textBaseline = 'alphabetic';
-      ctx.textAlign = i === 0 ? 'left' : 'right';
+      const left = PORTRAIT || i === 0;
+      const bw = PORTRAIT ? W - 24 : 190, bh = PORTRAIT ? 14 : 12;
+      const x = PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
+      const y = PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : H - SAFE_BOT - 112) : 18;
+      ctx.font = `${PORTRAIT ? 9 : 8}px ${FONT}`; ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = left ? 'left' : 'right';
       ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
       const label = `${f.snap.name}  Nv.${f.snap.level}`;
-      const tx = i === 0 ? x : x + bw;
+      const tx = left ? x : x + bw;
       ctx.strokeText(label, tx, y - 4); ctx.fillStyle = '#ffffff'; ctx.fillText(label, tx, y - 4);
       ctx.fillStyle = '#16121f'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
       ctx.fillStyle = '#3a2f45'; ctx.fillRect(x, y, bw, bh);
       const pct = (v) => Math.max(0, Math.min(1, v / f.max));
-      const dirFill = (p, col) => { ctx.fillStyle = col; const w = bw * p; ctx.fillRect(i === 0 ? x : x + bw - w, y, w, bh); };
+      const dirFill = (p, col) => { ctx.fillStyle = col; const w = bw * p; ctx.fillRect(left ? x : x + bw - w, y, w, bh); };
       dirFill(pct(f.hpLag), '#ffe08a');
       const hp = pct(f.hpShown);
       dirFill(hp, hp > 0.5 ? '#4cd964' : hp > 0.25 ? '#feca57' : '#ff5d6c');
@@ -702,21 +748,21 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       if (f.shieldShown > 1) {
         ctx.fillStyle = '#7fd6ff';
         const w = bw * Math.min(1, f.shieldShown / f.max);
-        ctx.fillRect(i === 0 ? x : x + bw - w, y + bh - 4, w, 4);
+        ctx.fillRect(left ? x : x + bw - w, y + bh - 4, w, 4);
       }
       ctx.font = `7px ${FONT}`; ctx.textAlign = 'center';
       const hpTxt = `${Math.max(0, Math.round(f.hpShown))}/${f.max}`;
       ctx.lineWidth = 3; ctx.strokeText(hpTxt, x + bw / 2, y + bh - 2); ctx.fillStyle = '#ffffff'; ctx.fillText(hpTxt, x + bw / 2, y + bh - 2);
       // états
-      let cx = i === 0 ? x : x + bw;
+      let cx = left ? x : x + bw;
       ctx.font = `6px ${FONT}`;
       for (const t of f.tags) {
         const w = ctx.measureText(t.n).width + 8;
-        const bx = i === 0 ? cx : cx - w;
+        const bx = left ? cx : cx - w;
         ctx.fillStyle = 'rgba(22,18,31,0.8)'; ctx.fillRect(bx, y + bh + 5, w, 11);
         ctx.fillStyle = STATUS_COLOR[t.k] || '#fff'; ctx.textAlign = 'left';
         ctx.fillText(t.n, bx + 4, y + bh + 13);
-        cx += (i === 0 ? 1 : -1) * (w + 3);
+        cx += (left ? 1 : -1) * (w + 3);
       }
     });
     if (banner) {
@@ -731,13 +777,35 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
     }
   }
 
+  function drawBackground() {
+    const T = THEMES[theme] || THEMES.arena;
+    const bg = background(theme);
+    const sb = (W + 12) / 160;              // le décor fait toute la largeur
+    const top = GROUND - 75 * sb;           // la ligne du sol tombe sous les pieds
+    ctx.fillStyle = T.sky[0];
+    ctx.fillRect(-10, -10, W + 20, top + 12);
+    // quelques étoiles au-dessus du décor (écran en hauteur)
+    if (top > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      for (let j = 0; j < 30; j++) ctx.fillRect((j * 97) % W, (j * 53) % Math.max(1, top), 2, 2);
+    }
+    ctx.drawImage(bg, -6, top, W + 12, 90 * sb);
+    // le sol continue jusqu'en bas, en s'assombrissant
+    const band = 19 * sb;
+    for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(bg, 0, 71, 160, 19, -6, y, W + 12, band);
+    const g = ctx.createLinearGradient(0, top + 90 * sb, 0, H);
+    g.addColorStop(0, 'rgba(10,8,16,0)'); g.addColorStop(1, 'rgba(10,8,16,0.65)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-10, top + 90 * sb, W + 20, H);
+  }
+
   function render() {
     ctx.setTransform(k, 0, 0, k, 0, 0);
     ctx.imageSmoothingEnabled = false;
     const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
     ctx.save();
     ctx.translate(sx, sy);
-    ctx.drawImage(background(theme), -6, -6, W + 12, H + 12);
+    drawBackground();
     const order = [...F].sort((a, b) => (a.dead ? -1 : 0) - (b.dead ? -1 : 0));
     order.forEach(drawFighter);
     effects.forEach(drawEffect);
@@ -758,6 +826,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
 
   const promise = (async () => {
     await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
+    startMusic();
     await wait(600);
     for (const e of result.log) {
       if (!alive) return;
@@ -768,9 +837,9 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
 
   return {
     promise,
-    setSpeed(v) { speed = v; },
-    skip() { speed = 40; },
-    destroy() { alive = false; ro.disconnect(); },
+    setSpeed(v) { speed = v; setQuiet(v > 3); },
+    skip() { speed = 40; setQuiet(true); },
+    destroy() { alive = false; ro.disconnect(); stopMusic(); setQuiet(false); },
   };
 }
 

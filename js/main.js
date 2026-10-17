@@ -11,6 +11,7 @@ import { playBattle, idlePreview } from './battle.js';
 import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas } from './sprites.js';
 import { hashStr, makeRng } from './rng.js';
 import * as NET from './net.js';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -765,6 +766,7 @@ function onChatMessage(m) {
     chatUnread++;
     const b = document.getElementById('chat-badge');
     if (b) { b.hidden = false; b.textContent = chatUnread; }
+    SFX.message();
     toast(`💬 ${m.pseudo} : ${m.text.length > 40 ? m.text.slice(0, 40) + '…' : m.text}`);
   }
 }
@@ -809,7 +811,7 @@ function toast(text) {
 }
 function announce(lv) {
   if (!lv) return;
-  if (lv.levels > 0) toast(`Niveau ${hero.level} ! +${lv.levels * 3} points de caractéristiques`);
+  if (lv.levels > 0) { SFX.level(); toast(`Niveau ${hero.level} ! +${lv.levels * 3} points de caractéristiques`); }
   for (const s of lv.newSpells || []) toast(`Nouveau sort : ${s.name}`);
 }
 
@@ -818,6 +820,7 @@ function openChestFlow(kind) {
   const res = E.openChest(acc, hero, kind);
   if (!res) return;
   save();
+  SFX.chest();
   openModal(`
     <div class="open-stage">
       <h3>${{ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || 'Coffre'}</h3>
@@ -829,6 +832,7 @@ function openChestFlow(kind) {
     paint(cv, chestCanvas(kind, true), { scale: 6 });
     cv.classList.remove('shake');
     cv.classList.add('burst');
+    SFX.loot(Math.max(...res.items.map(it => it.rarity)));
     document.getElementById('loot').innerHTML = `
       <div class="loot">
         ${res.items.map((it, i) => `
@@ -861,6 +865,7 @@ function runBattle({ me, foe, result, theme, title, rewardsHtml, rewards }) {
     <div class="battle-ctrl">
       <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
       <button class="btn small" data-act="skip">Passer ⏭</button>
+      <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${getPref('sfx') || getPref('music') ? '🔊' : '🔇'}</button>
     </div>
     <div class="battle-after" id="result-slot"></div>`;
   document.body.appendChild(ov);
@@ -948,6 +953,11 @@ function openSettings() {
       <button class="btn small" data-act="cheat" data-c="lvl">+5 niveaux</button>
       <button class="btn small" data-act="cheat" data-c="weekEnd">Finir la guerre</button>
     </div>`}
+    <div class="sub">SON</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn small ${getPref('sfx') ? 'green' : ''}" data-act="soundPref" data-k="sfx">Bruitages : ${getPref('sfx') ? 'oui' : 'non'}</button>
+      <button class="btn small ${getPref('music') ? 'green' : ''}" data-act="soundPref" data-k="music">Musique : ${getPref('music') ? 'oui' : 'non'}</button>
+    </div>
     <div class="sub">PERSONNAGE</div>
     ${acc.heroes.length > 1 ? `<button class="btn danger block" data-act="deleteHero">Supprimer ce ${CLASSES[hero.classId].name} (Nv.${hero.level})</button>` : '<p class="hint">Tu ne peux pas supprimer ton seul personnage.</p>'}
     ${NET.online ? '<button class="btn block" style="margin-top:10px" data-act="logout">Me déconnecter</button>' : `
@@ -970,11 +980,20 @@ function openNewHero() {
 // ------------------------------ Actions ------------------------------
 const ACTIONS = {
   tab: (d) => {
+    SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
     if (NET.online && ['fights', 'war', 'ranking'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id && !modalRoot.innerHTML && !document.querySelector('.battle')) render(); });
   },
   authMode: (d) => { authMode = d.mode; renderAuth(); },
   auth: () => doAuth(),
+  soundPref: (d) => { setPref(d.k, !getPref(d.k)); openSettings(); },
+  toggleSound: () => {
+    const on = !(getPref('sfx') || getPref('music'));
+    setPref('sfx', on); setPref('music', on);
+    if (on) startMusic(); else stopMusic();
+    const b = document.getElementById('snd-btn');
+    if (b) b.textContent = on ? '🔊' : '🔇';
+  },
   sendChat: () => sendChat(),
   switchHero: (d) => {
     const i = +d.i;
@@ -1039,6 +1058,7 @@ const ACTIONS = {
     setTimeout(() => {
       const res = E.fuse(hero, d.id, +d.r);
       if (!res) return;
+      SFX.fuse();
       save();
       render();
       openItem(res.itemId, res.rarity);
@@ -1114,6 +1134,7 @@ const ACTIONS = {
 };
 
 document.addEventListener('click', (ev) => {
+  unlockSound();
   const el = ev.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const fn = ACTIONS[el.dataset.act];
