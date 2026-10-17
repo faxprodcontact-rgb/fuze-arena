@@ -1,0 +1,12 @@
+{
+  "name": "Fuze Arena",
+  "short_name": "Fuze",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15121f",
+  "theme_color": "#15121f",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
