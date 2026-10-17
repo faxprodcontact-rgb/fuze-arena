@@ -377,3 +377,106 @@ export const FRIENDS = [
   { id: 'b6', name: 'Zaza', classId: 'mage' },
   { id: 'b7', name: 'Kiki', classId: 'archer' },
 ];
+
+// =====================================================================
+//  AIDE AUX RETARDATAIRES — bonus d'XP selon le retard sur le groupe
+// =====================================================================
+export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de retard, max +100 %
+
+// =====================================================================
+//  TOUR INFINIE
+// =====================================================================
+export const TOWER = { attemptsPerDay: 5, clatPerFloor: 1, clatEvery10: 10 };
+
+// =====================================================================
+//  RAID DE LA SEMAINE — un boss commun à tout le groupe
+// =====================================================================
+SPELL_LIST.push(...S('monster', [
+  { id: 'r_discours', lvl: 0, name: 'Discours de 3 heures', cd: 5, scale: 'mag', mult: 0.6, fx: 'bolt', effects: [{ k: 'stun', chance: 0.5 }] },
+  { id: 'r_republique', lvl: 0, name: 'La République, c’est moi !', cd: 5, scale: 'atk', mult: 2, melee: true, fx: 'bash' },
+  { id: 'r_insoumis', lvl: 0, name: 'Insoumission', cd: 6, fx: 'shield', effects: [{ k: 'shield', scale: 'def', mult: 2 }] },
+  { id: 'r_gueule', lvl: 0, name: 'Coup de gueule', cd: 5, fx: 'roar', effects: [{ k: 'buff', stat: 'atk', pct: 0.3, turns: 3 }] },
+]));
+SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
+
+export const RAID = {
+  attemptsPerDay: 3,
+  maxActions: 24,                 // un assaut dure au plus 24 actions (on ne peut pas le tuer d'un coup)
+  participation: 0.5,             // PV calculés pour qu'il tombe si chacun joue ~la moitié de ses assauts
+  rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
+  boss: {
+    id: 'melenchon', name: 'Mélenchon', sprite: 'melenchon', theme: 'meeting',
+    profile: { vit: 1, atk: 1.1, mag: 1, def: 0.9, spd: 0.8, lck: 0.6 },
+    basic: { name: 'Coup de micro', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
+    spells: ['r_insoumis', 'r_republique', 'r_discours', 'r_gueule'],
+  },
+};
+
+// =====================================================================
+//  MISSIONS DU JOUR — 3 par jour, les mêmes pour tout le monde
+// =====================================================================
+export const MISSION_POOL = [
+  { id: 'arena_win', text: 'Gagne {n} combats d’Arène', n: [2, 3], reward: 3 },
+  { id: 'arena_fight', text: 'Fais {n} combats d’Arène', n: [3, 5], reward: 2 },
+  { id: 'rematch', text: 'Fais {n} revanches', n: [2, 3], reward: 2 },
+  { id: 'chest', text: 'Ouvre {n} coffres', n: [2, 4], reward: 2 },
+  { id: 'dungeon_win', text: 'Bats {n} boss de donjon', n: [1, 2], reward: 3 },
+  { id: 'tower', text: 'Monte {n} étage(s) de la Tour', n: [1, 3], reward: 3 },
+  { id: 'raid', text: 'Attaque Mélenchon {n} fois', n: [1, 3], reward: 3 },
+  { id: 'war', text: 'Fais {n} attaques de guerre', n: [1, 3], reward: 3 },
+  { id: 'fuse', text: 'Fusionne {n} objet(s)', n: [1, 2], reward: 3 },
+  { id: 'chat', text: 'Envoie {n} message(s) dans le tchat', n: [1, 3], reward: 1 },
+  { id: 'bet', text: 'Mise sur {n} duel(s)', n: [1, 1], reward: 2 },
+  { id: 'revenge', text: 'Venge-toi {n} fois', n: [1, 1], reward: 2 },
+];
+export const MISSIONS_PER_DAY = 3;
+export const MISSIONS_BONUS = 5;   // Pierres Clat en plus si les 3 sont faites
+
+// =====================================================================
+//  BOUTIQUE D'APPARENCE — payée en Pierres Clat, aucun effet sur les stats
+// =====================================================================
+const T = (id, name, price) => ({ id: 't_' + id, kind: 'title', name, price });
+const C = (id, name, price, color) => ({ id: 'c_' + id, kind: 'color', name, price, color });
+const D = (id, name, price, dye) => ({ id: 'd_' + id, kind: 'dye', name, price, dye });
+const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, price, colors });
+
+export const COSMETICS = [
+  // Titres (affichés sous ton pseudo)
+  T('rookie', 'Le Rookie', 5), T('touriste', 'Touriste', 5), T('mauvais', 'Mauvais perdant', 8),
+  T('fetard', 'Fêtard', 10), T('cuistot', 'Chef cuistot', 12), T('gros_bras', 'Gros bras', 12),
+  T('pilier', 'Pilier de bar', 15), T('sage', 'Le Sage', 18), T('revanche', 'Roi de la revanche', 20),
+  T('sniper', 'Sniper', 22), T('pyro', 'Pyromane', 22), T('increvable', 'Increvable', 25),
+  T('chanceux', 'Chanceux', 25), T('insoumis', 'Insoumis', 30), T('banquier', 'Le Banquier', 40),
+  T('parieur', 'Parieur fou', 40), T('loot', 'Seigneur du loot', 50), T('collection', 'Collectionneur', 55),
+  T('dragon', 'Tueur de dragons', 60), T('appart', 'Légende de l’Appart 33', 80), T('empereur', 'Empereur', 100),
+  T('intouchable', 'Intouchable', 120), T('boss', 'Le Boss', 150), T('dieu', 'Dieu de l’Arène', 200),
+  T('president', 'Président', 250),
+  T('naine', 'Destructeur de naine', 500),
+  // Couleurs de pseudo
+  C('vert', 'Pseudo vert', 15, '#4cd964'), C('bleu', 'Pseudo bleu', 15, '#3d9bff'), C('rouge', 'Pseudo rouge', 15, '#ff5d6c'),
+  C('cyan', 'Pseudo cyan', 20, '#48dbfb'), C('rose', 'Pseudo rose', 25, '#ff8fc7'), C('violet', 'Pseudo violet', 30, '#b05cff'),
+  C('orange', 'Pseudo orange', 30, '#ff9f1a'), C('or', 'Pseudo doré', 60, '#ffd84a'), C('arcenciel', 'Pseudo arc-en-ciel', 150, 'rainbow'),
+  // Teintures de tenue (pour le personnage actif)
+  D('noir', 'Noir corbeau', 20, { body: '#34303d', sleeve: '#2b2733', accent: '#8e2b2b', headC: '#3d3947', legs: '#26232c' }),
+  D('blanc', 'Blanc neige', 20, { body: '#eef2f6', sleeve: '#d9e0e8', accent: '#3d9bff', headC: '#f4f8fc', legs: '#c9d1da' }),
+  D('rouge', 'Rouge sang', 25, { body: '#a82424', sleeve: '#8e1f1f', accent: '#ffd84a', headC: '#c0392b', legs: '#5a1414' }),
+  D('bleu', 'Bleu royal', 25, { body: '#2e5aa8', sleeve: '#244a8c', accent: '#ffd84a', headC: '#3d6fd1', legs: '#1c3566' }),
+  D('vert', 'Vert forêt', 25, { body: '#2f7d3a', sleeve: '#276a31', accent: '#e5b33a', headC: '#3f9a4a', legs: '#1f4d26' }),
+  D('rose', 'Rose bonbon', 30, { body: '#ff8fc7', sleeve: '#f27bb6', accent: '#ffffff', headC: '#ffa6d4', legs: '#c25d92' }),
+  D('violet', 'Violet mystique', 35, { body: '#6c3fb5', sleeve: '#5a339a', accent: '#48dbfb', headC: '#7d4fd1', legs: '#3d2670' }),
+  D('orange', 'Orange fluo', 35, { body: '#ff8c1a', sleeve: '#e67a10', accent: '#2a2238', headC: '#ffa040', legs: '#7a3d08' }),
+  D('turquoise', 'Turquoise', 40, { body: '#1abc9c', sleeve: '#16a085', accent: '#ffffff', headC: '#26d0ad', legs: '#0e6655' }),
+  D('camo', 'Camouflage', 50, { body: '#55663f', sleeve: '#4a5a36', accent: '#3b2a20', headC: '#6b7a4f', legs: '#3d4a2c' }),
+  D('argent', 'Argent', 70, { body: '#c3cad3', sleeve: '#aab4c0', accent: '#3d9bff', headC: '#e0e6ee', legs: '#8f96a0' }),
+  D('bronze', 'Bronze', 70, { body: '#b07a3a', sleeve: '#9a6830', accent: '#5a3a22', headC: '#c98a4a', legs: '#6b4423' }),
+  D('or', 'Or massif', 120, { body: '#ffd84a', sleeve: '#e5b33a', accent: '#c0392b', headC: '#ffe680', legs: '#b8860b' }),
+  D('ombre', 'Ombre', 150, { body: '#16121f', sleeve: '#1f1a2e', accent: '#b05cff', headC: '#262038', legs: '#0e0b16' }),
+  // Effets de victoire
+  V('confettis', 'Confettis', 30, ['#ff5d6c', '#ffd84a', '#4cd964', '#3d9bff', '#b05cff']),
+  V('coeurs', 'Pluie de cœurs', 40, ['#ff5d6c', '#ff8fc7', '#ffffff']),
+  V('eclairs', 'Éclairs', 50, ['#e8f4ff', '#8fd3ff', '#ffd84a']),
+  V('feu', 'Feu d’artifice', 60, ['#ff9f1a', '#ffd84a', '#ff3a1a', '#ffffff']),
+  V('or', 'Pluie d’or', 80, ['#ffd84a', '#e5b33a', '#fff3b0']),
+  V('clat', 'Pluie de Pierres Clat', 100, ['#2ecc71', '#a8f0c0', '#1e8449']),
+];
+export const COSMETIC = Object.fromEntries(COSMETICS.map(c => [c.id, c]));

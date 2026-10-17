@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261017175651';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261017175651';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261017175651';
+import { CLASSES } from './data.js?v=20261018003758';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018003758';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018003758';
 
 // Taille « logique » de la scène : recalculée selon l'écran.
 // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
@@ -42,6 +42,9 @@ const THEMES = {
     r1: '#a8c8e0', r2: '#8fb3d0', grass: ['#d8ecf8', '#ffffff'], ground: ['#e6f2fa', '#d4e6f2', '#b8d0e2', '#c8dcea'] },
   castle: { sky: ['#0f0d1a', '#151226', '#1c1733', '#241c40', '#2c214d', '#35265a', '#3e2b66', '#473073'], sun: ['#f4f0ff', '#ffffff'],
     r1: '#251d3a', r2: '#1b152c', walls: ['#3a3348', '#4a4258', '#2a2436'], banners: true, grass: ['#2e2a3a', '#403a50'], ground: ['#3d3548', '#362f40', '#2c2636', '#322b3d'] },
+  meeting: { sky: ['#2a0a12', '#3a0d18', '#4d1220', '#601628', '#741a30', '#8a2038', '#a02640', '#b82e48'], sun: ['#ffd84a', '#fff3b0'],
+    r1: '#3a1020', r2: '#2a0a16', walls: ['#5a1424', '#7a1c30', '#3a0d18'], banners: true, crowd: '#1f0a12',
+    grass: ['#5a1424', '#7a1c30'], ground: ['#8a2038', '#7a1c30', '#5a1424', '#6a1828'] },
   abyss: { sky: ['#05030a', '#090612', '#0e091a', '#130c22', '#18102a', '#1d1332', '#22163a', '#271942'], sun: ['#c38bff', '#ffffff'],
     r1: '#1a1030', r2: '#120a24', lava: '#a64dff', grass: ['#2a1a3a', '#3d2650'], ground: ['#24183a', '#1f1532', '#18102a', '#1c132e'] },
 };
@@ -106,6 +109,10 @@ function background(themeId = 'arena') {
       x.fillStyle = '#e5b33a'; x.fillRect(bx + 2, 55, 1, 2);
     });
   }
+  if (T.crowd) {
+    x.fillStyle = T.crowd;
+    for (let i = 0; i < w; i += 5) { const hgt = 3 + ((i * 7) % 3); x.fillRect(i, 68 - hgt, 4, hgt); x.fillRect(i + 1, 68 - hgt - 2, 2, 2); }
+  }
   if (T.tombs) {
     x.fillStyle = T.tombs;
     [[16, 4], [44, 3], [100, 4], [146, 3]].forEach(([tx, tw]) => { x.fillRect(tx, 61, tw * 2, 7); x.fillRect(tx + 1, 60, tw * 2 - 2, 1); x.fillStyle = '#3a3548'; x.fillRect(tx + tw - 1, 62, 2, 4); x.fillRect(tx + tw - 2, 63, 4, 1); x.fillStyle = T.tombs; });
@@ -131,7 +138,7 @@ function background(themeId = 'arena') {
 /**
  * Joue un combat dans le canvas. Renvoie { promise, setSpeed, skip, destroy }.
  */
-export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
+export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null } = {}) {
   const ctx = canvas.getContext('2d');
   let k = 1, speed = 1, alive = true, last = performance.now(), time = 0, shake = 0;
   const tweens = [], timers = [], effects = [], texts = [];
@@ -171,13 +178,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
 
   const mk = (snap, i) => {
     const weapon = snap.monster ? null : CLASSES[snap.classId].weapon;
-    const sprite = snap.monster ? monsterCanvas(snap.monster) : heroCanvas(snap.classId);
+    const sprite = snap.monster ? monsterCanvas(snap.monster) : heroCanvas(snap.classId, snap.dye);
     const idle = weapon ? IDLE_ANGLE[weapon] : 0;
     return {
       i, snap, weapon, idle, dir: i === 0 ? 1 : -1, baseX: 0,
       offX: 0, offY: 0, rot: 0, flash: 0, alpha: 1, squash: 0,
       wAng: idle, wOff: 0, run: false, spin: 0, phase: i * 1.7,
-      hp: snap.maxHp, max: snap.maxHp, hpShown: snap.maxHp, hpLag: snap.maxHp, shield: 0, shieldShown: 0,
+      hp: snap.hp ?? snap.maxHp, max: snap.maxHp, hpShown: snap.hp ?? snap.maxHp, hpLag: snap.hp ?? snap.maxHp, shield: 0, shieldShown: 0,
       tags: [], dead: false, stars: 0, petHop: 0, glow: 0, glowColor: '#fff',
       // les boss sont dessinés plus gros (4 px au lieu de 3)
       sprite, sw: snap.monster ? sprite.width * 4 / 3 : HERO_W, sh: snap.monster ? sprite.height * 4 / 3 : HERO_H,
@@ -460,6 +467,11 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       banner = { text: 'RAGE DE L’ARÈNE !', sub: 'Les dégâts augmentent', life: 1600, max: 1600 };
       shake = 6;
       await wait(1200);
+    } else if (e.type === 'end' && e.winner < 0) {
+      // fin d'un assaut de raid : personne ne tombe
+      stopMusic();
+      setQuiet(false);
+      await wait(300);
     } else if (e.type === 'end') {
       stopMusic();
       setQuiet(false);
@@ -469,6 +481,10 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       tween(lose, { rot: -85, alpha: 0.35, offX: -20 }, 600, 'outQuad');
       burst(center(lose).x, GROUND - 6, 16, ['#c49a6c', '#e0c49a'], { speed: 120, up: 40 });
       await wait(500);
+      if (victory && e.winner === 0) {
+        const c = center(win);
+        for (let j = 0; j < 4; j++) setTimeout(() => burst(c.x + (Math.random() - 0.5) * 80, c.y - 40 - Math.random() * 40, 26, victory, { speed: 200, up: 120, grav: 160, life: 1200, size: 4 }), j * 250 / speed);
+      }
       for (let j = 0; j < 3; j++) { await tween(win, { offY: -26 }, 180); await tween(win, { offY: 0 }, 180, 'inQuad'); }
       await wait(300);
     }
@@ -736,7 +752,8 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
       ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
       const label = `${f.snap.name}  Nv.${f.snap.level}`;
       const tx = left ? x : x + bw;
-      ctx.strokeText(label, tx, y - 4); ctx.fillStyle = '#ffffff'; ctx.fillText(label, tx, y - 4);
+      const nc = f.snap.nameColor === 'rainbow' ? `hsl(${(time * 120) % 360},90%,65%)` : (f.snap.nameColor || '#ffffff');
+      ctx.strokeText(label, tx, y - 4); ctx.fillStyle = nc; ctx.fillText(label, tx, y - 4);
       ctx.fillStyle = '#16121f'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
       ctx.fillStyle = '#3a2f45'; ctx.fillRect(x, y, bw, bh);
       const pct = (v) => Math.max(0, Math.min(1, v / f.max));
@@ -844,9 +861,9 @@ export function playBattle(canvas, A, B, result, { theme = 'arena' } = {}) {
 }
 
 /** Petit héros animé pour les écrans de menu */
-export function idlePreview(canvas, classId, petItemId = null) {
+export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
-  const sprite = heroCanvas(classId);
+  const sprite = heroCanvas(classId, dyeId);
   const weapon = CLASSES[classId].weapon;
   const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;

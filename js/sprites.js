@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES } from './data.js?v=20261017175651';
+import { ITEMS, RARITIES, COSMETIC } from './data.js?v=20261018003758';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -66,9 +66,11 @@ const LOOKS = {
 export const HAND = { x: 14, y: 17 };   // point où l'arme est tenue
 export const HERO_W = 22, HERO_H = 28;
 
-export function heroCanvas(classId) {
-  return cached('hero:' + classId, () => {
-    const L = LOOKS[classId];
+/** Dessin d'un héros ; dyeId = teinture achetée à la boutique (facultatif) */
+export function heroCanvas(classId, dyeId = null) {
+  return cached(`hero:${classId}:${dyeId || ''}`, () => {
+    const dye = dyeId && COSMETIC[dyeId] ? COSMETIC[dyeId].dye : null;
+    const L = { ...LOOKS[classId], ...(dye || {}) };
     const g = grid(HERO_W, HERO_H);
     const eye = '#1b1530';
     if (L.cape) { rect(g, 4, 12, 3, 11, shade(L.cape, -0.15)); rect(g, 5, 22, 3, 1, shade(L.cape, -0.3)); }
@@ -266,6 +268,18 @@ const MONSTERS = {
   },
 };
 
+MONSTERS.melenchon = {
+  pal: { h: '#c9c9cf', s: '#f1c08f', k: '#1b1530', w: '#eef4fb', b: '#2b3350', r: '#d63031', m: '#7a1f1f', d: '#22283d' },
+  rows: [
+    '.................sss..', '........hhhh....sssss.', '......hhsssshh..sssss.', '.....hsssssssh...sss..',
+    '.....hssssssssh..bbb..', '.....hkkkskkkh...bbb..', '.....kwwkskwwk...bbb..', '.....skkksskkks..bbb..',
+    '......sssssssss.bbb...', '......sssmmmsss.bbb...', '.......sssssss.bbb....', '........sssss.bbbb....',
+    '.....bbbbwrwbbbbb.....', '....bbbbbwrrwbbbb.....', '...bbbbbbwrrwbbbb.....', '...bbbbbbbrrbbbbb.....',
+    '...sbbbbbbrrbbbbb.....', '...ssbbbbbbbbbbbb.....', '.....bbbbbbbbbbbb.....', '.....dddddddddddd.....',
+    '.....ddddd..ddddd.....', '.....ddddd..ddddd.....', '.....ddddd..ddddd.....', '....kkkkkk..kkkkkk....',
+  ],
+};
+
 export function monsterCanvas(id) {
   return cached('monster:' + id, () => {
     const M = MONSTERS[id];
@@ -405,9 +419,9 @@ export function paint(canvas, sprite, { scale = 4, pad = 0, bg = null } = {}) {
 }
 
 /** Portrait : héros + son arme */
-export function heroPortrait(classId, weaponKind) {
-  return cached(`portrait:${classId}`, () => {
-    const h = heroCanvas(classId);
+export function heroPortrait(classId, weaponKind, dyeId = null) {
+  return cached(`portrait:${classId}:${dyeId || ''}`, () => {
+    const h = heroCanvas(classId, dyeId);
     const w = weaponCanvas(weaponKind);
     const [px, py] = weaponPivot(weaponKind);
     const c = document.createElement('canvas');

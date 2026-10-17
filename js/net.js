@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261017175651';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018003758';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;
@@ -129,6 +129,7 @@ export async function signOut() {
   await flush();
   await unsubscribeChat();
   const c = await client();
+  if (liveChannel) { await c.removeChannel(liveChannel); liveChannel = null; }
   await c.auth.signOut();
   userId = null;
 }
@@ -166,3 +167,106 @@ export async function unsubscribeChat() {
 }
 
 export const myId = () => userId;
+
+// ------------------------------ Journal des combats ------------------------------
+export async function logFight(row) {
+  const c = await client();
+  const { data, error } = await c.from('fight_log').insert({ ...row, attacker_id: userId }).select('id, created_at').single();
+  if (error) throw new Error(frError(error));
+  return data;
+}
+
+export async function fetchMyFights(limit = 40) {
+  const c = await client();
+  const { data, error } = await c.from('fight_log')
+    .select('id, attacker_id, defender_id, attacker_name, defender_name, kind, winner, seed, a_snap, d_snap, created_at')
+    .or(`attacker_id.eq.${userId},defender_id.eq.${userId}`)
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) throw new Error(frError(error));
+  return data || [];
+}
+
+export async function fetchFight(id) {
+  const c = await client();
+  const { data, error } = await c.from('fight_log').select('*').eq('id', id).maybeSingle();
+  if (error) throw new Error(frError(error));
+  return data;
+}
+
+// ------------------------------ Défis et paris ------------------------------
+export async function fetchChallenges(days = 4) {
+  const c = await client();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await c.from('challenges').select('*').gte('created_at', since).order('created_at', { ascending: false });
+  if (error) throw new Error(frError(error));
+  return data || [];
+}
+
+export async function createChallenge(toId, fromName, toName) {
+  const c = await client();
+  const { error } = await c.from('challenges').insert({ from_id: userId, to_id: toId, from_name: fromName, to_name: toName });
+  if (error) throw new Error(frError(error));
+}
+
+export async function answerChallenge(id, patch) {
+  const c = await client();
+  const { error } = await c.from('challenges').update(patch).eq('id', id);
+  if (error) throw new Error(frError(error));
+}
+
+export async function fetchWagers(challengeIds) {
+  if (!challengeIds.length) return [];
+  const c = await client();
+  const { data, error } = await c.from('wagers').select('*').in('challenge_id', challengeIds);
+  if (error) throw new Error(frError(error));
+  return data || [];
+}
+
+export async function placeWager(challengeId, pseudo, side, amount, odds) {
+  const c = await client();
+  const { error } = await c.from('wagers').insert({ challenge_id: challengeId, user_id: userId, pseudo, side, amount, odds });
+  if (error) throw new Error(/row-level/i.test(error.message) ? 'Les paris sur ce duel sont fermés.' : frError(error));
+}
+
+// ------------------------------ Raid ------------------------------
+export async function getRaid(week) {
+  const c = await client();
+  const { data, error } = await c.from('raids').select('*').eq('week', week).maybeSingle();
+  if (error) throw new Error(frError(error));
+  return data;
+}
+
+/** Ouvre le raid de la semaine (si quelqu'un l'a déjà ouvert, on garde le sien) */
+export async function openRaid(week, boss, hp, level) {
+  const c = await client();
+  const { error } = await c.from('raids').insert({ week, boss, hp, level });
+  if (error && !/duplicate|23505/i.test(error.message + error.code)) throw new Error(frError(error));
+  return getRaid(week);
+}
+
+export async function fetchRaidHits(week) {
+  const c = await client();
+  const { data, error } = await c.from('raid_hits').select('user_id, pseudo, damage, created_at').eq('week', week);
+  if (error) throw new Error(frError(error));
+  return data || [];
+}
+
+export async function addRaidHit(week, pseudo, damage) {
+  const c = await client();
+  const { error } = await c.from('raid_hits').insert({ week, user_id: userId, pseudo, damage });
+  if (error) throw new Error(frError(error));
+}
+
+// ------------------------------ En direct ------------------------------
+let liveChannel = null;
+/** Prévient l'interface quand : on se fait attaquer, un défi ou un pari arrive, Mélenchon prend un coup */
+export async function subscribeLive(onEvent) {
+  const c = await client();
+  if (liveChannel) await c.removeChannel(liveChannel);
+  liveChannel = c.channel('direct')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fight_log', filter: `defender_id=eq.${userId}` }, (p) => onEvent('fight', p.new))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges' }, (p) => onEvent('challenge', p.new))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wagers' }, (p) => onEvent('wager', p.new))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'raid_hits' }, (p) => onEvent('raid', p.new))
+    .subscribe();
+}

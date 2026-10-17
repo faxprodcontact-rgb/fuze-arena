@@ -6,8 +6,9 @@ import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
-} from './data.js?v=20261017175651';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017175651';
+  XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
+} from './data.js?v=20261018003758';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018003758';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -22,9 +23,23 @@ export function unlockedSpells(classId, level) {
   return classSpells(classId).filter(s => s.lvl <= level);
 }
 
-/** Ajoute de l'XP. Renvoie { levels, newSpells } */
+// Bonus d'XP du moment (aide aux retardataires), réglé par l'interface
+let xpBonus = 1;
+export function setXpBonus(mult) { xpBonus = Math.max(1, mult || 1); }
+export const getXpBonus = () => xpBonus;
+
+/** Bonus de rattrapage : +5 % d'XP par niveau de retard sur la moyenne des autres (max +100 %) */
+export function catchupBonus(myLevel, otherLevels) {
+  if (!otherLevels.length) return 1;
+  const avg = otherLevels.reduce((a, b) => a + b, 0) / otherLevels.length;
+  const gap = Math.max(0, avg - myLevel);
+  return 1 + Math.min(XP_CATCHUP.max, gap * XP_CATCHUP.perLevel);
+}
+
+/** Ajoute de l'XP (avec le bonus de rattrapage). Renvoie { levels, newSpells, xp } */
 export function gainXp(hero, amount) {
   const before = hero.level;
+  amount = Math.round(amount * xpBonus);
   hero.xp += amount;
   while (hero.level < MAX_LEVEL && hero.xp >= xpForLevel(hero.level)) {
     hero.xp -= xpForLevel(hero.level);
@@ -35,7 +50,7 @@ export function gainXp(hero, amount) {
   for (const s of newSpells) {
     if (hero.spells.length < MAX_ACTIVE_SPELLS) hero.spells.push(s.id);
   }
-  return { levels: hero.level - before, newSpells };
+  return { levels: hero.level - before, newSpells, xp: amount };
 }
 
 // ------------------------------- Objets --------------------------------
@@ -128,10 +143,10 @@ function isSelfOnly(sp) { return !sp.mult; }
  * Simule un combat complet. Renvoie { log, winner }.
  * Le log est rejoué ensuite par l'écran de combat avec les animations.
  */
-export function simulate(A, B, seed) {
+export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true } = {}) {
   const rng = makeRng(seed);
   const F = [A, B].map((s, i) => ({
-    i, s, hp: s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
+    i, s, hp: s.hp ?? s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
     cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0,
   }));
   const log = [];
@@ -288,8 +303,9 @@ export function simulate(A, B, seed) {
     actor.buffs = actor.buffs.filter(b => b.turns > 0);
     if (actor.stunImmune > 0) actor.stunImmune--;
 
-    if (actions >= MAX_ACTIONS) {
-      winner = F[0].hp / F[0].max >= F[1].hp / F[1].max ? 0 : 1;
+    if (actions >= maxActions) {
+      // temps écoulé : vainqueur aux PV restants (ou personne, pour un assaut de raid)
+      winner = !timeoutWinner ? -1 : F[0].hp / F[0].max >= F[1].hp / F[1].max ? 0 : 1;
     }
   }
   push({ type: 'end', winner });
@@ -447,6 +463,8 @@ export function newHero(name, classId, id = 'h1') {
     dungeonClears: {},
     chest: { stored: 2, last: Date.now() },
     dungeon: { stored: DUNGEON_MAX, last: Date.now() },
+    tower: { best: 0, day: '', used: 0 },
+    dye: null,
   };
 }
 
@@ -464,6 +482,10 @@ export function newAccount(pseudo, classId) {
     war: newWarState(),
     titles: { warHero: 0 },
     clat: 0,
+    cosmetics: { owned: [], title: null, color: null, victory: null },
+    missions: { day: '', progress: {}, claimed: {}, bonus: false },
+    raid: { day: '', used: 0, claimed: {}, local: {} },
+    paidWagers: [],
   };
 }
 
@@ -517,6 +539,14 @@ export function migrate(save) {
   });
   delete acc.chest;
   delete acc.dungeon;
+  acc.heroes.forEach(h => {
+    if (!h.tower) h.tower = { best: 0, day: '', used: 0 };
+    if (h.dye === undefined) h.dye = null;
+  });
+  if (!acc.cosmetics) acc.cosmetics = { owned: [], title: null, color: null, victory: null };
+  if (!acc.missions) acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
+  if (!acc.raid) acc.raid = { day: '', used: 0, claimed: {}, local: {} };
+  if (!acc.paidWagers) acc.paidWagers = [];
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
   if (acc.clat === undefined) acc.clat = 0;
@@ -536,10 +566,12 @@ export function fightRewards(acc, hero, foeLevel, won) {
   return { xp, chest, ...lv };
 }
 
-/** Combat amical (revanche) : ni XP, ni victoire au classement, ni coffre — juste 1 Pierre Clat si on gagne */
-export function friendlyRewards(acc, won) {
-  if (won) acc.clat++;
-  return { clat: won ? 1 : 0 };
+/** Combat amical (revanche, vengeance) : ni XP ni points. 1 Pierre Clat par adversaire et par jour si on gagne. */
+export function friendlyRewards(acc, won, foeId) {
+  if (!acc.fights.clat) acc.fights.clat = {};
+  const give = won && !acc.fights.clat[foeId];
+  if (give) { acc.clat++; acc.fights.clat[foeId] = true; }
+  return { clat: give ? 1 : 0 };
 }
 
 // ------------------------------ Donjons --------------------------------
@@ -684,8 +716,8 @@ export function warStandings(acc, week = weekKey(), others = null) {
       const st = (w.weeks && w.weeks[week]) || { points: 0, enemyBonus: 0 };
       res.score[w.section] += st.points;
       res.score[otherSide(w.section)] += st.enemyBonus;
-      const h = activeHero(p.data);
-      res.members.push({ id: p.id, name: p.pseudo, classId: h.classId, section: w.section, points: st.points });
+      const h = strongestHero(p.data);
+      res.members.push({ id: p.id, name: p.pseudo, classId: h.classId, section: w.section, points: st.points, data: p.data });
     }
   }
   if (acc.war.section) {
@@ -747,4 +779,171 @@ export function warAttackResult(acc, hero, foe, won, myPower, foePower) {
   const xp = won ? 20 + 2 * Math.min(foe.level, hero.level + 5) : 8 + foe.level;
   const lv = gainXp(hero, xp);
   return { pts, xp, ...lv };
+}
+
+// ------------------------------ Personnage le plus fort ----------------
+/** Le perso qui défend le compte : celui qui a la plus grosse puissance */
+export function strongestHero(acc) {
+  let best = acc.heroes[0], bp = -1;
+  for (const h of acc.heroes) {
+    const p = powerScore(snapshot(h));
+    if (p > bp) { bp = p; best = h; }
+  }
+  return best;
+}
+
+// ------------------------------ Tour infinie ---------------------------
+/** Monstre d'un étage : les boss des donjons reviennent, de plus en plus forts */
+export function towerMonster(floor) {
+  const d = DUNGEONS[(floor - 1) % DUNGEONS.length];
+  const lvl = Math.min(MAX_LEVEL, Math.max(1, Math.round(floor * 1.5)));
+  const beyond = floor > 66 ? Math.pow(1.035, floor - 66) : 1;   // au-delà : ça ne s'arrête jamais
+  const ramp = Math.min(1.1, 0.6 + 0.02 * floor);                // premiers étages plus doux
+  const m = buildMonster({ ...d, lvl });
+  for (const k in m.stats) m.stats[k] = Math.max(1, Math.round(m.stats[k] * ramp * beyond));
+  m.maxHp = Math.round(m.maxHp * beyond);
+  m.level = Math.round(lvl * beyond);
+  m.name = d.boss;
+  return { snap: m, theme: d.theme, dungeon: d };
+}
+
+export function towerState(hero) {
+  const t = hero.tower;
+  const today = dayKey();
+  if (t.day !== today) { t.day = today; t.used = 0; }
+  return t;
+}
+
+/** Résultat d'une tentative : si victoire, on monte d'un étage et on gagne des Pierres Clat */
+export function towerResult(acc, hero, won) {
+  const t = towerState(hero);
+  t.used++;
+  let clat = 0;
+  if (won) {
+    t.best++;
+    clat = TOWER.clatPerFloor + (t.best % 10 === 0 ? TOWER.clatEvery10 : 0);
+    acc.clat += clat;
+  }
+  return { floor: t.best, clat };
+}
+
+// ------------------------------ Raid -----------------------------------
+/** Le boss de raid au niveau du groupe ; hp = PV restants au début de l'assaut */
+export function raidBoss(level, totalHp, remaining) {
+  const b = RAID.boss;
+  const m = buildMonster({ ...b, lvl: Math.max(1, Math.round(level)), boss: b.name });
+  for (const k in m.stats) m.stats[k] = Math.round(m.stats[k] * 1.15);
+  m.maxHp = totalHp;
+  m.hp = Math.max(1, remaining);
+  return m;
+}
+
+/** Dégâts moyens d'un assaut selon le niveau (barème mesuré par simulation) */
+const RAID_DMG = [[1, 158], [5, 192], [10, 270], [20, 374], [30, 401], [50, 418], [70, 671], [100, 1533]];
+export function raidExpectedDamage(lvl) {
+  for (let i = 1; i < RAID_DMG.length; i++) {
+    const [l1, d1] = RAID_DMG[i - 1], [l2, d2] = RAID_DMG[i];
+    if (lvl <= l2) return Math.round(d1 + (d2 - d1) * Math.max(0, lvl - l1) / (l2 - l1));
+  }
+  return RAID_DMG[RAID_DMG.length - 1][1];
+}
+
+/** PV du boss pour la semaine, selon les niveaux de tout le groupe */
+export function raidHp(levels) {
+  const total = levels.reduce((t, l) => t + raidExpectedDamage(l), 0);
+  return Math.max(1000, Math.round(total * RAID.attemptsPerDay * 7 * RAID.participation));
+}
+
+/** Dégâts infligés pendant un assaut (d'après le journal du combat) */
+export function damageDealt(result, startHp) {
+  const last = result.log[result.log.length - 1];
+  const endHp = last && last.s ? last.s[1].hp : startHp;
+  return Math.max(0, startHp - endHp);
+}
+
+export function raidState(acc) {
+  const r = acc.raid;
+  const today = dayKey();
+  if (r.day !== today) { r.day = today; r.used = 0; }
+  return r;
+}
+
+/** Récompense de raid d'une semaine (une seule fois) */
+export function raidReward(acc, week, killed, isMvp, participated) {
+  if (!participated || acc.raid.claimed[week]) return null;
+  acc.raid.claimed[week] = true;
+  const R = RAID.rewards;
+  const rw = killed
+    ? { chests: R.killChests + (isMvp ? R.mvpChests : 0), clat: R.killClat }
+    : { chests: 0, clat: R.failClat };
+  acc.warChests += rw.chests;
+  acc.clat += rw.clat;
+  return rw;
+}
+
+// ------------------------------ Missions du jour -----------------------
+/** Les 3 missions du jour (les mêmes pour tout le monde) */
+export function missionsFor(day) {
+  const rng = makeRng(hashStr('missions' + day));
+  const pool = MISSION_POOL.slice();
+  const out = [];
+  while (out.length < MISSIONS_PER_DAY && pool.length) {
+    const m = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+    const n = m.n[0] + Math.floor(rng() * (m.n[1] - m.n[0] + 1));
+    out.push({ id: m.id, n, reward: m.reward, text: m.text.replace('{n}', n) });
+  }
+  return out;
+}
+
+export function ensureMissions(acc) {
+  const today = dayKey();
+  if (acc.missions.day !== today) acc.missions = { day: today, progress: {}, claimed: {}, bonus: false };
+  return missionsFor(today);
+}
+
+/** Note une action pour les missions (ex : missionEvent(acc, 'chest')) */
+export function missionEvent(acc, type, n = 1) {
+  ensureMissions(acc);
+  acc.missions.progress[type] = (acc.missions.progress[type] || 0) + n;
+}
+
+export function claimMission(acc, id) {
+  const list = ensureMissions(acc);
+  const m = list.find(x => x.id === id);
+  if (!m || acc.missions.claimed[id] || (acc.missions.progress[id] || 0) < m.n) return 0;
+  acc.missions.claimed[id] = true;
+  acc.clat += m.reward;
+  let bonus = 0;
+  if (!acc.missions.bonus && list.every(x => acc.missions.claimed[x.id])) {
+    acc.missions.bonus = true;
+    acc.clat += MISSIONS_BONUS;
+    bonus = MISSIONS_BONUS;
+  }
+  return m.reward + bonus;
+}
+
+// ------------------------------ Boutique -------------------------------
+export function buyCosmetic(acc, id) {
+  const c = COSMETIC[id];
+  if (!c || acc.cosmetics.owned.includes(id) || acc.clat < c.price) return false;
+  acc.clat -= c.price;
+  acc.cosmetics.owned.push(id);
+  return true;
+}
+
+/** Porter / retirer une apparence (la teinture va sur le perso actif) */
+export function equipCosmetic(acc, hero, id) {
+  const c = COSMETIC[id];
+  if (!c || !acc.cosmetics.owned.includes(id)) return;
+  if (c.kind === 'dye') hero.dye = hero.dye === id ? null : id;
+  else acc.cosmetics[c.kind] = acc.cosmetics[c.kind] === id ? null : id;
+}
+
+// ------------------------------ Paris ----------------------------------
+/** Cotes d'un duel selon la puissance des deux combattants */
+export function betOdds(powerA, powerB) {
+  const a = Math.pow(Math.max(1, powerA), 4), b = Math.pow(Math.max(1, powerB), 4);
+  const pA = a / (a + b);
+  const odd = (p) => Math.round(Math.min(10, Math.max(1.1, 0.95 / p)) * 100) / 100;
+  return [odd(pA), odd(1 - pA)];
 }
