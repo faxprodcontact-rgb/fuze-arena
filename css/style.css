@@ -317,3 +317,17 @@ input { font: inherit; }
 .char.add small { color: var(--muted); font-family: var(--body); font-size: 11px; font-weight: 800; }
 .auth-msg { background: rgba(255,93,108,.12); color: #ffb3bb; padding: 10px 12px; border-radius: 10px; margin: 0; font-weight: 700; font-size: 14px; }
 .modal .class-grid { margin-top: 12px; }
+
+/* Tchat */
+.tb-gear { position: relative; flex-shrink: 0; }
+.tb-gear .badge { top: -6px; right: -6px; }
+.chat { display: flex; flex-direction: column; }
+.chat-list { height: calc(100dvh - 300px - var(--safe-top) - var(--safe-bot)); min-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; user-select: text; -webkit-user-select: text; }
+.msg { max-width: 82%; align-self: flex-start; background: var(--card2); border-radius: 14px 14px 14px 4px; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 0 0 2px #0e0b16; }
+.msg b { font-size: 12px; color: var(--gold); }
+.msg .txt { font-size: 15px; line-height: 1.35; word-wrap: break-word; overflow-wrap: anywhere; }
+.msg small { font-size: 10px; color: var(--muted); align-self: flex-end; }
+.msg.me { align-self: flex-end; background: linear-gradient(#5a4a1a, #463a16); border-radius: 14px 14px 4px 14px; }
+.chat-bar { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; bottom: calc(70px + var(--safe-bot)); z-index: 6; display: flex; gap: 8px; padding: 8px 14px; background: rgba(21,18,31,.95); border-top: 2px solid #0e0b16; }
+.chat-bar input { flex: 1; min-width: 0; background: var(--bg2); border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 16px; outline: none; }
+.chat-bar input:focus { border-color: var(--gold2); }

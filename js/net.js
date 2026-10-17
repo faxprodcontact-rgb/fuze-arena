@@ -127,7 +127,42 @@ export async function flush() {
 
 export async function signOut() {
   await flush();
+  await unsubscribeChat();
   const c = await client();
   await c.auth.signOut();
   userId = null;
 }
+
+// ------------------------------ Tchat ------------------------------
+export async function fetchMessages(limit = 60) {
+  const c = await client();
+  const { data, error } = await c.from('messages').select('id, user_id, pseudo, text, created_at').order('created_at', { ascending: false }).limit(limit);
+  if (error) throw new Error(frError(error));
+  return (data || []).reverse();
+}
+
+export async function sendMessage(pseudo, text) {
+  const c = await client();
+  const { data, error } = await c.from('messages').insert({ user_id: userId, pseudo, text }).select('id, user_id, pseudo, text, created_at').single();
+  if (error) throw new Error(frError(error));
+  return data;
+}
+
+let chatChannel = null;
+/** Reçoit les nouveaux messages en direct */
+export async function subscribeChat(onMessage) {
+  const c = await client();
+  if (chatChannel) await c.removeChannel(chatChannel);
+  chatChannel = c.channel('tchat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => onMessage(payload.new))
+    .subscribe();
+}
+
+export async function unsubscribeChat() {
+  if (!chatChannel) return;
+  const c = await client();
+  await c.removeChannel(chatChannel);
+  chatChannel = null;
+}
+
+export const myId = () => userId;

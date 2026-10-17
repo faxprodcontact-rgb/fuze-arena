@@ -38,6 +38,9 @@ let rankMode = 'level';
 let pickedClass = 'guerrier';
 let authMode = 'signup';
 let stopPreviews = [];
+let chatMsgs = [];     // messages du tchat
+let chatUnread = 0;
+let chatDraft = '';
 
 const others = () => (NET.online ? players : null);
 
@@ -109,6 +112,7 @@ function render() {
         <div class="tb-name">${esc(acc.pseudo)}<span>${CLASSES[hero.classId].name} Nv.${hero.level}</span></div>
         <div class="xpbar"><div style="width:${xpPct}%"></div></div>
       </div>
+      <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">💬<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
       <button class="tb-gear ${tab === 'ranking' ? 'on' : ''}" data-act="tab" data-id="ranking" aria-label="Classement">🏆</button>
       <button class="tb-gear" data-act="settings" aria-label="Réglages">⚙︎</button>
     </header>
@@ -123,6 +127,7 @@ function render() {
     </nav>`;
   hydrate(app);
   paintTabIcons();
+  if (tab === 'chat') { markChatSeen(); scrollChat(); }
 }
 
 function tabBtn(id, label, badge) {
@@ -171,7 +176,7 @@ function renderCreate() {
       <p class="lead">Choisis ta classe. Tu pourras la faire évoluer jusqu’au niveau 100.</p>
       ${classGrid()}
       <label class="field">Ton pseudo
-        <input id="hero-name" maxlength="14" placeholder="ex : Tchomb" autocomplete="off">
+        <input id="hero-name" maxlength="14" placeholder="ex : Tu sais ce que c'est un pseudo" autocomplete="off">
       </label>
       <button class="btn primary block" data-act="create">Commencer l’aventure</button>
     </div>`;
@@ -189,7 +194,7 @@ function renderAuth(msg = '') {
       </div>
       ${signup ? `<p class="lead">Choisis la classe de ton premier personnage.</p>${classGrid()}` : '<p class="lead">Content de te revoir !</p>'}
       <label class="field">Pseudo
-        <input id="auth-pseudo" maxlength="14" placeholder="ex : Tchomb" autocomplete="username">
+        <input id="auth-pseudo" maxlength="14" placeholder="ex : Tu sais ce que c'est un pseudo" autocomplete="username">
       </label>
       <label class="field">Mot de passe (6 caractères minimum)
         <input id="auth-pass" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}">
@@ -217,6 +222,7 @@ async function doAuth() {
     acc = E.migrate(row.data);
     acc.pseudo = row.pseudo || acc.pseudo;
     await refreshPlayers();
+    initChat().then(() => render());
     tab = authMode === 'signup' ? 'chests' : 'hero';
     render();
     toast(authMode === 'signup' ? 'Bienvenue ! Tu as 2 coffres à ouvrir.' : `Salut ${acc.pseudo} !`);
@@ -347,7 +353,7 @@ function viewChests() {
   const odds = (kind) => CHEST_ODDS[kind].map((p, r) => p > 0 ? `<span class="pill" style="color:${RARITIES[r].color}">${RARITIES[r].name} ${p}%</span>` : '').join('');
   return `
     <section class="card chest-card ${n > 0 ? 'has' : ''}">
-      <h2 style="margin:0">Coffre d’aventurier</h2>
+      <h2 style="margin:0">Coffre</h2>
       <canvas class="px" data-chest="normal"></canvas>
       <div class="count">${n} / ${CHEST_MAX}</div>
       <div class="timer" data-timer="chest">${n >= CHEST_MAX ? 'Stock plein ! Ouvre-les vite.' : `Prochain coffre dans <b>${fmt(wait)}</b>`}</div>
@@ -712,7 +718,78 @@ function startWarAttack(foeId) {
   });
 }
 
-const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar };
+// ------------------------------ Tchat ------------------------------
+const CHAT_SEEN = 'fuze-chat-seen';
+const timeOf = (iso) => {
+  const d = new Date(iso);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return E.dayKey(d) === E.dayKey() ? hm : `${d.getDate()}/${d.getMonth() + 1} ${hm}`;
+};
+const msgHtml = (m) => {
+  const mine = m.user_id === NET.myId();
+  return `<div class="msg ${mine ? 'me' : ''}">${mine ? '' : `<b>${esc(m.pseudo)}</b>`}<span class="txt">${esc(m.text)}</span><small>${timeOf(m.created_at)}</small></div>`;
+};
+
+function viewChat() {
+  if (!NET.online) return '<section class="card"><h2>Tchat</h2><p class="hint">Le tchat marche seulement dans la version en ligne.</p></section>';
+  return `
+    <section class="card chat">
+      <h2>Tchat</h2>
+      <div class="chat-list" id="chat-list">${chatMsgs.length ? chatMsgs.map(msgHtml).join('') : '<p class="empty" id="chat-empty">Aucun message. Lance la discussion !</p>'}</div>
+    </section>
+    <div class="chat-bar">
+      <input id="chat-input" maxlength="300" placeholder="Écris un message…" value="${esc(chatDraft)}" autocomplete="off" enterkeyhint="send">
+      <button class="btn primary" data-act="sendChat">Envoyer</button>
+    </div>`;
+}
+
+function scrollChat() { const l = document.getElementById('chat-list'); if (l) l.scrollTop = l.scrollHeight; }
+function markChatSeen() {
+  chatUnread = 0;
+  const b = document.getElementById('chat-badge');
+  if (b) b.hidden = true;
+  const last = chatMsgs[chatMsgs.length - 1];
+  if (last) { try { localStorage.setItem(CHAT_SEEN, last.created_at); } catch (e) { /* stockage indisponible */ } }
+}
+
+function onChatMessage(m) {
+  if (chatMsgs.some(x => x.id === m.id)) return;
+  chatMsgs.push(m);
+  chatMsgs = chatMsgs.slice(-100);
+  if (tab === 'chat' && document.getElementById('chat-list')) {
+    document.getElementById('chat-empty')?.remove();
+    document.getElementById('chat-list').insertAdjacentHTML('beforeend', msgHtml(m));
+    scrollChat();
+    markChatSeen();
+  } else if (m.user_id !== NET.myId()) {
+    chatUnread++;
+    const b = document.getElementById('chat-badge');
+    if (b) { b.hidden = false; b.textContent = chatUnread; }
+    toast(`💬 ${m.pseudo} : ${m.text.length > 40 ? m.text.slice(0, 40) + '…' : m.text}`);
+  }
+}
+
+async function initChat() {
+  if (!NET.online) return;
+  try {
+    chatMsgs = await NET.fetchMessages();
+    let seen = '';
+    try { seen = localStorage.getItem(CHAT_SEEN) || ''; } catch (e) { /* stockage indisponible */ }
+    chatUnread = chatMsgs.filter(m => m.user_id !== NET.myId() && m.created_at > seen).length;
+    await NET.subscribeChat(onChatMessage);
+  } catch (e) { /* le tchat est optionnel : le jeu continue sans */ }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = (input && input.value || '').trim();
+  if (!text) return;
+  input.value = ''; chatDraft = '';
+  try { onChatMessage(await NET.sendMessage(acc.pseudo, text)); }
+  catch (e) { toast(e.message); input.value = text; chatDraft = text; }
+}
+
+const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
@@ -743,7 +820,7 @@ function openChestFlow(kind) {
   save();
   openModal(`
     <div class="open-stage">
-      <h3>${{ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || 'Coffre d’aventurier'}</h3>
+      <h3>${{ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || 'Coffre'}</h3>
       <div class="rays" id="chest-wrap"><canvas class="px chest-big shake" id="chest-cv" data-chest="${kind}"></canvas></div>
       <div id="loot"></div>
     </div>`, { center: true });
@@ -898,6 +975,7 @@ const ACTIONS = {
   },
   authMode: (d) => { authMode = d.mode; renderAuth(); },
   auth: () => doAuth(),
+  sendChat: () => sendChat(),
   switchHero: (d) => {
     const i = +d.i;
     if (i === acc.active) return;
@@ -920,7 +998,7 @@ const ACTIONS = {
   },
   logout: async () => {
     await NET.signOut();
-    acc = null; hero = null; players = []; authMode = 'login';
+    acc = null; hero = null; players = []; chatMsgs = []; chatUnread = 0; authMode = 'login';
     closeModal(); render();
   },
   pickClass: (d) => {
@@ -1043,8 +1121,11 @@ document.addEventListener('click', (ev) => {
 });
 
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter' && document.getElementById('auth-btn')) doAuth();
+  if (ev.key !== 'Enter') return;
+  if (ev.target.id === 'chat-input') { ev.preventDefault(); sendChat(); return; }
+  if (document.getElementById('auth-btn')) doAuth();
 });
+document.addEventListener('input', (ev) => { if (ev.target.id === 'chat-input') chatDraft = ev.target.value; });
 
 // Minuteurs (coffres, fin de journée)
 setInterval(() => {
@@ -1052,7 +1133,7 @@ setInterval(() => {
   const before = acc.chest.stored + acc.dungeon.stored * 10;
   E.refreshChests(acc);
   E.refreshDungeon(acc);
-  const busy = modalRoot.innerHTML || document.querySelector('.battle');
+  const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';
   if (acc.chest.stored + acc.dungeon.stored * 10 !== before) { save(); if (!busy) render(); return; }
   if (acc.fights.day !== E.dayKey() && !busy) { render(); return; }
   const t = document.querySelector('[data-timer="chest"]');
@@ -1081,6 +1162,7 @@ async function boot() {
         acc = E.migrate(row.data);
         acc.pseudo = row.pseudo;
         await refreshPlayers();
+        await initChat();
       }
     } catch (e) {
       app.innerHTML = `<div class="create"><h1 class="logo">FUZE<span>ARENA</span></h1><p class="auth-msg">${esc(e.message)}</p><button class="btn primary block" onclick="location.reload()">Réessayer</button></div>`;
