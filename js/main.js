@@ -5,14 +5,14 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-} from './data.js?v=20261018003758';
-import * as E from './engine.js?v=20261018003758';
-import { playBattle, idlePreview } from './battle.js?v=20261018003758';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018003758';
-import { hashStr, makeRng } from './rng.js?v=20261018003758';
-import { APP_VERSION } from './version.js?v=20261018003758';
-import * as NET from './net.js?v=20261018003758';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018003758';
+} from './data.js?v=20261018005253';
+import * as E from './engine.js?v=20261018005253';
+import { playBattle, idlePreview } from './battle.js?v=20261018005253';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018005253';
+import { hashStr, makeRng } from './rng.js?v=20261018005253';
+import { APP_VERSION } from './version.js?v=20261018005253';
+import * as NET from './net.js?v=20261018005253';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018005253';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1119,7 +1119,8 @@ function viewBets() {
 
 // ------------------------------ Raid ------------------------------
 let raidInfo = { week: '', raid: null, hits: [], prev: null, prevHits: [], prevWeek: '' };
-let raidLoading = false;
+let raidLoading = null;   // chargement en cours (une seule requête à la fois)
+let raidError = '';
 
 function groupLevels() {
   const mine = E.strongestHero(acc).level;
@@ -1149,23 +1150,30 @@ function localRaid(week, prevWeek) {
   return res;
 }
 
-async function loadRaid() {
+function loadRaid() {
   const week = E.weekKey();
   const prevWeek = E.weekKey(new Date(Date.now() - 7 * 86400000));
-  if (!NET.online) { raidInfo = localRaid(week, prevWeek); return; }
-  if (raidLoading) return;
-  raidLoading = true;
-  try {
-    let raid = await NET.getRaid(week);
-    if (!raid) {
-      const lv = groupLevels();
-      raid = await NET.openRaid(week, RAID.boss.id, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length));
+  if (!NET.online) { raidInfo = localRaid(week, prevWeek); return Promise.resolve(); }
+  if (raidLoading) return raidLoading;   // déjà en route : on attend la même réponse
+  raidError = '';
+  raidLoading = (async () => {
+    try {
+      let raid = await NET.getRaid(week);
+      if (!raid) {
+        const lv = groupLevels();
+        raid = await NET.openRaid(week, RAID.boss.id, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length));
+      }
+      if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
+      const [hits, prev] = await Promise.all([NET.fetchRaidHits(week), NET.getRaid(prevWeek)]);
+      const prevHits = prev ? await NET.fetchRaidHits(prevWeek) : [];
+      raidInfo = { week, raid, hits, prev, prevHits, prevWeek };
+    } catch (e) {
+      raidError = e.message || 'Erreur inconnue';
+    } finally {
+      raidLoading = null;
     }
-    const [hits, prev] = await Promise.all([NET.fetchRaidHits(week), NET.getRaid(prevWeek)]);
-    const prevHits = prev ? await NET.fetchRaidHits(prevWeek) : [];
-    raidInfo = { week, raid, hits, prev, prevHits, prevWeek };
-  } catch (e) { toast(e.message); }
-  raidLoading = false;
+  })();
+  return raidLoading;
 }
 
 function raidSummary(raid, hits) {
@@ -1179,7 +1187,13 @@ function raidSummary(raid, hits) {
 
 function viewRaid() {
   if (!raidInfo.raid || raidInfo.week !== E.weekKey()) {
-    loadRaid().then(() => { if (tab === 'raid') softRender(); });
+    // Important : ne lancer le chargement qu'une fois (sinon l'écran se redessine en boucle et l'appli se fige)
+    if (raidError) {
+      return `<section class="card"><h2>Raid : ${RAID.boss.name}</h2>
+        <p class="auth-msg">Impossible de charger le raid : ${esc(raidError)}</p>
+        <button class="btn primary block" style="margin-top:12px" data-act="retryRaid">Réessayer</button></section>`;
+    }
+    if (!raidLoading) loadRaid().then(() => { if (tab === 'raid') softRender(); });
     return offlineCard(`Raid : ${RAID.boss.name}`, 'Chargement du raid…');
   }
   const me = myId();
@@ -1712,6 +1726,7 @@ const ACTIONS = {
     toast(`+${got} Pierres Clat !`);
   },
   attackRaid: () => attackRaid(),
+  retryRaid: () => { raidError = ''; render(); },
   claimRaid: (d) => claimRaid(d.week),
   attackTower: () => attackTower(),
   shopKind: (d) => { shopKind = d.k; render(); },
