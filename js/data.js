@@ -4,11 +4,11 @@
 
 export const MAX_LEVEL = 100;
 export const POINTS_PER_LEVEL = 3;
-export const CHEST_INTERVAL_MS = 4 * 60 * 60 * 1000; // un coffre toutes les 4 h
+export const CHEST_INTERVAL_MS = 2 * 60 * 60 * 1000; // un coffre toutes les 2 h
 export const CHEST_MAX = 5;                          // cumulables jusqu'à 5
 export const WINS_PER_COMBAT_CHEST = 3;              // 3 victoires = 1 coffre de combat
 export const MAX_ACTIVE_SPELLS = 4;
-export const DUNGEON_INTERVAL_MS = 4 * 60 * 60 * 1000; // une entrée de donjon toutes les 4 h
+export const DUNGEON_INTERVAL_MS = 2 * 60 * 60 * 1000; // une entrée de donjon toutes les 2 h
 export const DUNGEON_MAX = 3;                          // cumulables jusqu'à 3
 
 export const STAT_KEYS = ['vit', 'atk', 'mag', 'def', 'spd', 'lck'];

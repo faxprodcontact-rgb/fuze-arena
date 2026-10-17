@@ -6,8 +6,8 @@ import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
-} from './data.js';
-import { makeRng, hashStr, pickWeighted } from './rng.js';
+} from './data.js?v=20261017174919';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017174919';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -458,6 +458,7 @@ export function newAccount(pseudo, classId) {
     dungeon: { stored: DUNGEON_MAX, last: Date.now() },
     war: newWarState(),
     titles: { warHero: 0 },
+    clat: 0,
   };
 }
 
@@ -504,6 +505,7 @@ export function migrate(save) {
   acc.heroes.forEach(cleanItems);
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
+  if (acc.clat === undefined) acc.clat = 0;
   return acc;
 }
 
@@ -518,6 +520,12 @@ export function fightRewards(acc, hero, foeLevel, won) {
     if (acc.winProgress >= WINS_PER_COMBAT_CHEST) { acc.winProgress -= WINS_PER_COMBAT_CHEST; acc.combatChests++; chest = true; }
   } else hero.stats.losses++;
   return { xp, chest, ...lv };
+}
+
+/** Combat amical (revanche) : ni XP, ni victoire au classement, ni coffre — juste 1 Pierre Clat si on gagne */
+export function friendlyRewards(acc, won) {
+  if (won) acc.clat++;
+  return { clat: won ? 1 : 0 };
 }
 
 // ------------------------------ Donjons --------------------------------

@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES } from './data.js';
+import { ITEMS, RARITIES } from './data.js?v=20261017174919';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -420,3 +420,13 @@ export function heroPortrait(classId, weaponKind) {
 }
 
 export function rarityColor(r) { return RARITIES[r].color; }
+
+// =====================================================================
+//  PIERRE CLAT (monnaie verte)
+// =====================================================================
+export function clatCanvas() {
+  return cached('clat', () => toCanvas(outline(fromMap(
+    ['...ll...', '..lwml..', '.lmmmmd.', 'lmmmmmmd', 'dmmmmmdd', '.dmmmdd.', '..dmdd..', '...dd...'],
+    { m: '#2ecc71', l: '#a8f0c0', d: '#1e8449', w: '#ffffff' },
+  ))));
+}

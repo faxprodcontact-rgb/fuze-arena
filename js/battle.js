@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js';
+import { CLASSES } from './data.js?v=20261017174919';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261017174919';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261017174919';
 
 // Taille « logique » de la scène : recalculée selon l'écran.
 // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.

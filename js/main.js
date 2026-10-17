@@ -5,13 +5,13 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR,
-} from './data.js';
-import * as E from './engine.js';
-import { playBattle, idlePreview } from './battle.js';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas } from './sprites.js';
-import { hashStr, makeRng } from './rng.js';
-import * as NET from './net.js';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js';
+} from './data.js?v=20261017174919';
+import * as E from './engine.js?v=20261017174919';
+import { playBattle, idlePreview } from './battle.js?v=20261017174919';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261017174919';
+import { hashStr, makeRng } from './rng.js?v=20261017174919';
+import * as NET from './net.js?v=20261017174919';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261017174919';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -85,6 +85,7 @@ function hydrate(root = document) {
   root.querySelectorAll('canvas[data-icon]').forEach(c => paint(c, itemIcon(c.dataset.icon), { scale: 4 }));
   root.querySelectorAll('canvas[data-portrait]').forEach(c => paint(c, heroPortrait(c.dataset.portrait, CLASSES[c.dataset.portrait].weapon), { scale: 4 }));
   root.querySelectorAll('canvas[data-monster]').forEach(c => paint(c, monsterCanvas(c.dataset.monster), { scale: 3 }));
+  root.querySelectorAll('canvas[data-clat]').forEach(c => paint(c, clatCanvas(), { scale: 3 }));
   root.querySelectorAll('canvas[data-chest]').forEach(c => paint(c, chestCanvas(c.dataset.chest, c.dataset.open === '1'), { scale: 6 }));
   root.querySelectorAll('canvas[data-hero]').forEach(c => stopPreviews.push(idlePreview(c, c.dataset.hero, c.dataset.pet || null)));
 }
@@ -283,6 +284,7 @@ function viewHero() {
         <div class="row" style="flex-wrap:wrap;gap:6px">
           <span class="pill gold">Puissance ${E.powerScore(snap)}</span>
           <span class="pill">${hero.stats.wins} V · ${hero.stats.losses} D</span>
+          <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
           ${acc.war.section ? `<span class="pill" style="color:${WAR.sections[acc.war.section].color}">${WAR.sections[acc.war.section].name}</span>` : ''}
           ${acc.titles.warHero ? `<span class="pill gold">⚔ Héros de guerre ×${acc.titles.warHero}</span>` : ''}
         </div>
@@ -492,9 +494,10 @@ function viewFights() {
   return `
     <section class="card">
       <h2>Arène du jour</h2>
-      <p class="hint">Un combat par adversaire et par jour. ${WINS_PER_COMBAT_CHEST} victoires = 1 coffre de combat.</p>
+      <p class="hint">Un combat classé par adversaire et par jour. ${WINS_PER_COMBAT_CHEST} victoires = 1 coffre de combat. Ensuite, tu peux faire des <b>revanches</b> pour le fun : chaque revanche gagnée rapporte 1 Pierre Clat.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
         <span class="pill gold">${left} combat${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</span>
+        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Pierre${acc.clat > 1 ? 's' : ''} Clat</span>
         <span class="pill">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>
         <span class="pill" data-timer="day">Nouveaux combats dans ${fmt(msToMidnight())}</span>
       </div>
@@ -510,7 +513,8 @@ function viewFights() {
             <div class="o-sub">${CLASSES[o.classId].name} · Nv.${o.level} · Puissance ${E.powerScore(o.snap)}</div>
           </div>
           ${o.done
-            ? `<span class="pill ${o.done === 'win' ? 'green' : 'red'}">${o.done === 'win' ? 'VICTOIRE' : 'DÉFAITE'}</span>`
+            ? `<div class="done-col"><span class="pill ${o.done === 'win' ? 'green' : 'red'}">${o.done === 'win' ? 'VICTOIRE' : 'DÉFAITE'}</span>
+               <button class="btn small" data-act="friendly" data-id="${o.id}">Revanche</button></div>`
             : `<button class="btn small primary" data-act="fight" data-id="${o.id}">Combattre</button>`}
         </div>`).join('')}
     </section>`;
@@ -910,6 +914,26 @@ function startFight(foeId) {
   });
 }
 
+/** Revanche amicale : autant qu'on veut, juste pour le fun (+1 Pierre Clat si victoire) */
+function startFriendly(foeId) {
+  ensureDay();
+  if (!acc.fights.done[foeId]) return;
+  const opp = opponents().find(o => o.id === foeId);
+  if (!opp) return;
+  const me = E.snapshot({ ...hero, name: acc.pseudo });
+  const result = E.simulate(me, opp.snap, (Math.random() * 2 ** 31) | 0);
+  const won = result.winner === 0;
+  E.friendlyRewards(acc, won);
+  save();
+  runBattle({
+    me, foe: opp.snap, result, theme: 'arena', rewards: null,
+    title: `Revanche · ${esc(me.name)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
+    rewardsHtml: won
+      ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+1 Pierre Clat (${acc.clat})</span></div>`
+      : '<p style="color:var(--muted);margin:0">C’était pour le fun : rien de perdu !</p>',
+  });
+}
+
 function startDungeon(id) {
   const d = DUNGEONS.find(x => x.id === id);
   if (!d || hero.level < d.lvl) return;
@@ -1068,6 +1092,7 @@ const ACTIONS = {
     }, 600);
   },
   fight: (d) => startFight(d.id),
+  friendly: (d) => startFriendly(d.id),
   dungeon: (d) => startDungeon(d.id),
   warAttack: (d) => startWarAttack(d.id),
   joinSection: async (d) => {
