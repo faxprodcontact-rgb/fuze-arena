@@ -6,8 +6,8 @@ import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
-} from './data.js?v=20261017175233';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017175233';
+} from './data.js?v=20261017175651';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017175651';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;

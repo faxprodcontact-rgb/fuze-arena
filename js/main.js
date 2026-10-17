@@ -5,13 +5,14 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR,
-} from './data.js?v=20261017175233';
-import * as E from './engine.js?v=20261017175233';
-import { playBattle, idlePreview } from './battle.js?v=20261017175233';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261017175233';
-import { hashStr, makeRng } from './rng.js?v=20261017175233';
-import * as NET from './net.js?v=20261017175233';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261017175233';
+} from './data.js?v=20261017175651';
+import * as E from './engine.js?v=20261017175651';
+import { playBattle, idlePreview } from './battle.js?v=20261017175651';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261017175651';
+import { hashStr, makeRng } from './rng.js?v=20261017175651';
+import { APP_VERSION } from './version.js?v=20261017175651';
+import * as NET from './net.js?v=20261017175651';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261017175651';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1200,6 +1201,27 @@ if (NET.online) {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') NET.flush(); });
 }
 
+// ------------------------------ Mise à jour automatique ------------------------------
+// Le téléphone peut garder une ancienne version en mémoire : on compare avec version.json
+// (jamais en cache) et on recharge la page si une nouvelle version est en ligne.
+async function checkUpdate() {
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const { v } = await r.json();
+    if (!v || v === APP_VERSION) return;
+    if (document.querySelector('.battle') || modalRoot.innerHTML) return;   // pas en plein combat
+    let tried = null;
+    try { tried = sessionStorage.getItem('fuze-update'); } catch (e) { /* stockage indisponible */ }
+    if (tried === v) { toast('Nouvelle version disponible : ferme et rouvre l’appli.'); return; }
+    try { sessionStorage.setItem('fuze-update', v); } catch (e) { /* stockage indisponible */ }
+    if (NET.online) await NET.flush();
+    location.reload();
+  } catch (e) { /* pas de réseau : on réessaiera */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+setInterval(checkUpdate, 5 * 60 * 1000);
+
 async function boot() {
   if (NET.online) {
     app.innerHTML = '<div class="create"><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
@@ -1220,5 +1242,6 @@ async function boot() {
     if (saved) acc = E.migrate(saved);
   }
   render();
+  checkUpdate();
 }
 boot();
