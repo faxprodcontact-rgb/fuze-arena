@@ -862,14 +862,15 @@ function openSettings() {
         <input id="rename" maxlength="14" value="${esc(acc.pseudo)}">
       </label>
       <button class="btn block" style="margin-top:10px" data-act="rename">Renommer</button>`}
-    <div class="sub">OUTILS DE TEST (à retirer plus tard)</div>
+    ${NET.online ? '' : `
+    <div class="sub">OUTILS DE TEST (hors ligne uniquement)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button class="btn small" data-act="cheat" data-c="chests">+5 coffres</button>
       <button class="btn small" data-act="cheat" data-c="combat">+2 coffres combat</button>
       <button class="btn small" data-act="cheat" data-c="fights">Recharger combats + donjons</button>
       <button class="btn small" data-act="cheat" data-c="lvl">+5 niveaux</button>
       <button class="btn small" data-act="cheat" data-c="weekEnd">Finir la guerre</button>
-    </div>
+    </div>`}
     <div class="sub">PERSONNAGE</div>
     ${acc.heroes.length > 1 ? `<button class="btn danger block" data-act="deleteHero">Supprimer ce ${CLASSES[hero.classId].name} (Nv.${hero.level})</button>` : '<p class="hint">Tu ne peux pas supprimer ton seul personnage.</p>'}
     ${NET.online ? '<button class="btn block" style="margin-top:10px" data-act="logout">Me déconnecter</button>' : `
@@ -1013,6 +1014,7 @@ const ACTIONS = {
     if (v) { acc.pseudo = v; acc.heroes.forEach(h => { h.name = v; }); save(); closeModal(); render(); }
   },
   cheat: (d) => {
+    if (NET.online) return;
     if (d.c === 'chests') acc.chest.stored = CHEST_MAX;
     if (d.c === 'combat') acc.combatChests += 2;
     if (d.c === 'fights') { acc.fights.done = {}; acc.dungeon.stored = DUNGEON_MAX; acc.war.done = {}; }
