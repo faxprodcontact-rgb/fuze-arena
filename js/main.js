@@ -5,14 +5,14 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-} from './data.js?v=20261018010327';
-import * as E from './engine.js?v=20261018010327';
-import { playBattle, playTraining, idlePreview } from './battle.js?v=20261018010327';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018010327';
-import { hashStr, makeRng } from './rng.js?v=20261018010327';
-import { APP_VERSION } from './version.js?v=20261018010327';
-import * as NET from './net.js?v=20261018010327';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018010327';
+} from './data.js?v=20261018010512';
+import * as E from './engine.js?v=20261018010512';
+import { playBattle, playTraining, idlePreview } from './battle.js?v=20261018010512';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018010512';
+import { hashStr, makeRng } from './rng.js?v=20261018010512';
+import { APP_VERSION } from './version.js?v=20261018010512';
+import * as NET from './net.js?v=20261018010512';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018010512';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1228,7 +1228,8 @@ function localRaid() {
 
 // Les raids ouverts avant le passage à 1 assaut par jour avaient 2× trop de PV : on les corrige pour tout le monde
 const RAID_TAG = RAID.boss.id + ':v2';
-const fixRaid = (r) => (r && r.boss === RAID.boss.id ? { ...r, hp: Math.round(r.hp * 0.5) } : r);
+// (et Mélenchon a toujours au moins RAID.minHp PV)
+const fixRaid = (r) => (r ? { ...r, hp: Math.max(RAID.minHp, r.boss === RAID.boss.id ? Math.round(r.hp * 0.5) : r.hp) } : r);
 
 /** Raid en ligne : le plus récent encore actif (7 jours après son ouverture), sinon on en ouvre un nouveau */
 function loadRaid() {

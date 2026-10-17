@@ -7,8 +7,8 @@ import {
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018010327';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018010327';
+} from './data.js?v=20261018010512';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018010512';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -832,14 +832,15 @@ export function towerResult(acc, hero, won) {
 export function raidBoss(level, totalHp, remaining) {
   const b = RAID.boss;
   const m = buildMonster({ ...b, lvl: Math.max(1, Math.round(level)), boss: b.name });
-  for (const k in m.stats) m.stats[k] = Math.round(m.stats[k] * 1.15);
+  // Gros sac à PV qui tape modérément : on tient tout l'assaut et on lui inflige un max de dégâts
+  for (const k in m.stats) m.stats[k] = Math.round(m.stats[k] * (k === 'atk' || k === 'mag' ? 0.6 : 1.15));
   m.maxHp = totalHp;
   m.hp = Math.max(1, remaining);
   return m;
 }
 
-/** Dégâts moyens d'un assaut selon le niveau (barème mesuré par simulation) */
-const RAID_DMG = [[1, 158], [5, 192], [10, 270], [20, 374], [30, 401], [50, 418], [70, 671], [100, 1533]];
+/** Dégâts moyens d'un assaut de 40 actions selon le niveau (barème mesuré par simulation) */
+const RAID_DMG = [[1, 252], [5, 316], [10, 448], [20, 626], [30, 709], [50, 753], [70, 1155], [100, 2518]];
 export function raidExpectedDamage(lvl) {
   for (let i = 1; i < RAID_DMG.length; i++) {
     const [l1, d1] = RAID_DMG[i - 1], [l2, d2] = RAID_DMG[i];
@@ -851,7 +852,7 @@ export function raidExpectedDamage(lvl) {
 /** PV du boss pour la semaine, selon les niveaux de tout le groupe */
 export function raidHp(levels) {
   const total = levels.reduce((t, l) => t + raidExpectedDamage(l), 0);
-  return Math.max(1000, Math.round(total * RAID.attemptsPerDay * 7 * RAID.participation));
+  return Math.max(RAID.minHp, Math.round(total * RAID.attemptsPerDay * 7 * RAID.participation));
 }
 
 /** Dégâts infligés pendant un assaut (d'après le journal du combat) */

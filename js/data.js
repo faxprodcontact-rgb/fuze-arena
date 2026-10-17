@@ -401,7 +401,8 @@ SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
 
 export const RAID = {
   attemptsPerDay: 1,              // chacun peut le taper 1 fois par jour
-  maxActions: 24,                 // un assaut dure au plus 24 actions (on ne peut pas le tuer d'un coup)
+  maxActions: 40,                 // un assaut dure au plus 40 actions (on ne peut pas le tuer d'un coup)
+  minHp: 20000,                   // Mélenchon a toujours au moins 20 000 PV
   participation: 0.75,            // PV calculés pour qu'il tombe si le groupe tape ~3 jours sur 4
   rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
   boss: {
