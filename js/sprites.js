@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES } from './data.js?v=20261017174919';
+import { ITEMS, RARITIES } from './data.js?v=20261017175233';
 
 const OUT = '#16121f';
 const cache = new Map();

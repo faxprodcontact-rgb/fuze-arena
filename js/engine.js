@@ -6,8 +6,8 @@ import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
-} from './data.js?v=20261017174919';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017174919';
+} from './data.js?v=20261017175233';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261017175233';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -330,13 +330,17 @@ export function addItem(hero, itemId, rarity) {
   return it;
 }
 
-/** Ouvre un coffre. kind = 'normal' | 'combat' | 'war'. Les coffres sont au compte, les objets vont au perso actif. */
+/**
+ * Ouvre un coffre. kind = 'normal' | 'combat' | 'war'.
+ * Les coffres « normaux » se rechargent pour chaque personnage ; les coffres de combat
+ * et de guerre sont gagnés par le compte. Les objets vont toujours au perso actif.
+ */
 export function openChest(acc, hero, kind, rng = Math.random) {
   if (kind === 'normal') {
-    refreshChests(acc);
-    if (acc.chest.stored <= 0) return null;
-    if (acc.chest.stored >= CHEST_MAX) acc.chest.last = Date.now();
-    acc.chest.stored--;
+    refreshChests(hero);
+    if (hero.chest.stored <= 0) return null;
+    if (hero.chest.stored >= CHEST_MAX) hero.chest.last = Date.now();
+    hero.chest.stored--;
   } else if (kind === 'war') {
     if (acc.warChests <= 0) return null;
     acc.warChests--;
@@ -422,8 +426,9 @@ export function buildBot(friend, heroLevel, day) {
 }
 
 // ------------------------------- Compte & personnages -------------------
-// Un compte = un joueur. Il peut avoir plusieurs personnages (niveau et objets séparés).
-// Les coffres, entrées de donjon, combats du jour et la section sont partagés par le compte.
+// Un compte = un joueur. Il peut avoir plusieurs personnages : chacun a son niveau, ses objets,
+// son stock de coffres et ses entrées de donjon. Les combats d'arène du jour, les coffres de
+// combat/guerre et la section sont partagés par le compte.
 export const MAX_HEROES = 4;
 
 export function newHero(name, classId, id = 'h1') {
@@ -440,6 +445,8 @@ export function newHero(name, classId, id = 'h1') {
     spells: [classSpells(classId)[0].id],
     stats: { wins: 0, losses: 0, dungeons: 0 },
     dungeonClears: {},
+    chest: { stored: 2, last: Date.now() },
+    dungeon: { stored: DUNGEON_MAX, last: Date.now() },
   };
 }
 
@@ -450,12 +457,10 @@ export function newAccount(pseudo, classId) {
     active: 0,
     nextHeroId: 2,
     heroes: [newHero(pseudo, classId, 'h1')],
-    chest: { stored: 2, last: Date.now() },
     combatChests: 0,
     warChests: 0,
     winProgress: 0,
     fights: { day: '', done: {}, lvl: 1 },
-    dungeon: { stored: DUNGEON_MAX, last: Date.now() },
     war: newWarState(),
     titles: { warHero: 0 },
     clat: 0,
@@ -494,7 +499,9 @@ export function migrate(save) {
       inventory: h.inventory || [], equipped: h.equipped || {}, nextUid: h.nextUid || 1, spells: h.spells || [],
       stats: { wins: 0, losses: 0, dungeons: 0, ...(h.stats || {}) }, dungeonClears: h.dungeonClears || {},
     }];
-    for (const k of ['chest', 'combatChests', 'warChests', 'winProgress', 'fights', 'dungeon', 'titles']) if (h[k] !== undefined) acc[k] = h[k];
+    for (const k of ['combatChests', 'warChests', 'winProgress', 'fights', 'titles']) if (h[k] !== undefined) acc[k] = h[k];
+    if (h.chest) acc.heroes[0].chest = h.chest;
+    if (h.dungeon) acc.heroes[0].dungeon = h.dungeon;
     if (h.war) {
       const w = newWarState();
       Object.assign(w, { section: h.war.section, sides: h.war.sides || {}, joinedAt: h.war.joinedAt || 0, day: h.war.day || '', done: h.war.done || {}, log: h.war.log || [], pending: h.war.pending || null });
@@ -503,6 +510,13 @@ export function migrate(save) {
     }
   }
   acc.heroes.forEach(cleanItems);
+  // Coffres et donjons passés du compte aux personnages : le 1er perso garde le stock du compte
+  acc.heroes.forEach((h, i) => {
+    if (!h.chest) h.chest = (i === 0 && acc.chest) ? acc.chest : { stored: 2, last: Date.now() };
+    if (!h.dungeon) h.dungeon = (i === 0 && acc.dungeon) ? acc.dungeon : { stored: DUNGEON_MAX, last: Date.now() };
+  });
+  delete acc.chest;
+  delete acc.dungeon;
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
   if (acc.clat === undefined) acc.clat = 0;
@@ -561,11 +575,11 @@ export function buildMonster(d) {
 }
 
 /** Consomme une entrée de donjon. Renvoie false s'il n'y en a plus. */
-export function useDungeonCharge(acc) {
-  refreshDungeon(acc);
-  if (acc.dungeon.stored <= 0) return false;
-  if (acc.dungeon.stored >= DUNGEON_MAX) acc.dungeon.last = Date.now();
-  acc.dungeon.stored--;
+export function useDungeonCharge(hero) {
+  refreshDungeon(hero);
+  if (hero.dungeon.stored <= 0) return false;
+  if (hero.dungeon.stored >= DUNGEON_MAX) hero.dungeon.last = Date.now();
+  hero.dungeon.stored--;
   return true;
 }
 

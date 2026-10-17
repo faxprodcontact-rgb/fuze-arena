@@ -5,13 +5,13 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_MAX, SETS, WAR,
-} from './data.js?v=20261017174919';
-import * as E from './engine.js?v=20261017174919';
-import { playBattle, idlePreview } from './battle.js?v=20261017174919';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261017174919';
-import { hashStr, makeRng } from './rng.js?v=20261017174919';
-import * as NET from './net.js?v=20261017174919';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261017174919';
+} from './data.js?v=20261017175233';
+import * as E from './engine.js?v=20261017175233';
+import { playBattle, idlePreview } from './battle.js?v=20261017175233';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261017175233';
+import { hashStr, makeRng } from './rng.js?v=20261017175233';
+import * as NET from './net.js?v=20261017175233';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261017175233';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -97,12 +97,11 @@ function render() {
   hero = E.activeHero(acc);
   ensureDay();
   E.ensureWar(acc, others());
-  E.refreshChests(acc);
-  E.refreshDungeon(acc);
+  acc.heroes.forEach(h => { E.refreshChests(h); E.refreshDungeon(h); });
   const need = E.xpForLevel(hero.level);
   const xpPct = hero.level >= MAX_LEVEL ? 100 : Math.round((hero.xp / need) * 100);
   const fightsLeft = opponents().filter(o => !o.done).length;
-  const chests = acc.chest.stored + acc.combatChests + acc.warChests;
+  const chests = hero.chest.stored + acc.combatChests + acc.warChests;
   const warLeft = acc.war.section ? Math.max(0, WAR.attacksPerDay - Object.keys(acc.war.done).length) + (acc.war.pending ? 1 : 0) : 1;
   const pts = E.freePoints(hero);
   const fusable = countFusable();
@@ -124,7 +123,7 @@ function render() {
       ${tabBtn('chests', 'Coffres', chests)}
       ${tabBtn('bag', 'Sac', fusable)}
       ${tabBtn('fights', 'Arène', fightsLeft)}
-      ${tabBtn('dungeons', 'Donjons', acc.dungeon.stored)}
+      ${tabBtn('dungeons', 'Donjons', hero.dungeon.stored)}
       ${tabBtn('war', 'Guerre', warLeft)}
     </nav>`;
   hydrate(app);
@@ -266,12 +265,13 @@ function viewHero() {
       <div class="char-row">
         ${acc.heroes.map((h, i) => `
           <button class="char ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
+            ${h.chest.stored + h.dungeon.stored ? `<span class="badge" title="Coffres + donjons dispo">${h.chest.stored + h.dungeon.stored}</span>` : ''}
             <canvas class="px" data-portrait="${h.classId}"></canvas>
             <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
           </button>`).join('')}
         ${acc.heroes.length < E.MAX_HEROES ? '<button class="char add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
       </div>
-      <p class="hint" style="margin:10px 0 0">Chaque personnage a son niveau et ses objets. C’est ton personnage <b>actif</b> qui combat dans l’Arène et la Guerre.</p>
+      <p class="hint" style="margin:10px 0 0">Chaque personnage a son niveau, ses objets, ses coffres et ses donjons. Les combats d’Arène sont communs au compte : c’est ton personnage <b>actif</b> qui combat (Arène et Guerre).</p>
     </section>
 
     <section class="card hero-card">
@@ -351,8 +351,8 @@ function viewHero() {
 
 // ------------------------------ Vue Coffres ------------------------------
 function viewChests() {
-  const n = acc.chest.stored;
-  const wait = E.nextChestIn(acc);
+  const n = hero.chest.stored;
+  const wait = E.nextChestIn(hero);
   const odds = (kind) => CHEST_ODDS[kind].map((p, r) => p > 0 ? `<span class="pill" style="color:${RARITIES[r].color}">${RARITIES[r].name} ${p}%</span>` : '').join('');
   return `
     <section class="card chest-card ${n > 0 ? 'has' : ''}">
@@ -522,14 +522,14 @@ function viewFights() {
 
 // ------------------------------ Vue Donjons ------------------------------
 function viewDungeons() {
-  const n = acc.dungeon.stored;
+  const n = hero.dungeon.stored;
   return `
     <section class="card">
       <h2>Donjons</h2>
       <p class="hint">Bats le boss pour gagner de l’XP et 1 objet. Plus le donjon est haut, plus l’XP et les objets sont bons. Même en cas de défaite, tu gagnes un peu d’XP.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
         <span class="pill gold">Entrées : ${n} / ${DUNGEON_MAX}</span>
-        <span class="pill" data-timer="dungeon">${n >= DUNGEON_MAX ? 'Entrées au maximum' : `Prochaine entrée dans ${fmt(E.nextDungeonIn(acc))}`}</span>
+        <span class="pill" data-timer="dungeon">${n >= DUNGEON_MAX ? 'Entrées au maximum' : `Prochaine entrée dans ${fmt(E.nextDungeonIn(hero))}`}</span>
       </div>
     </section>
     <section class="card">
@@ -937,7 +937,7 @@ function startFriendly(foeId) {
 function startDungeon(id) {
   const d = DUNGEONS.find(x => x.id === id);
   if (!d || hero.level < d.lvl) return;
-  if (!E.useDungeonCharge(acc)) { toast('Plus d’entrée de donjon. Reviens plus tard !'); return; }
+  if (!E.useDungeonCharge(hero)) { toast('Plus d’entrée de donjon. Reviens plus tard !'); return; }
   const me = E.snapshot({ ...hero, name: acc.pseudo });
   const boss = E.buildMonster(d);
   const result = E.simulate(me, boss, (Math.random() * 2 ** 31) | 0);
@@ -1138,9 +1138,9 @@ const ACTIONS = {
   },
   cheat: (d) => {
     if (NET.online) return;
-    if (d.c === 'chests') acc.chest.stored = CHEST_MAX;
+    if (d.c === 'chests') hero.chest.stored = CHEST_MAX;
     if (d.c === 'combat') acc.combatChests += 2;
-    if (d.c === 'fights') { acc.fights.done = {}; acc.dungeon.stored = DUNGEON_MAX; acc.war.done = {}; }
+    if (d.c === 'fights') { acc.fights.done = {}; hero.dungeon.stored = DUNGEON_MAX; acc.war.done = {}; }
     if (d.c === 'weekEnd' && acc.war.section) {
       const cur = E.warWeek(acc);
       acc.war.weeks['2000-01-03'] = { ...cur, attacks: Math.max(cur.attacks, WAR.minAttacks) };
@@ -1176,20 +1176,21 @@ document.addEventListener('input', (ev) => { if (ev.target.id === 'chat-input') 
 // Minuteurs (coffres, fin de journée)
 setInterval(() => {
   if (!acc) return;
-  const before = acc.chest.stored + acc.dungeon.stored * 10;
-  E.refreshChests(acc);
-  E.refreshDungeon(acc);
+  if (!hero) return;
+  const before = hero.chest.stored + hero.dungeon.stored * 10;
+  E.refreshChests(hero);
+  E.refreshDungeon(hero);
   const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';
-  if (acc.chest.stored + acc.dungeon.stored * 10 !== before) { save(); if (!busy) render(); return; }
+  if (hero.chest.stored + hero.dungeon.stored * 10 !== before) { save(); if (!busy) render(); return; }
   if (acc.fights.day !== E.dayKey() && !busy) { render(); return; }
   const t = document.querySelector('[data-timer="chest"]');
-  if (t && acc.chest.stored < CHEST_MAX) t.innerHTML = `Prochain coffre dans <b>${fmt(E.nextChestIn(acc))}</b>`;
+  if (t && hero.chest.stored < CHEST_MAX) t.innerHTML = `Prochain coffre dans <b>${fmt(E.nextChestIn(hero))}</b>`;
   const d = document.querySelector('[data-timer="day"]');
   if (d) d.textContent = `Nouveaux combats dans ${fmt(msToMidnight())}`;
   const wk = document.querySelector('[data-timer="week"]');
   if (wk) wk.textContent = `Fin dans ${fmtLong(E.msToWeekEnd())}`;
   const dj = document.querySelector('[data-timer="dungeon"]');
-  if (dj && acc.dungeon.stored < DUNGEON_MAX) dj.textContent = `Prochaine entrée dans ${fmt(E.nextDungeonIn(acc))}`;
+  if (dj && hero.dungeon.stored < DUNGEON_MAX) dj.textContent = `Prochaine entrée dans ${fmt(E.nextDungeonIn(hero))}`;
 }, 1000);
 
 // En ligne : on recharge les autres joueurs de temps en temps, et on sauvegarde avant de quitter

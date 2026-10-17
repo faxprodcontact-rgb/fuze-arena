@@ -339,3 +339,5 @@ input { font: inherit; }
 .pill.clat { display: inline-flex; align-items: center; gap: 5px; background: rgba(46,204,113,.15); color: #7bed9f; }
 .pill.clat canvas { width: 14px; height: auto; }
 .done-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.char { position: relative; }
+.char .badge { top: -6px; right: -6px; }
