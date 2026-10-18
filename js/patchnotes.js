@@ -5,6 +5,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2103', date: '18/10/2026', time: '21h03', title: 'Podium de la Puissance',
+    sections: [
+      { title: 'Social', items: [
+        'Le podium des champions classe maintenant les joueurs à la Puissance de leur perso le plus fort, et non plus au niveau : l’équipement et les stats comptent !',
+        'Les 3 du podium peuvent toujours écrire leur message de champion.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2057', date: '18/10/2026', time: '20h57', title: 'Persos rangés par niveau',
     sections: [
       { title: 'Persos', items: [

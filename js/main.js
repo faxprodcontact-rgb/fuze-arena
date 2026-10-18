@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018205725';
-import * as E from './engine.js?v=20261018205725';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018205725';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018205725';
-import { hashStr, makeRng } from './rng.js?v=20261018205725';
-import { APP_VERSION } from './version.js?v=20261018205725';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018205725';
-import * as NET from './net.js?v=20261018205725';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018205725';
+} from './data.js?v=20261018210335';
+import * as E from './engine.js?v=20261018210335';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018210335';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018210335';
+import { hashStr, makeRng } from './rng.js?v=20261018210335';
+import { APP_VERSION } from './version.js?v=20261018210335';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018210335';
+import * as NET from './net.js?v=20261018210335';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018210335';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -873,22 +873,23 @@ function rankingEntries(key = rankMode) {
   const tow = (a) => Math.max(0, ...a.heroes.map(h => (h.tower && h.tower.best) || 0));
   const sh = E.strongestHero(acc);
   const hor = (a) => (a.horde && a.horde.best) || 0;
-  const me = { id: myId(), name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, pet: petOf(sh), level: sh.level, wins: wins(acc), tower: tow(acc), horde: hor(acc), me: true };
+  const pow = (h) => Math.round(E.powerScore(E.snapshot(h)));   // puissance du perso le plus fort
+  const me = { id: myId(), name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, pet: petOf(sh), level: sh.level, power: pow(sh), wins: wins(acc), tower: tow(acc), horde: hor(acc), me: true };
   let rest;
   if (NET.online) {
-    rest = players.map(p => { const h = E.strongestHero(p.data); return { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, pet: petOf(h), level: h.level, wins: wins(p.data), tower: tow(p.data), horde: hor(p.data) }; });
+    rest = players.map(p => { const h = E.strongestHero(p.data); return { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, pet: petOf(h), level: h.level, power: pow(h), wins: wins(p.data), tower: tow(p.data), horde: hor(p.data) }; });
   } else {
     const totalMine = hero.stats.wins + hero.stats.losses;
     rest = opponents().map(o => {
       const r = makeRng(hashStr('rank' + o.id));
-      return { name: o.name, classId: o.classId, level: o.level, wins: Math.round(totalMine * (0.3 + r() * 0.6)), tower: Math.round(o.level * 0.75), horde: Math.max(1, Math.round(o.level / 4)) };
+      return { name: o.name, classId: o.classId, level: o.level, power: Math.round(E.powerScore(o.snap)), wins: Math.round(totalMine * (0.3 + r() * 0.6)), tower: Math.round(o.level * 0.75), horde: Math.max(1, Math.round(o.level / 4)) };
     });
   }
   return [me, ...rest].sort((a, b) => b[key] - a[key] || b.wins - a.wins || (b.me ? 1 : 0) - (a.me ? 1 : 0));
 }
 
 const RANK_MODES = [['level', 'Niveau'], ['wins', 'Victoires'], ['tower', 'Tour'], ['horde', 'Horde']];
-const rankScore = (key) => (e) => (key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : key === 'tower' ? `Étage ${e.tower}` : `${e.horde} monstres`);
+const rankScore = (key) => (e) => (key === 'power' ? `Puiss. ${fmtNum(e.power)}` : key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : key === 'tower' ? `Étage ${e.tower}` : `${e.horde} monstres`);
 
 function viewRanking() {
   const list = rankingEntries();
@@ -1335,7 +1336,7 @@ function viewSocial() {
     { id: 'ranking', name: 'Classement', sub: 'Qui est le plus fort ?', emblem: 'ranking', badge: 0, c: '#ffd84a' },
     { id: 'players', name: 'Joueurs', sub: NET.online ? `<i class="dot-on"></i>${onlineCount()} en ligne` : 'En ligne seulement', emblem: 'players', badge: 0, c: '#4cd964' },
   ];
-  const list = rankingEntries('level');
+  const list = rankingEntries('power');
   const meTop = list.slice(0, 3).some(e => e.me);
   const myMsg = (acc.podiumMsg && acc.podiumMsg.text) || '';
   return `
@@ -1348,10 +1349,10 @@ function viewSocial() {
         </button>`).join('')}
     </section>
     <section class="card hx podium-card ${infoCls('podium')}" data-info="podium" style="--hc:#ffd84a">
-      ${secHead(ico('crown'), 'Podium des champions', 'Les 3 plus hauts niveaux du groupe')}
-      ${podium(list, rankScore('level'), { bubbles: true })}
+      ${secHead(ico('crown'), 'Podium des champions', 'Les 3 plus puissants du groupe')}
+      ${podium(list, rankScore('power'), { bubbles: true })}
       ${meTop ? `<button class="btn block pod-edit" data-act="podiumMsg">${ico('chat')} ${myMsg ? 'Changer mon message' : 'Écrire mon message de champion'}</button>` : ''}
-      <div class="more-txt">Les 3 joueurs du podium (classés au niveau de leur perso le plus fort) peuvent afficher un petit message dans une bulle au-dessus de leur héros. Tout le monde le voit ici. Si tu sors du podium, ton message disparaît.</div>
+      <div class="more-txt">Les 3 joueurs du podium (classés à la puissance de leur perso le plus fort) peuvent afficher un petit message dans une bulle au-dessus de leur héros. Tout le monde le voit ici. Si tu sors du podium, ton message disparaît.</div>
       ${moreBtn('podium')}
     </section>`;
 }
