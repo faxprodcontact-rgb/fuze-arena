@@ -635,3 +635,15 @@ body {
 .doll-stage canvas { width: 100%; height: auto; }
 .doll-name { font-family: var(--pixel); font-size: 8px; color: var(--muted); margin-top: 2px; }
 .doll-name span { color: var(--gold); }
+
+/* Détail des caractéristiques : base / points / équipement */
+.stat-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); margin: -4px 0 6px; }
+.stat-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.stat-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-eq { background: #6fb6ff; }
+.stat-val { min-width: 70px; }
+.stat-split { display: flex; gap: 3px; justify-content: flex-end; margin-top: 4px; }
+.stat-split span { font-family: var(--pixel); font-size: 7px; padding: 2px 3px; border-radius: 4px; }
+.stat-split .sl-base { color: #d8d2e8; background: rgba(166,156,191,.18); }
+.stat-split .sl-pts { color: var(--green); background: rgba(76,217,100,.15); }
+.stat-split .sl-eq { color: #6fb6ff; background: rgba(61,155,255,.15); }

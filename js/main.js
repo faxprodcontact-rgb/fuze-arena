@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018144729';
-import * as E from './engine.js?v=20261018144729';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018144729';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018144729';
-import { hashStr, makeRng } from './rng.js?v=20261018144729';
-import { APP_VERSION } from './version.js?v=20261018144729';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018144729';
-import * as NET from './net.js?v=20261018144729';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018144729';
+} from './data.js?v=20261018145050';
+import * as E from './engine.js?v=20261018145050';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018145050';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018145050';
+import { hashStr, makeRng } from './rng.js?v=20261018145050';
+import { APP_VERSION } from './version.js?v=20261018145050';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018145050';
+import * as NET from './net.js?v=20261018145050';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018145050';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -347,6 +347,7 @@ function setBox(setId) {
 function viewHero() {
   const st = E.computeStats(hero);
   const base = E.computeStats({ ...hero, equipped: {} });
+  const raw = E.computeStats({ ...hero, equipped: {}, alloc: {} });   // classe + niveau seulement
   const hp = E.maxHp(st, hero.level);
   const pts = E.freePoints(hero);
   const snap = E.snapshot(hero);
@@ -404,6 +405,11 @@ function viewHero() {
     <section class="card">
       <h2>Caractéristiques</h2>
       <p class="hint">${pts > 0 ? `<b style="color:var(--green)">${pts} point${pts > 1 ? 's' : ''} à placer</b>. ` : ''}Tu gagnes 3 points à chaque niveau.</p>
+      <div class="stat-legend">
+        <span><i class="sl-base"></i>Base : ta classe et ton niveau</span>
+        <span><i class="sl-pts"></i>Points : ceux que tu as placés</span>
+        <span><i class="sl-eq"></i>Équipement : objets, panoplies et familier</span>
+      </div>
       ${STAT_KEYS.map(k => `
         <div class="stat-row">
           <span class="stat-dot" style="background:${STATS[k].color}"></span>
@@ -411,7 +417,13 @@ function viewHero() {
             <div class="stat-name">${STATS[k].name}</div>
             <div class="stat-desc">${STATS[k].desc}</div>
           </div>
-          <div class="stat-val">${st[k]}${st[k] - base[k] > 0 ? `<small>+${st[k] - base[k]} équip.</small>` : ''}</div>
+          <div class="stat-val">${st[k]}
+            <div class="stat-split">
+              <span class="sl-base">${raw[k]}</span>
+              ${(hero.alloc[k] || 0) > 0 ? `<span class="sl-pts">+${hero.alloc[k]}</span>` : ''}
+              ${st[k] - base[k] > 0 ? `<span class="sl-eq">+${st[k] - base[k]}</span>` : ''}
+            </div>
+          </div>
           <button class="plus" data-act="addStat" data-k="${k}" ${pts > 0 ? '' : 'disabled'}>+</button>
         </div>`).join('')}
       <div class="derived">

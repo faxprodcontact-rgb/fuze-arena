@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1450', date: '18/10/2026', time: '14h50', title: 'Détail des caractéristiques',
+    sections: [
+      { title: 'Héros', items: [
+        'Chaque caractéristique montre maintenant d’où elle vient, avec 3 pastilles de couleur.',
+        'Gris : la base de ta classe et de ton niveau.',
+        'Vert : les points que tu as placés.',
+        'Bleu : ce que t’apporte ton équipement (objets, bonus de panoplie et affinité du familier).',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1447', date: '18/10/2026', time: '14h47', title: 'Chaque objet a ses propres stats',
     sections: [
       { title: 'Objets', items: [
