@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018140424';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018141408';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -138,64 +138,160 @@ const LOOKS = {
   archer: { skin: '#e8b58a', hair: '#7a4e2a', body: '#4e8c3c', accent: '#7a4e2a', legs: '#6b4a2b', boots: '#3b2a20', sleeve: '#3f7d3a', head: 'hood', headC: '#3f7d3a', quiver: true },
   paladin: { skin: '#f1c08f', hair: '#e8c25a', body: '#e8e1cf', accent: '#2e5aa8', legs: '#8c8f99', boots: '#6b5a3a', sleeve: '#d4ccb5', head: 'circlet', headC: '#e5b33a', cape: '#2e5aa8' },
 };
-export const HAND = { x: 14, y: 17 };   // point où l'arme est tenue
+export const HAND = { x: 15.5, y: 17.5 };   // point où l'arme est tenue (garde) : assez en avant pour dégager le visage
+// Inclinaison de l'arme en garde (en degrés, vers l'avant)
+export const IDLE_ANGLE = { sword: 38, staff: 16, bow: 26, hammer: 34 };
+export const HAND_ATK = { x: 16.5, y: 14.5 };   // pose d'attaque : bras tendu vers l'avant
 export const HERO_W = 22, HERO_H = 28;
+export const handOf = (pose) => (pose === 'atk' ? HAND_ATK : HAND);
 
-/** Dessin d'un héros ; dyeId = teinture achetée à la boutique (facultatif) */
-export function heroCanvas(classId, dyeId = null) {
-  return cached(`hero:${classId}:${dyeId || ''}`, () => {
+// Petits outils de dessin (grille 2× plus fine que la taille logique du héros)
+function ellipse(g, cx, cy, rx, ry, c) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+    const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
+    if (dx * dx + dy * dy <= 1) set(g, x, y, c);
+  }
+}
+function tri(g, pts, c) {   // triangle plein
+  const [[x1, y1], [x2, y2], [x3, y3]] = pts;
+  const minX = Math.floor(Math.min(x1, x2, x3)), maxX = Math.ceil(Math.max(x1, x2, x3));
+  const minY = Math.floor(Math.min(y1, y2, y3)), maxY = Math.ceil(Math.max(y1, y2, y3));
+  const sgn = (ax, ay, bx, by, cx, cy) => (ax - cx) * (by - cy) - (bx - cx) * (ay - cy);
+  for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+    const px = x + 0.5, py = y + 0.5;
+    const d1 = sgn(px, py, x1, y1, x2, y2), d2 = sgn(px, py, x2, y2, x3, y3), d3 = sgn(px, py, x3, y3, x1, y1);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) set(g, x, y, c);
+  }
+}
+
+/**
+ * Dessin d'un héros (vue de profil, regard vers la droite), en haute définition.
+ * dyeId = teinture achetée à la boutique ; pose = 'idle' (garde) ou 'atk' (attaque : penché en avant, bras tendu).
+ */
+export function heroCanvas(classId, dyeId = null, pose = 'idle') {
+  return cached(`hero2:${classId}:${dyeId || ''}:${pose}`, () => {
     const dye = dyeId && COSMETIC[dyeId] ? COSMETIC[dyeId].dye : null;
     const L = { ...LOOKS[classId], ...(dye || {}) };
-    const g = grid(HERO_W, HERO_H);
-    const eye = '#1b1530';
-    if (L.cape) { rect(g, 4, 12, 3, 11, shade(L.cape, -0.15)); rect(g, 5, 22, 3, 1, shade(L.cape, -0.3)); }
+    const g = grid(HERO_W * 2, HERO_H * 2);
+    const atk = pose === 'atk';
+    const ux = atk ? 3 : 0, uy = atk ? 1 : 0;            // le haut du corps se penche en avant
+    const R = (x, y, w, h, c) => rect(g, x + ux, y + uy, w, h, c);   // haut du corps
+    const skin = L.skin, skinD = shade(L.skin, -0.18), eye = '#1b1530';
+    const robe = !!L.robe;
+
+    // --- cape (paladin) et carquois (archer), derrière tout le reste
+    if (L.cape) {
+      const cp = shade(L.cape, -0.1);
+      tri(g, [[14 + ux, 24 + uy], [21 + ux, 24 + uy], [5 + (atk ? 0 : 2), 48]], cp);
+      rect(g, 6 + (atk ? -1 : 1), 46, 6, 3, shade(L.cape, -0.3));
+    }
     if (L.quiver) {
-      rect(g, 4, 10, 2, 7, '#7a4e2a'); rect(g, 4, 10, 1, 7, '#5a3a1e');
-      set(g, 4, 9, '#eeeeee'); set(g, 5, 8, '#d63031'); set(g, 5, 9, '#eeeeee'); set(g, 4, 8, '#d63031');
+      R(9, 18, 5, 17, '#7a4e2a'); R(9, 18, 1, 17, '#5a3a1e'); R(9, 21, 5, 1, '#c99a5b'); R(9, 31, 5, 1, '#c99a5b');
+      R(9, 14, 1, 4, '#eeeeee'); R(11, 13, 1, 5, '#eeeeee'); R(13, 15, 1, 3, '#eeeeee');
+      R(8, 13, 2, 2, '#d63031'); R(10, 12, 2, 2, '#d63031'); R(12, 14, 2, 2, '#d63031');
     }
-    // jambes
-    rect(g, 8, 19, 2, 4, shade(L.legs, -0.3)); rect(g, 7, 23, 3, 2, shade(L.boots, -0.25));
-    rect(g, 11, 19, 2, 4, L.legs); rect(g, 11, 23, 3, 2, L.boots);
-    // bras arrière
-    rect(g, 6, 12, 2, 5, shade(L.sleeve, -0.3)); rect(g, 6, 17, 2, 1, shade(L.skin, -0.2));
-    // torse
-    rect(g, 7, 12, 7, 7, L.body); rect(g, 7, 12, 1, 7, shade(L.body, -0.2)); rect(g, 13, 12, 1, 6, shade(L.body, 0.2));
-    if (L.robe) {
-      rect(g, 6, 18, 9, 5, L.body); rect(g, 6, 18, 1, 5, shade(L.body, -0.25)); rect(g, 14, 18, 1, 5, shade(L.body, 0.15));
-      rect(g, 7, 16, 7, 1, L.accent); rect(g, 10, 17, 1, 5, L.accent);
+
+    // --- jambes et bottes (les jambes s'écartent en pose d'attaque)
+    if (!robe) {
+      const bl = atk ? -3 : 0, fl = atk ? 3 : 0;
+      const legD = shade(L.legs, -0.3), bootD = shade(L.boots, -0.25);
+      rect(g, 15 + bl, 38, 5, 9, legD); rect(g, 14 + bl, 46, 7, 4, bootD); rect(g, 14 + bl, 49, 7, 1, shade(bootD, -0.4));
+      rect(g, 22 + fl, 38, 5, 9, L.legs); rect(g, 22 + fl, 46, 7, 4, L.boots); rect(g, 22 + fl, 49, 7, 1, shade(L.boots, -0.45));
+      rect(g, 22 + fl, 46, 7, 1, shade(L.boots, 0.25));
+      if (classId === 'paladin' || classId === 'guerrier') { rect(g, 22 + fl, 41, 5, 2, shade(L.legs, 0.3)); rect(g, 15 + bl, 41, 5, 2, shade(legD, 0.2)); }   // genouillères
+    }
+
+    // --- bras arrière
+    R(11, 25, 4, 9, shade(L.sleeve, -0.32)); R(11, 33, 4, 3, shade(skin, -0.25));
+
+    // --- torse (ou robe du mage)
+    if (robe) {
+      tri(g, [[14 + ux, 24 + uy], [28 + ux, 24 + uy], [33, 50]], L.body);
+      tri(g, [[14 + ux, 24 + uy], [33, 50], [9, 50]], L.body);
+      tri(g, [[14 + ux, 24 + uy], [16 + ux, 24 + uy], [9, 50]], shade(L.body, -0.2));
+      R(14, 24, 15, 14, L.body);
+      rect(g, 9, 48, 25, 2, L.accent);                     // ourlet doré
+      tri(g, [[21 + ux, 30 + uy], [23 + ux, 30 + uy], [22, 48]], L.accent);
+      R(14, 35, 15, 2, L.accent); R(21, 35, 2, 2, shade(L.accent, 0.4));   // ceinture
+      rect(g, 13, 50, 6, 2, shade(L.boots, -0.1)); rect(g, 24, 50, 7, 2, L.boots);   // bouts des chaussures
     } else {
-      rect(g, 7, 18, 7, 1, '#5a3a22'); set(g, 11, 18, '#e5b33a');
+      R(14, 24, 15, 14, L.body);
+      R(14, 24, 2, 14, shade(L.body, -0.22)); R(27, 25, 2, 12, shade(L.body, 0.18));
+      R(14, 36, 15, 2, '#5a3a22'); R(20, 36, 3, 2, '#e5b33a');   // ceinture + boucle
     }
-    if (classId === 'guerrier' || classId === 'paladin') { rect(g, 9, 13, 3, 5, L.accent); rect(g, 9, 13, 3, 1, shade(L.accent, 0.25)); }
-    if (classId === 'paladin') { set(g, 10, 14, '#e5b33a'); set(g, 10, 15, '#e5b33a'); set(g, 9, 15, '#e5b33a'); set(g, 11, 15, '#e5b33a'); set(g, 10, 16, '#e5b33a'); }
-    if (classId === 'archer') { rect(g, 7, 12, 7, 1, '#7a4e2a'); set(g, 8, 13, '#7a4e2a'); set(g, 9, 14, '#7a4e2a'); set(g, 10, 15, '#7a4e2a'); }
-    // cou + tête
-    rect(g, 9, 11, 3, 1, shade(L.skin, -0.15));
-    rect(g, 7, 4, 7, 7, L.skin); rect(g, 13, 8, 1, 2, shade(L.skin, -0.1));
-    rect(g, 7, 4, 7, 2, L.hair); rect(g, 7, 6, 2, 3, L.hair);
-    let eyeY = 7;
-    // couvre-chef
+    if (classId === 'guerrier') {
+      R(18, 25, 7, 11, L.accent); R(18, 25, 7, 1, shade(L.accent, 0.3)); R(18, 35, 7, 1, shade(L.accent, -0.3));
+      R(17, 25, 1, 11, '#e5b33a'); R(25, 25, 1, 11, '#e5b33a');
+      ellipse(g, 15 + ux, 25 + uy, 3.5, 2.5, L.headC); ellipse(g, 27 + ux, 25 + uy, 3.5, 2.5, L.headC);   // épaulières
+      R(13, 24, 4, 1, shade(L.headC, 0.35)); R(25, 24, 4, 1, shade(L.headC, 0.35));
+    }
+    if (classId === 'paladin') {
+      R(17, 25, 9, 11, L.accent === '#2e5aa8' ? '#e8e1cf' : shade(L.body, 0.15));
+      R(20, 26, 3, 9, '#e5b33a'); R(18, 28, 7, 3, '#e5b33a'); R(21, 27, 1, 7, '#fff3b0');
+      ellipse(g, 15 + ux, 25 + uy, 3.5, 2.5, '#c3cad3'); ellipse(g, 27 + ux, 25 + uy, 3.5, 2.5, '#c3cad3');
+    }
+    if (classId === 'archer') {
+      for (let i = 0; i < 12; i++) R(15 + i, 24 + i, 2, 2, '#7a4e2a');   // bandoulière
+      R(14, 24, 15, 2, shade(L.body, 0.2));
+    }
+    if (classId === 'mage') { R(16, 24, 11, 3, L.accent); R(17, 25, 9, 1, shade(L.accent, 0.4)); }   // col doré
+
+    // --- cou et tête
+    R(19, 21, 5, 3, skinD);
+    ellipse(g, 21.5 + ux, 15 + uy, 7.5, 7, skin);
+    R(27, 15, 2, 3, skinD);                                   // nez
+    R(18, 14, 2, 3, skinD); R(18, 15, 1, 1, shade(skin, -0.35));   // oreille
+    // cheveux (derrière et dessus)
+    if (L.hair) { ellipse(g, 19.5 + ux, 11 + uy, 7, 4, L.hair); R(14, 11, 4, 7, L.hair); R(15, 18, 2, 2, shade(L.hair, -0.2)); }
+    let eyeY = 14;
+
+    // --- couvre-chef
     if (L.head === 'helmet') {
-      rect(g, 6, 3, 9, 4, L.headC); rect(g, 6, 3, 9, 1, shade(L.headC, 0.3)); rect(g, 6, 7, 3, 3, L.headC);
-      rect(g, 6, 6, 9, 1, shade(L.headC, -0.25));
-      rect(g, 9, 1, 3, 2, L.headA); set(g, 8, 2, L.headA); set(g, 12, 2, shade(L.headA, -0.3));
-      eyeY = 8;
+      ellipse(g, 21.5 + ux, 11 + uy, 9, 6.5, L.headC);
+      R(12, 12, 19, 3, L.headC); R(12, 14, 6, 6, L.headC);
+      R(12, 14, 19, 1, shade(L.headC, -0.35));                // rebord
+      R(26, 12, 2, 8, shade(L.headC, -0.15));                 // nasal
+      R(16, 7, 8, 1, shade(L.headC, 0.45)); R(14, 9, 3, 2, shade(L.headC, 0.3));
+      R(15, 12, 1, 1, '#ffffff');
+      // plumet
+      R(18, 1, 6, 4, L.headA); R(16, 2, 3, 5, L.headA); R(14, 4, 3, 5, shade(L.headA, -0.2)); R(19, 1, 4, 1, shade(L.headA, 0.35));
+      eyeY = 16;
     } else if (L.head === 'wizard') {
-      rect(g, 5, 4, 11, 1, L.headC); rect(g, 7, 3, 7, 1, L.headC); rect(g, 7, 2, 6, 1, L.headC);
-      rect(g, 6, 1, 4, 1, L.headC); rect(g, 4, 0, 3, 1, L.headC);
-      set(g, 10, 2, L.headA); rect(g, 7, 3, 7, 1, shade(L.headC, -0.15)); set(g, 9, 3, L.headA);
-      rect(g, 10, 9, 4, 2, L.beard); rect(g, 11, 11, 2, 2, L.beard); set(g, 12, 13, L.beard);
+      R(9, 9, 25, 3, L.headC); R(9, 11, 25, 1, shade(L.headC, -0.35));          // bord du chapeau
+      tri(g, [[13 + ux, 9 + uy], [29 + ux, 9 + uy], [8 + ux, 1]], L.headC);
+      tri(g, [[13 + ux, 9 + uy], [18 + ux, 9 + uy], [8 + ux, 1]], shade(L.headC, -0.2));
+      R(14, 7, 15, 2, L.headA); R(20, 7, 3, 2, shade(L.headA, 0.4));           // ruban doré
+      R(17, 3, 2, 2, L.headA); set(g, 18 + ux, 2 + uy, '#ffffff');
+      // longue barbe
+      tri(g, [[20 + ux, 18 + uy], [30 + ux, 18 + uy], [26 + ux, 34 + uy]], L.beard);
+      R(21, 18, 9, 4, L.beard); R(25, 22, 3, 8, shade(L.beard, -0.08));
+      R(23, 19, 3, 1, '#c9c9d6');                                              // moustache
     } else if (L.head === 'hood') {
-      rect(g, 6, 3, 8, 3, L.headC); rect(g, 6, 6, 3, 5, L.headC); rect(g, 5, 5, 1, 3, L.headC); set(g, 4, 7, L.headC);
-      rect(g, 6, 3, 8, 1, shade(L.headC, 0.2)); rect(g, 9, 6, 5, 1, shade(L.headC, -0.3));
+      ellipse(g, 20.5 + ux, 13 + uy, 9, 8.5, L.headC);
+      tri(g, [[12 + ux, 12 + uy], [16 + ux, 22 + uy], [9 + ux, 26 + uy]], L.headC);   // la capuche retombe dans le dos
+      ellipse(g, 23.5 + ux, 16 + uy, 5, 5, skin);             // ouverture du visage
+      R(19, 10, 10, 2, shade(L.headC, -0.3));                 // ombre de la capuche sur le front
+      R(15, 6, 9, 1, shade(L.headC, 0.3));
+      R(27, 15, 2, 3, skinD);
     } else if (L.head === 'circlet') {
-      rect(g, 7, 3, 7, 3, L.hair); rect(g, 6, 5, 2, 5, L.hair);
-      rect(g, 7, 5, 7, 1, L.headC); set(g, 12, 5, '#4fc3f7');
+      ellipse(g, 20 + ux, 11 + uy, 8, 5, L.hair); R(13, 12, 5, 11, L.hair); R(13, 20, 3, 4, shade(L.hair, -0.15));
+      R(15, 11, 15, 2, L.headC); R(24, 11, 3, 2, '#4fc3f7'); set(g, 25 + ux, 11 + uy, '#e0f7ff');
+      eyeY = 15;
     }
-    set(g, 10, eyeY, eye); set(g, 12, eyeY, eye);
-    // bras avant
-    rect(g, 12, 13, 2, 4, L.sleeve); rect(g, 13, 17, 2, 1, L.skin); set(g, 14, 16, L.skin);
-    return render(g);
+    // yeux, sourcils, bouche
+    R(23, eyeY, 2, 2, eye); set(g, 24 + ux, eyeY + uy, '#ffffff');
+    R(27, eyeY, 1, 2, eye);
+    if (L.head !== 'helmet') R(22, eyeY - 2, 3, 1, shade(L.hair || '#5a3a22', -0.3));
+    if (L.head !== 'wizard') R(24, 19, 3, 1, atk ? '#8e2b2b' : shade(skin, -0.35));
+    if (atk && L.head !== 'wizard') R(25, 20, 1, 1, '#8e2b2b');     // cri de combat
+
+    // --- bras avant (tendu en pose d'attaque)
+    if (atk) {
+      R(24, 25, 6, 4, L.sleeve); R(29, 25, 4, 3, L.sleeve); R(31, 26, 3, 4, skin); R(32, 26, 2, 1, shade(skin, 0.2));
+    } else {
+      R(24, 25, 4, 7, L.sleeve); R(25, 25, 2, 1, shade(L.sleeve, 0.25)); R(26, 30, 4, 4, L.sleeve); R(29, 33, 4, 4, skin); R(30, 32, 2, 1, skin);
+    }
+    return toCanvas(outline2(lighting(g)), U);
   });
 }
 
@@ -577,11 +673,14 @@ export function heroPortrait(classId, weaponKind, dyeId = null) {
     const w = weaponCanvas(weaponKind);
     const [px, py] = weaponPivot(weaponKind);
     const c = document.createElement('canvas');
-    c.width = (HERO_W + 6) * U; c.height = HERO_H * U;
-    c.lw = HERO_W + 6; c.lh = HERO_H;
+    c.width = (HERO_W + 10) * U; c.height = HERO_H * U;
+    c.lw = HERO_W + 10; c.lh = HERO_H;
     const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(h, 0, 0);
-    ctx.drawImage(w, (HAND.x - px) * U, (HAND.y - py) * U);
+    ctx.translate(HAND.x * U, HAND.y * U);
+    ctx.rotate((IDLE_ANGLE[weaponKind] * Math.PI) / 180);
+    ctx.drawImage(w, -px * U, -py * U);
     return c;
   });
 }
