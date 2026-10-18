@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018174952';
-import * as E from './engine.js?v=20261018174952';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174952';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174952';
-import { hashStr, makeRng } from './rng.js?v=20261018174952';
-import { APP_VERSION } from './version.js?v=20261018174952';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018174952';
-import * as NET from './net.js?v=20261018174952';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174952';
+} from './data.js?v=20261018190017';
+import * as E from './engine.js?v=20261018190017';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018190017';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018190017';
+import { hashStr, makeRng } from './rng.js?v=20261018190017';
+import { APP_VERSION } from './version.js?v=20261018190017';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018190017';
+import * as NET from './net.js?v=20261018190017';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018190017';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -106,6 +106,7 @@ function render() {
   stopPreviews = [];
   if (!acc) { if (NET.online) renderAuth(); else renderCreate(); return; }
   hero = E.activeHero(acc);
+  if (E.applySpecialReset(acc)) { save(); setTimeout(() => toast('Remise à zéro spéciale de 20 h : tout est rechargé !'), 400); }
   ensureDay();
   E.ensureWar(acc, others());
   acc.heroes.forEach(h => { E.refreshChests(h); E.dungeonRuns(h); });
@@ -792,12 +793,12 @@ function viewFights() {
       mchip('<canvas class="px" data-chest="combat"></canvas>', 'Coffre de combat', `${acc.winProgress} / ${WINS_PER_COMBAT_CHEST}`),
       mchip(ico('clock'), 'Remise à zéro', `<span data-timer="day3">${fmt(msToMidnight())}</span>`),
     ],
-    info: `<b>${ico('swords')} Combat classé</b> : un par pote et par jour. Tu gagnes de l’XP, et chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit.<br><br>
+    info: `<b>${ico('swords')} Combat classé</b> : un par pote et par jour. Chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit. L’Arène ne rapporte pas d’XP.<br><br>
       <b>↻ Revanche</b> : une fois le combat classé fait, rejoue autant que tu veux, pour le fun. La 1ʳᵉ revanche gagnée contre chaque pote rapporte <b>1 Flouze</b> par jour.<br><br>
       <b>Costaud · Serré · Facile</b> : sa puissance comparée à la tienne.`,
   }) + `
     <section class="card hx" style="--hc:#ff5d6c">
-      ${secHead(ico('swords'), 'À combattre', 'Combat classé : XP + coffre de combat', `<span class="pill ${todo.length ? 'red' : 'green'}">${todo.length}</span>`)}
+      ${secHead(ico('swords'), 'À combattre', 'Combat classé : coffre de combat', `<span class="pill ${todo.length ? 'red' : 'green'}">${todo.length}</span>`)}
       ${!list.length ? `<p class="empty">${NET.online ? 'Personne d’autre n’est encore inscrit. Invite tes potes !' : 'Aucun adversaire.'}</p>`
         : !todo.length ? '<div class="all-done">✓ Tous tes combats classés sont faits !<small>Nouveaux combats à minuit. En attendant, fais des revanches.</small></div>' : ''}
       ${todo.map(o => `
@@ -1079,7 +1080,6 @@ function startWarAttack(foeId) {
         rewards: rw,
         rewardsHtml: `
           <div class="rw">
-            <span class="pill gold">+${rw.xp} XP</span>
             ${won ? `<span class="pill green">+${rw.pts} pts pour ta section</span>` : '<span class="pill red">+1 pt pour la section adverse</span>'}
           </div>`,
       };
@@ -1837,7 +1837,7 @@ function viewRaid() {
       mchip(ico('clock'), 'Nouveaux assauts', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
       mchip(ico('hourglass'), 'Fin du raid', `<span data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</span>`),
     ],
-    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.`,
+    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br><b>XP</b> : chaque assaut rapporte de l’XP à ton perso actif.`,
   }) + `
     <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
       <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
@@ -1868,6 +1868,7 @@ function attackRaid() {
   E.missionEvent(acc, 'raid');
   save();
   const week = raidInfo.week;
+  const h = hero;
   runBattle({
     me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, sim: { maxActions: RAID.maxActions, timeoutWinner: false },
     theme: RAID.boss.theme, manual: true, victory: myVictory(), title: `Raid · ${RAID.boss.name}`,
@@ -1878,11 +1879,13 @@ function attackRaid() {
       if (NET.online) NET.addRaidHit(week, acc.pseudo, dmg).catch(e => toast(e.message));
       else if (acc.raid.local[week]) acc.raid.local[week].hits.push(hit);
       E.missionEvent(acc, 'raid_dmg', dmg);
+      const lv = E.raidAssaultXp(h);
       save();
       const killed = dmg >= S.remaining;
       return {
+        rewards: lv,
         headline: killed ? `${RAID.boss.name.toUpperCase()} EST TOMBÉ !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
-        rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span></div>`,
+        rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span>${xpPills(lv)}</div>`,
       };
     },
   });
@@ -1912,7 +1915,7 @@ function viewHorde() {
       mchip(ico('clock'), 'Nouveaux essais', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
     ],
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
-      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi), pour tout le compte : c’est ton perso actif qui se bat.`,
+      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi), pour tout le compte : c’est ton perso actif qui se bat.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
     <section class="card hx horde-stage" style="--hc:#ff3d6e">
       ${secHead(ico('flag'), 'Combien tu gagnes', 'Flouze selon les monstres battus')}
@@ -1945,6 +1948,7 @@ function startHorde() {
   const me = mySnap();
   const seed = (Math.random() * 2 ** 31) | 0;
   const live = E.createHorde(me, seed);
+  const h = hero;
   const head = (kills) => `La Horde <span style="color:var(--gold)">·</span> ${kills} monstre${kills > 1 ? 's' : ''} battu${kills > 1 ? 's' : ''} <span style="color:var(--gold)">·</span> +${E.hordeFlouze(kills)} <canvas class="px ico" data-clat></canvas>`;
   runBattle({
     me, foe: E.hordeMonster(seed, 0), live, theme: 'abyss', manual: true, victory: myVictory(),
@@ -1955,12 +1959,13 @@ function startHorde() {
       if (t) { t.innerHTML = head(e.kills); hydrate(t); }
     },
     finish: (result) => {
-      const rw = E.hordeResult(acc, result.kills);
+      const rw = E.hordeResult(acc, result.kills, h);
       save();
       return {
+        rewards: rw,
         headline: `${result.kills} MONSTRE${result.kills > 1 ? 'S' : ''}`, headClass: result.kills ? 'win' : 'lose',
         rewardsHtml: `
-          <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
+          <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${xpPills(rw)}${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
           <p style="color:var(--muted);margin:0">Encore ${E.hordeRunsLeft(acc)} essai${E.hordeRunsLeft(acc) > 1 ? 's' : ''} d’ici ${fmt(E.msToNextHalf())}.</p>`,
       };
     },
@@ -1990,7 +1995,7 @@ function viewTower() {
       mchip(ico('trophy'), `Record ${CLASSES[hero.classId].name}`, t.best),
       mchip('<canvas class="px" data-clat></canvas>', 'Récompense', `+${prize}`),
     ],
-    info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br><b>+${TOWER.clatPerFloor} Flouze</b> par nouvel étage, et <b>+${TOWER.clatEvery10}</b> en plus tous les 10 étages. Chaque perso a son propre record.`,
+    info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br><b>+${TOWER.clatPerFloor} Flouze</b> par nouvel étage, et <b>+${TOWER.clatEvery10}</b> en plus tous les 10 étages. Chaque perso a son propre record.<br><br><b>XP</b> : chaque étage réussi rapporte de l’XP (une défaite ne rapporte rien).`,
   }) + `
     <section class="card hx boss-stage" style="--hc:#a77bff">
       <div class="bs-tag">ETAGE ${next}</div>
@@ -2019,14 +2024,15 @@ function attackTower() {
     title: `Tour · Étage ${next}`,
     finish: (result) => {
       const won = result.winner === 0;
-      const rw = E.towerResult(acc, h, won);
+      const rw = E.towerResult(acc, h, won, m.snap.level);
       E.missionEvent(acc, 'tower_try');
       if (won) E.missionEvent(acc, 'tower');
       save();
       return {
+        rewards: rw,
         headline: won ? `ÉTAGE ${next} RÉUSSI !` : 'ÉCHEC…', headClass: won ? 'win' : 'lose',
         rewardsHtml: won
-          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Flouze</span></div>`
+          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Flouze</span>${xpPills(rw)}</div>`
           : '<p style="color:var(--muted);margin:0">Tu restes à cet étage : réessaie autant que tu veux !</p>',
       };
     },
@@ -2123,8 +2129,8 @@ async function initLive() {
 
 /** Bonus d'XP de rattrapage selon le retard sur les autres */
 function updateXpBonus() {
-  if (!NET.online || !players.length) { E.setXpBonus(1); return; }
-  E.setXpBonus(E.catchupBonus(hero.level, players.map(p => E.strongestHero(p.data).level)));
+  const catchup = NET.online && players.length ? E.catchupBonus(hero.level, players.map(p => E.strongestHero(p.data).level)) : 1;
+  E.setXpBonus(catchup * E.altXpMult(acc, hero));   // persos secondaires : XP ×2 en plus du rattrapage
 }
 
 const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
@@ -2150,6 +2156,7 @@ function announce(lv) {
   if (!lv) return;
   if (lv.levels > 0) { SFX.level(); E.missionEvent(acc, 'level', lv.levels); save(); toast(`Niveau ${hero.level} ! +${lv.levels * 3} points de caractéristiques`); }
   for (const s of lv.newSpells || []) toast(`Nouveau sort : ${s.name}`);
+  if (lv.lvlKeys > 0) toast(`+${lv.lvlKeys} clef${lv.lvlKeys > 1 ? 's' : ''} de montée de niveau !`);
 }
 
 // ------------------------------ Ouverture de coffre ------------------------------
@@ -2243,6 +2250,8 @@ function updateSpellBar(e) {
 // La police pixel dessine les majuscules accentuées (É, À…) plus petites : on enlève l'accent des majuscules dans les gros titres
 const PX_CAPS = { À: 'A', Â: 'A', Ä: 'A', É: 'E', È: 'E', Ê: 'E', Ë: 'E', Î: 'I', Ï: 'I', Ô: 'O', Ö: 'O', Ù: 'U', Û: 'U', Ü: 'U', Ç: 'C' };
 const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch => PX_CAPS[ch]);
+/** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
+const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
 function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null }) {
   stopPreviews.forEach(f => f());
@@ -2326,7 +2335,6 @@ function startFight(foeId) {
         rewards: rw,
         rewardsHtml: `
           <div class="rw">
-            <span class="pill gold">+${rw.xp} XP</span>
             ${won ? `<span class="pill green">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>` : ''}
             ${rw.chest ? '<span class="pill red">Coffre de combat gagné !</span>' : ''}
           </div>`,
@@ -2398,7 +2406,7 @@ function startDungeon(id) {
           rewards: rw,
           headline: won ? 'DONJON TERMINÉ !' : 'DÉFAITE…',
           rewardsHtml: `${waveBar(i, won)}
-            <div class="rw"><span class="pill gold">+${rw.xp} XP</span></div>
+            <div class="rw">${xpPills(rw)}</div>
             ${rw.key ? `
               <div class="loot-card" style="--rc:#ffd84a">
                 <canvas class="px" data-key></canvas>
@@ -2855,6 +2863,7 @@ document.addEventListener('input', (ev) => { if (ev.target.id === 'chat-input') 
 setInterval(() => {
   if (!acc) return;
   if (!hero) return;
+  if (E.applySpecialReset(acc)) { save(); softRender(); toast('Remise à zéro spéciale de 20 h : tout est rechargé !'); return; }
   const before = hero.chest.stored;
   E.refreshChests(hero);
   const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';

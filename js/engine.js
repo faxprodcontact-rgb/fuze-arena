@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018174952';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018174952';
+} from './data.js?v=20261018190017';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018190017';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -37,7 +37,15 @@ export function catchupBonus(myLevel, otherLevels) {
   return 1 + Math.min(XP_CATCHUP.max, gap * XP_CATCHUP.perLevel);
 }
 
-/** Ajoute de l'XP (avec le bonus de rattrapage). Renvoie { levels, newSpells, xp } */
+/** Perso secondaire = tous les persos du compte sauf celui de plus haut niveau (le 1er en cas d'égalité) */
+export function isAltHero(acc, hero) {
+  let main = acc.heroes[0];
+  for (const h of acc.heroes) if (h.level > main.level) main = h;
+  return hero !== main;
+}
+export const altXpMult = (acc, hero) => (isAltHero(acc, hero) ? ALT_XP_MULT : 1);
+
+/** Ajoute de l'XP (avec le bonus de rattrapage). Renvoie { levels, newSpells, xp, lvlKeys } (lvlKeys = clefs de montée de niveau) */
 export function gainXp(hero, amount) {
   const before = hero.level;
   amount = Math.round(amount * xpBonus);
@@ -51,7 +59,11 @@ export function gainXp(hero, amount) {
   for (const s of newSpells) {
     if (hero.spells.length < MAX_ACTIVE_SPELLS) hero.spells.push(s.id);
   }
-  return { levels: hero.level - before, newSpells, xp: amount };
+  // clefs de montée de niveau : 1 par niveau, 5 aux niveaux 10, 20, 30…
+  let keys = 0;
+  for (let l = before + 1; l <= hero.level; l++) keys += l % 10 === 0 ? LEVEL_KEYS.every10 : LEVEL_KEYS.each;
+  if (keys) hero.keys = (hero.keys || 0) + keys;
+  return { levels: hero.level - before, newSpells, xp: amount, lvlKeys: keys };
 }
 
 // ------------------------------- Objets --------------------------------
@@ -388,6 +400,9 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
   };
 }
 
+/** XP d'un assaut de raid (à chaque assaut, selon le niveau du perso) */
+export function raidAssaultXp(hero) { return gainXp(hero, 25 + 5 * hero.level); }
+
 // ------------------------------ La Horde ------------------------------
 export { HORDE };
 /** Le n-ième monstre de la horde (n = 0, 1, 2…) : de plus en plus fort, jamais deux fois de suite le même */
@@ -458,13 +473,15 @@ export function hordeState(acc) {
 }
 export const hordeRunsLeft = (acc) => Math.max(0, HORDE.runsPerHalf - hordeState(acc).used);
 /** Fin d'un essai : Flouze selon les monstres battus, et record du compte */
-export function hordeResult(acc, kills) {
+export function hordeResult(acc, kills, hero = null) {
   const st = hordeState(acc);
   const flouze = hordeFlouze(kills);
   acc.clat += flouze;
   const record = kills > (st.best || 0);
   if (record) st.best = kills;
-  return { flouze, record };
+  // XP à chaque essai : plus tu bats de monstres, plus tu en gagnes
+  const lv = hero ? gainXp(hero, Math.round((25 + 5 * hero.level) * (0.4 + 0.1 * kills))) : { levels: 0, newSpells: [], xp: 0, lvlKeys: 0 };
+  return { flouze, record, ...lv };
 }
 
 /**
@@ -556,11 +573,11 @@ export const openableChests = (hero) => hero.chest.stored + (hero.keys || 0);
 
 /** Ouvre tous les coffres normaux d'un coup (stock + clefs) */
 export function openAllChests(acc, hero, rng = Math.random) {
-  const out = { items: [], xp: 0, levels: 0, newSpells: [], keys: 0, count: 0 };
+  const out = { items: [], xp: 0, levels: 0, newSpells: [], keys: 0, lvlKeys: 0, count: 0 };
   let r;
   while ((r = openChest(acc, hero, 'normal', rng))) {
     out.items.push(...r.items);
-    out.xp += r.xp; out.levels += r.levels; out.newSpells.push(...r.newSpells);
+    out.xp += r.xp; out.levels += r.levels; out.newSpells.push(...r.newSpells); out.lvlKeys += r.lvlKeys || 0;
     if (r.key) out.keys++;
     out.count++;
   }
@@ -795,8 +812,9 @@ export function migrate(save) {
 
 /** Récompenses après un combat d'arène */
 export function fightRewards(acc, hero, foeLevel, won) {
-  const xp = won ? 30 + 3 * Math.min(foeLevel, hero.level + 5) : 12 + foeLevel;
-  const lv = gainXp(hero, xp);
+  // l'Arène ne donne plus d'XP (l'XP se gagne en donjon, à la Tour, au raid et dans la Horde)
+  const lv = { levels: 0, newSpells: [], xp: 0, lvlKeys: 0 };
+  const xp = 0;
   let chest = false;
   if (won) {
     hero.stats.wins++;
@@ -1097,9 +1115,7 @@ export function warAttackResult(acc, hero, foe, won, myPower, foePower) {
   war.done[foe.id] = won ? 'win' : 'loss';
   war.log.unshift({ name: foe.name, won, pts, at: Date.now() });
   war.log = war.log.slice(0, 20);
-  const xp = won ? 20 + 2 * Math.min(foe.level, hero.level + 5) : 8 + foe.level;
-  const lv = gainXp(hero, xp);
-  return { pts, xp, ...lv };
+  return { pts, xp: 0, levels: 0, newSpells: [], lvlKeys: 0 };   // la Guerre ne donne plus d'XP
 }
 
 // ------------------------------ Personnage le plus fort ----------------
@@ -1132,15 +1148,18 @@ export function towerMonster(floor) {
 export const towerState = (hero) => hero.tower;
 
 /** Résultat d'une tentative (illimitées) : si victoire, on monte d'un étage et on gagne du Flouze ; sinon on reste bloqué */
-export function towerResult(acc, hero, won) {
+export function towerResult(acc, hero, won, foeLevel = hero.level) {
   const t = towerState(hero);
-  let clat = 0;
+  let clat = 0, xp = 0;
+  const base = 25 + 5 * Math.min(foeLevel, hero.level + 10);
   if (won) {
     t.best++;
     clat = TOWER.clatPerFloor + (t.best % 10 === 0 ? TOWER.clatEvery10 : 0);
     acc.clat += clat;
-  }
-  return { floor: t.best, clat };
+    xp = base;
+  }   // défaite : on reste à l'étage, sans XP (impossible de farmer)
+  const lv = xp ? gainXp(hero, xp) : { levels: 0, newSpells: [], xp: 0, lvlKeys: 0 };
+  return { floor: t.best, clat, ...lv };
 }
 
 // ------------------------------ Raid -----------------------------------
@@ -1281,6 +1300,24 @@ export function claimGift(acc, gift) {
   acc.gifts[gift.id] = true;
   acc.clat += gift.amount;
   return gift.amount;
+}
+
+// ------------------------------ Remise à zéro exceptionnelle ------------------------------
+/** Recharge tous les compteurs une seule fois, à l'heure de SPECIAL_RESET. Renvoie true si elle vient d'avoir lieu. */
+export function applySpecialReset(acc, now = Date.now()) {
+  const R = SPECIAL_RESET;
+  if (!R || acc.specialReset === R.id || now < new Date(...R.at).getTime()) return false;
+  acc.specialReset = R.id;
+  acc.fights = { day: '', done: {}, lvl: acc.fights.lvl || 1 };
+  acc.war.done = {}; acc.war.day = '';
+  acc.raid.day = ''; acc.raid.used = 0;
+  acc.missions = { day: '', progress: {}, claimed: {}, bonus: false, seen: {} };
+  if (acc.horde) acc.horde.used = 0;
+  acc.heroes.forEach(h => {
+    h.chest = { stored: CHEST_MAX, last: now };
+    h.runs = { half: '', used: {}, keys: 0 };
+  });
+  return true;
 }
 
 // ------------------------------ Marchand du jour ------------------------------

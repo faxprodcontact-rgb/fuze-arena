@@ -5,6 +5,22 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1900', date: '18/10/2026', time: '19h00', title: 'Nouvelle XP, clefs de niveau et coffres toutes les 30 min',
+    sections: [
+      { title: 'XP', items: [
+        'L’XP se gagne maintenant dans les donjons, la Tour infinie (à chaque étage réussi), le raid (à chaque assaut) et la Horde (à chaque essai, plus tu vas loin plus tu en gagnes).',
+        'L’Arène et la Guerre ne donnent plus d’XP.',
+        'Aide aux retardataires renforcée : +10 % d’XP par niveau de retard (jusqu’à +200 %).',
+        'Tes persos secondaires (tous sauf ton plus haut niveau) gagnent l’XP ×2, en plus de l’aide aux retardataires.',
+      ] },
+      { title: 'Clefs et coffres', items: [
+        'Chaque niveau gagné donne 1 clef, et 5 clefs aux niveaux 10, 20, 30…',
+        'Un coffre gratuit toutes les 30 minutes (au lieu de 2 h).',
+      ] },
+      { title: 'Exceptionnel', items: ['Ce soir à 20 h, tous les compteurs sont rechargés une fois (donjons, Arène, Guerre, raid, Horde, missions, coffres). Ensuite, tout reprend comme d’habitude.'] },
+    ],
+  },
+  {
     id: '2026-10-18-1749', date: '18/10/2026', time: '17h49', title: 'Correctif : le tchat',
     sections: [
       { title: 'Correctif', items: ['Le tchat défile normalement jusqu’en bas : le dernier message s’affiche juste au-dessus de la barre d’écriture, et le tchat s’ouvre directement sur les derniers messages.'] },
