@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018155216';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018160405';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -692,6 +692,133 @@ export function keyCanvas() {
     ['.yyy........', 'yYYYy.......', 'yY.Yyyyyyyyy', 'yYYYy...y.y.', '.yyy....y.y.'],
     { y: '#e5b33a', Y: '#ffe08a' },
   ))));
+}
+
+// =====================================================================
+//  EMBLÈMES DES MODES DE COMBAT (onglet Combats)
+// =====================================================================
+function line(g, x0, y0, x1, y1, c, r = 0) {
+  const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+    if (r) ellipse(g, x, y, r, r, c); else set(g, Math.floor(x), Math.floor(y), c);
+  }
+}
+// repère le long d'un manche : d = distance depuis la poignée, s = décalage sur le côté
+function along(hx, hy, tx, ty) {
+  const L = Math.hypot(tx - hx, ty - hy), dx = (tx - hx) / L, dy = (ty - hy) / L;
+  return { L, at: (d, s = 0) => [hx + dx * d - dy * s, hy + dy * d + dx * s] };
+}
+function sword(g, hx, hy, tx, ty) {
+  const { L, at } = along(hx, hy, tx, ty);
+  line(g, ...at(4.5), ...at(L - 3.5), '#aab4c2', 1.5);
+  line(g, ...at(L - 4), ...at(L - 1.5), '#aab4c2', 0.9);
+  line(g, ...at(L - 2), tx, ty, '#c9d1dc');
+  line(g, ...at(5, -0.4), ...at(L - 2.5, -0.4), '#f4f8fc');
+  line(g, ...at(3.6, -3.4), ...at(3.6, 3.4), '#e5b33a', 0.75);
+  line(g, ...at(0.5), ...at(3), '#6b4226', 0.7);
+  ellipse(g, ...at(-0.4), 1.2, 1.2, '#ffd84a');
+}
+function axe(g, hx, hy, tx, ty, side) {
+  const { L, at } = along(hx, hy, tx, ty);
+  const P1 = at(L - 1.5, side * 0.5), P2 = at(L - 5.5, side * 0.5), P3 = at(L - 8.5, side * 5.5), P4 = at(L + 1.5, side * 5.5);
+  tri(g, [P1, P2, P3], '#9aa3b2'); tri(g, [P1, P3, P4], '#9aa3b2');
+  ellipse(g, ...at(L - 3.5, side * 5.2), 5, 1.6, '#9aa3b2');
+  line(g, ...at(L - 8, side * 5.6), ...at(L + 1, side * 5.6), '#e4e9f0');
+  line(g, ...at(0), tx, ty, '#7a4e2a', 0.75);
+  ellipse(g, tx, ty, 1, 1, '#ffd84a');
+}
+function brick(g, x0, y0, w, h, stone, mortar, keep) {   // appareil de pierres sur les pixels déjà posés
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+    if (get(g, x, y) !== stone || (keep && !keep(x, y))) continue;
+    const row = Math.floor((y - y0) / 3);
+    if ((y - y0) % 3 === 2 || (x - x0 + (row % 2) * 2) % 5 === 4) set(g, x, y, mortar);
+  }
+}
+const rr = (g, x, y, w, h, c) => rect(g, Math.round(x), Math.round(y), Math.round(w), Math.round(h), c);
+const EMBLEMS = {
+  arena() {
+    const g = grid(28, 28);
+    sword(g, 3, 26, 26, 1);
+    sword(g, 25, 26, 2, 1);
+    ellipse(g, 14, 15, 7.2, 8, '#e5b33a');
+    ellipse(g, 14, 15, 5.8, 6.6, '#b8283a');
+    ellipse(g, 12.5, 12.5, 2.6, 2.6, '#d8404f');
+    rr(g, 13, 9, 2, 13, '#e5b33a'); rr(g, 8, 14, 12, 2, '#e5b33a');
+    ellipse(g, 14, 15, 2.4, 2.4, '#ffd84a'); ellipse(g, 14, 15, 1, 1, '#fff3b0');
+    return g;
+  },
+  dungeons() {
+    const g = grid(28, 28), S = '#7a7392', D = '#4e4862';
+    ellipse(g, 14, 12, 11, 10, S); rr(g, 3, 12, 22, 16, S);
+    brick(g, 0, 0, 28, 28, S, D);
+    ellipse(g, 14, 12.5, 6.4, 6, '#120c1c'); rr(g, 7.6, 12.5, 12.8, 16, '#120c1c');
+    rr(g, 12.5, 1.5, 3, 4, '#a49dbd');                                    // clef de voûte
+    ellipse(g, 14, 17, 4.2, 3.8, '#e8e2d0'); rr(g, 11, 19, 6, 3.5, '#e8e2d0');   // crâne
+    rr(g, 11, 16, 2, 2, '#1b1530'); rr(g, 15, 16, 2, 2, '#1b1530');
+    set(g, 12, 16, '#4cff7a'); set(g, 15, 16, '#4cff7a');
+    set(g, 13, 19, '#1b1530'); set(g, 14, 19, '#1b1530');
+    for (const x of [12, 15]) rr(g, x, 21, 1, 2, '#9a937e');
+    for (const x of [4, 23]) {                                               // torches
+      rr(g, x - 0.5, 15, 2, 5, '#6b4226'); rr(g, x - 1, 14, 3, 1.5, '#3a2a1a');
+      ellipse(g, x + 0.5, 11.5, 1.8, 2.6, '#ff8a2a'); ellipse(g, x + 0.5, 12.2, 0.9, 1.4, '#ffe08a');
+    }
+    return g;
+  },
+  tower() {
+    const g = grid(28, 28), S = '#8a84a0', D = '#5d5776';
+    rr(g, 9, 9, 10, 17, S); rr(g, 7, 23, 14, 5, S); rr(g, 8, 6, 12, 3, S);
+    for (const x of [10, 11, 16, 17]) set(g, x, 6, null);
+    brick(g, 7, 7, 14, 21, S, D);
+    rr(g, 12, 11, 4, 5, '#c48bff'); set(g, 13, 10, '#c48bff'); set(g, 14, 10, '#c48bff'); rr(g, 13, 12, 2, 3, '#f3e0ff');
+    rr(g, 12, 21, 4, 7, '#1b1530'); set(g, 13, 20, '#1b1530'); set(g, 14, 20, '#1b1530');
+    tri(g, [[14, -0.5], [10.5, 2.5], [17.5, 2.5]], '#b05cff'); tri(g, [[10.5, 2.5], [17.5, 2.5], [14, 5.2]], '#7a3ad0');   // cristal
+    rr(g, 13, 1, 1, 2, '#f3e0ff');
+    for (const [x, y] of [[4, 4], [23, 3], [24, 11], [3, 13]]) { set(g, x, y, '#f3e0ff'); set(g, x - 1, y, '#c48bff'); set(g, x + 1, y, '#c48bff'); set(g, x, y - 1, '#c48bff'); set(g, x, y + 1, '#c48bff'); }
+    return g;
+  },
+  war() {
+    const g = grid(32, 30);
+    // deux hampes croisées, chaque drapeau tombe vers l'extérieur
+    const flag = (hx, hy, tx, ty, side, col) => {
+      const { L, at } = along(hx, hy, tx, ty);
+      const o = (p, dx, dy = 0) => [p[0] + side * dx, p[1] + dy];
+      const A = at(L - 1.5), B = at(L - 10), A2 = o(A, 10, 2.5), B2 = o(B, 10, 3.5);
+      tri(g, [A, A2, B2], col); tri(g, [A, B2, B], col);
+      line(g, ...o(A, 1, 0.7), ...o(A2, -0.5, 0), shade(col, 0.35));           // ourlet clair en haut
+      line(g, ...o(B, 1, 1.2), ...o(B2, -0.5, -0.6), shade(col, -0.3));          // pli sombre en bas
+      line(g, ...o(B, 0.5, 2), ...o(B2, 0, 1), '#ffd84a');                       // frange dorée
+      ellipse(g, ...o(at(L - 5.8), 5, 1.4), 1.8, 1.8, '#ffd84a');
+      line(g, hx, hy, tx, ty, '#7a4e2a', 0.75);
+      ellipse(g, tx, ty, 1.2, 1.2, '#ffd84a');
+    };
+    flag(8, 29, 21, 3, 1, '#e8364a');
+    flag(24, 29, 11, 3, -1, '#3d6bff');
+    ellipse(g, 16, 18, 6.2, 6.2, '#aeb6c4'); rr(g, 10, 18, 12, 7, '#aeb6c4');   // casque
+    rr(g, 11, 18, 10, 2, '#1b1530');
+    rr(g, 15, 18, 2, 6, '#8a93a3');
+    for (const [x, y] of [[12, 21], [12, 23], [19, 21], [19, 23]]) set(g, x, y, '#1b1530');
+    rr(g, 10, 25, 12, 1, '#e5b33a'); rr(g, 15, 12, 2, 5, '#e5b33a');
+    return g;
+  },
+  bets() {
+    const g = grid(30, 28), G = '#2ecc71', Gd = '#1e8449', Gl = '#a8f0c0', W = '#e8fff0';
+    const bill = (x, y) => {
+      rr(g, x, y, 22, 11, Gd); rr(g, x + 1, y + 1, 20, 9, G);
+      ellipse(g, x + 11, y + 5.5, 2.6, 2.6, W); ellipse(g, x + 11, y + 5.5, 1.4, 1.4, G);
+      set(g, x + 3, y + 3, Gl); set(g, x + 18, y + 7, Gl);
+    };
+    bill(7, 1); bill(5, 5);
+    bill(3, 10);                                                             // liasse de devant
+    for (let i = 0; i < 6; i++) rr(g, 3, 21 + i, 22, 1, i % 2 ? Gl : Gd);   // épaisseur des billets
+    rr(g, 12, 10, 5, 17, '#ffd84a'); rr(g, 12, 10, 1, 17, '#c98a1a'); rr(g, 16, 10, 1, 17, '#c98a1a');   // bande dorée
+    rr(g, 13, 14, 3, 3, '#fff3b0');
+    for (const [x, y] of [[26, 3], [2, 6], [27, 17]]) { set(g, x, y, '#fff3b0'); set(g, x - 1, y, '#ffd84a'); set(g, x + 1, y, '#ffd84a'); set(g, x, y - 1, '#ffd84a'); set(g, x, y + 1, '#ffd84a'); }
+    return g;
+  },
+};
+export function modeEmblem(id) {
+  return cached('emblem:' + id, () => renderHi(EMBLEMS[id]()));
 }
 
 // =====================================================================

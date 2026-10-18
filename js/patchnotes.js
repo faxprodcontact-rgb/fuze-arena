@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1604', date: '18/10/2026', time: '16h04', title: 'Nouvel onglet Combats',
+    sections: [
+      { title: 'Combats', items: [
+        'Choix du combattant en grandes cases, avec ton perso actif mis en avant. Les points rouges ne sont plus coupés.',
+        'Missions en 3 cartes, avec une icône, une barre de progression et le bonus des 3 missions.',
+        'Les explications sont cachées derrière un petit « + » jaune en bas à droite : touche-le pour les lire.',
+        'Nouvelles cartes pour l’Arène, les Donjons, la Tour, le Raid, la Guerre et les Paris, avec de nouveaux dessins pour chaque mode.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1552', date: '18/10/2026', time: '15h52', title: 'Nouvel onglet Héros',
     sections: [
       { title: 'Héros', items: [

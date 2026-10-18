@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018155216';
-import * as E from './engine.js?v=20261018155216';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018155216';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018155216';
-import { hashStr, makeRng } from './rng.js?v=20261018155216';
-import { APP_VERSION } from './version.js?v=20261018155216';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018155216';
-import * as NET from './net.js?v=20261018155216';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018155216';
+} from './data.js?v=20261018160405';
+import * as E from './engine.js?v=20261018160405';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018160405';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem } from './sprites.js?v=20261018160405';
+import { hashStr, makeRng } from './rng.js?v=20261018160405';
+import { APP_VERSION } from './version.js?v=20261018160405';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018160405';
+import * as NET from './net.js?v=20261018160405';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018160405';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -91,6 +91,7 @@ function hydrate(root = document) {
   root.querySelectorAll('canvas[data-monster]').forEach(c => paint(c, monsterCanvas(c.dataset.monster), { scale: 3 }));
   root.querySelectorAll('canvas[data-clat]').forEach(c => paint(c, clatCanvas(), { scale: 3 }));
   root.querySelectorAll('canvas[data-key]').forEach(c => paint(c, keyCanvas(), { scale: 3 }));
+  root.querySelectorAll('canvas[data-emblem]').forEach(c => paint(c, modeEmblem(c.dataset.emblem), { scale: 4 }));
   root.querySelectorAll('canvas[data-spell]').forEach(c => paint(c, spellIcon(c.dataset.spell), { scale: 3 }));
   root.querySelectorAll('canvas[data-chest]').forEach(c => paint(c, chestCanvas(c.dataset.chest, c.dataset.open === '1'), { scale: 6 }));
   root.querySelectorAll('canvas[data-hero]').forEach(c => stopPreviews.push(idlePreview(c, c.dataset.hero, c.dataset.pet || null, c.dataset.dye || null)));
@@ -1146,44 +1147,77 @@ function claimableMissions() {
   return list.filter(m => !acc.missions.claimed[m.id] && E.missionProgress(acc, m) >= m.n).length;
 }
 
+// petit « + » jaune en bas à droite d'une carte : montre / cache le texte d'explication
+const infoOpen = new Set();
+const moreBtn = (id) => `<button class="more-btn" data-act="info" data-id="${id}" aria-label="Plus d’infos">${infoOpen.has(id) ? '−' : '+'}</button>`;
+const infoCls = (id) => `info-card${infoOpen.has(id) ? ' open' : ''}`;
+
+// icône de chaque mission : emblème du mode, sprite ou petit symbole
+const MISSION_ICO = {
+  arena_win: 'e:arena', arena_fight: 'e:arena', rematch: 'e:arena', rematch_win: 'e:arena', revenge: 'e:arena', fight: 'e:arena', win: 'e:arena', manual_win: 'e:arena',
+  dungeon_win: 'e:dungeons', dungeon: 'e:dungeons', dungeon_kinds: 'e:dungeons', tower: 'e:tower', tower_try: 'e:tower',
+  raid: 'm:melenchon', raid_dmg: 'm:melenchon', war: 'e:war', war_win: 'e:war', bet: 'e:bets',
+  chest: 'c', key_use: 'k', sell: 'f',
+  fuse: '✦', equip: '🛡', stat: '✚', level: '⬆', spell: '✧', crit: '💥', dodge: '💨', pet: '🐾', chat: '💬', share: '💬', train_rec: '🏆',
+};
+function missionIco(ev) {
+  const k = MISSION_ICO[ev] || '★';
+  if (k.startsWith('e:')) return `<canvas class="px" data-emblem="${k.slice(2)}"></canvas>`;
+  if (k.startsWith('m:')) return `<canvas class="px" data-monster="${k.slice(2)}"></canvas>`;
+  if (k === 'c') return '<canvas class="px" data-chest="normal"></canvas>';
+  if (k === 'k') return '<canvas class="px" data-key></canvas>';
+  if (k === 'f') return '<canvas class="px" data-clat></canvas>';
+  return `<i>${k}</i>`;
+}
+
 function missionsCard() {
   const list = E.ensureMissions(acc);
   const M = acc.missions;
+  const nClaimed = list.filter(m => M.claimed[m.id]).length;
   return `
-    <section class="card missions">
-      <h2>Missions</h2>
-      ${list.map(m => {
-        const p = E.missionProgress(acc, m);
-        const done = p >= m.n, claimed = M.claimed[m.id];
-        return `
-        <div class="mission ${claimed ? 'claimed' : ''}">
-          <div class="m-body">
-            <div>${esc(m.text)}</div>
-            <div class="mbar"><div style="width:${(p / m.n) * 100}%"></div></div>
-          </div>
-          ${claimed
-            ? '<span class="pill green">✓</span>'
-            : `<button class="btn small ${done ? 'green' : ''}" data-act="claimMission" data-id="${m.id}" ${done ? '' : 'disabled'}>${p}/${m.n} · +${m.reward}<canvas class="px" data-clat></canvas></button>`}
-        </div>`;
-      }).join('')}
-      <p class="hint" style="margin:10px 0 0">Les 3 missions faites = <b>+${MISSIONS_BONUS}</b> Flouze en bonus. 3 nouvelles missions toutes les 12 h (minuit et midi) : prochaines dans <span data-timer="half">${fmt(E.msToNextHalf())}</span>.</p>
+    <section class="card hx hx-green cbt-missions ${infoCls('missions')}" data-info="missions">
+      <div class="hx-head"><span class="hx-ico">🎯</span><div><h2>Missions</h2><small data-timer="half">Nouvelles missions dans ${fmt(E.msToNextHalf())}</small></div></div>
+      <div class="mgrid">
+        ${list.map(m => {
+          const p = Math.min(m.n, E.missionProgress(acc, m));
+          const done = p >= m.n, claimed = M.claimed[m.id];
+          return `
+          <div class="mq ${claimed ? 'claimed' : done ? 'ready' : ''}">
+            <div class="mq-ico">${missionIco(m.ev)}</div>
+            <div class="mq-txt">${esc(m.text)}</div>
+            <div class="mq-bar"><i style="width:${(p / m.n) * 100}%"></i></div>
+            ${claimed
+              ? '<div class="mq-done">✓ Fait</div>'
+              : done
+                ? `<button class="btn small green mq-btn" data-act="claimMission" data-id="${m.id}">+${m.reward}<canvas class="px" data-clat></canvas></button>`
+                : `<div class="mq-prog">${p.toLocaleString('fr-FR')}/${m.n.toLocaleString('fr-FR')} · +${m.reward}<canvas class="px" data-clat></canvas></div>`}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mq-bonus ${nClaimed >= list.length ? 'got' : ''}">
+        <span class="pips">${list.map((m, i) => `<i class="${i < nClaimed ? 'on' : ''}"></i>`).join('')}</span>
+        <span>Bonus des 3 missions : <b>+${MISSIONS_BONUS}</b></span><canvas class="px" data-clat></canvas>
+      </div>
+      <p class="more-txt">Fais les 3 missions pour gagner <b>+${MISSIONS_BONUS}</b> Flouze en bonus. 3 nouvelles missions, tirées au hasard, arrivent toutes les 12 h (minuit et midi).</p>
+      ${moreBtn('missions')}
     </section>`;
 }
 
 function charsCard() {
   return `
-    <section class="card chars">
-      <div class="row"><h2 style="margin:0">Choisis ton combattant</h2><span class="spacer"></span><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
-      <div class="char-row">
+    <section class="card hx hx-gold cbt-chars ${infoCls('chars')}" data-info="chars">
+      <div class="hx-head"><span class="hx-ico">⚔</span><div><h2>Ton combattant</h2><small>${CLASSES[hero.classId].name} Nv.${hero.level} part au combat</small></div><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
+      <div class="fighters">
         ${acc.heroes.map((h, i) => `
-          <button class="char ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
+          <button class="fighter cls-${h.classId} ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
             ${E.openableChests(h) ? '<span class="badge pip" title="Des coffres à ouvrir"></span>' : ''}
-            <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
+            <span class="f-stage"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
             <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
           </button>`).join('')}
-        ${acc.heroes.length < E.MAX_HEROES ? '<button class="char add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
+        ${acc.heroes.length < E.MAX_HEROES ? '<button class="fighter add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
       </div>
-      <p class="hint" style="margin:10px 0 0">C’est ton perso <b>actif</b> qui part se battre (arène, donjons, tour, raid, guerre). Chaque perso a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
+      <p class="more-txt">C’est ton perso <b>actif</b> qui part se battre (arène, donjons, tour, raid, guerre). Chaque perso a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
+      ${moreBtn('chars')}
     </section>`;
 }
 
@@ -1195,23 +1229,22 @@ function viewCombat() {
   const runs = E.totalRunsLeft(hero);
   const duels = bets.challenges.filter(c => c.status === 'pending' && c.to_id === myId()).length;
   const tiles = [
-    { id: 'fights', name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, icon: 'loic_weapon', badge: fightsLeft },
-    { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, monster: 'skeleton', badge: runs },
-    { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1} à battre`, monster: 'golem', badge: 0 },
-    { id: 'raid', name: `Raid : ${RAID.boss.name}`, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft },
-    { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', icon: 'guillaume_weapon', badge: warLeft },
-    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', clat: true, badge: duels },
+    { id: 'fights', name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, tag: 'Affronte tes potes', emblem: 'arena', badge: fightsLeft, wide: true, c: '#ff5d6c' },
+    { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, emblem: 'dungeons', badge: runs, c: '#4cd964' },
+    { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
+    { id: 'raid', name: RAID.boss.name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft, c: '#ff8a3d' },
+    { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
+    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd84a' },
   ];
   return charsCard() + missionsCard() + `
-    <section class="card">
-      <div class="tiles">
-        ${tiles.map(t => `
-          <button class="tile" data-act="tab" data-id="${t.id}">
-            <canvas class="px" ${t.monster ? `data-monster="${t.monster}"` : t.clat ? 'data-clat' : `data-icon="${t.icon}"`}></canvas>
-            <b>${t.name}</b><small>${t.sub}</small>
-            ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
-          </button>`).join('')}
-      </div>
+    <section class="modes">
+      ${tiles.map(t => `
+        <button class="mode ${t.wide ? 'wide' : ''}" data-act="tab" data-id="${t.id}" style="--tc:${t.c}">
+          <span class="m-art"><canvas class="px" ${t.monster ? `data-monster="${t.monster}"` : `data-emblem="${t.emblem}"`}></canvas></span>
+          <span class="m-txt"><b>${t.name}</b><small>${t.sub}</small>${t.wide ? `<em>${t.tag}</em>` : ''}</span>
+          ${t.wide ? '<span class="m-go">›</span>' : ''}
+          ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
+        </button>`).join('')}
     </section>`;
 }
 
@@ -2134,6 +2167,12 @@ const ACTIONS = {
     if (b) b.textContent = on ? '🔊' : '🔇';
   },
   sendChat: () => sendChat(),
+  info: (d, el) => {
+    const card = el.closest('[data-info]');
+    const on = card.classList.toggle('open');
+    if (on) infoOpen.add(d.id); else infoOpen.delete(d.id);
+    el.textContent = on ? '−' : '+';
+  },
   switchHero: (d) => {
     const i = +d.i;
     if (i === acc.active) return;
