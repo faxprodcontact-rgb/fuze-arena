@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018141408';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018141408';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018141408';
+import { CLASSES } from './data.js?v=20261018142012';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018142012';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018142012';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -48,90 +48,125 @@ const THEMES = {
     r1: '#1a1030', r2: '#120a24', lava: '#a64dff', grass: ['#2a1a3a', '#3d2650'], ground: ['#24183a', '#1f1532', '#18102a', '#1c132e'] },
 };
 
-const BG = {};
-function background(themeId = 'arena') {
-  if (BG[themeId]) return BG[themeId];
+// Le décor est découpé en 3 plans (lointain, milieu, sol) pour donner de la profondeur
+const LAYERS = {};
+function sceneLayers(themeId = 'arena') {
+  if (LAYERS[themeId]) return LAYERS[themeId];
   const T = THEMES[themeId] || THEMES.arena;
   const w = 160, h = 90;
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const x = c.getContext('2d');
-  const disc = (cx, cy, r, col) => { x.fillStyle = col; for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) if (xx * xx + yy * yy <= r * r) x.fillRect(cx + xx, cy + yy, 1, 1); };
-  T.sky.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * 7, w, 7); });
-  if (T.sun) { disc(118, 40, 8, T.sun[0]); disc(116, 38, 5, T.sun[1]); }
-  if (T.cloud) {
-    x.fillStyle = T.cloud;
-    [[14, 12, 22], [60, 6, 16], [96, 18, 20], [138, 10, 14]].forEach(([cx, cy, cw]) => {
-      x.fillRect(cx, cy, cw, 2); x.fillRect(cx + 3, cy - 2, cw - 8, 2); x.fillRect(cx + 6, cy - 3, 5, 1);
-    });
-  }
-  const ridge = (base, a1, f1, a2, f2, ph, col) => {
-    x.fillStyle = col;
+  const mk = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
+  const [far, xf] = mk(), [mid, xm] = mk(), [gnd, xg] = mk();
+  const disc = (x, cx, cy, r, col) => { x.fillStyle = col; for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) if (xx * xx + yy * yy <= r * r) x.fillRect(cx + xx, cy + yy, 1, 1); };
+  // --- plan lointain : soleil / lune, nuages, montagnes au loin
+  if (T.sun) { disc(xf, 118, 40, 8, T.sun[0]); disc(xf, 116, 38, 5, T.sun[1]); }
+  const ridge = (x, base, a1, f1, a2, f2, ph, col, light) => {
     for (let i = 0; i < w; i++) {
       const top = Math.round(base + a1 * Math.sin(i * f1 + ph) + a2 * Math.sin(i * f2 + ph * 2));
-      x.fillRect(i, top, 1, h - top);
+      x.fillStyle = col; x.fillRect(i, top, 1, h - top);
+      if (light) { x.fillStyle = light; x.fillRect(i, top, 1, 1); }   // arête éclairée
     }
   };
-  ridge(47, 6, 0.07, 3, 0.19, 0, T.r1);
-  ridge(55, 4, 0.05, 2, 0.23, 1.3, T.r2);
+  ridge(xf, 44, 7, 0.06, 3, 0.17, 2.1, shade(T.r1, 0.18), null);       // montagnes très lointaines (plus claires = brume)
+  ridge(xf, 47, 6, 0.07, 3, 0.19, 0, T.r1, shade(T.r1, 0.25));
+  // --- plan du milieu
+  ridge(xm, 55, 4, 0.05, 2, 0.23, 1.3, T.r2, shade(T.r2, 0.2));
   if (T.trees) {
     for (let i = 0; i < w; i += 11) {
       const th = 14 + ((i * 7) % 9), tx = i + ((i * 3) % 5);
-      x.fillStyle = T.trees[(i / 11) % 2 | 0];
-      for (let j = 0; j < th; j++) { const half = Math.floor((j * 5) / th) + 1; x.fillRect(tx - half, 68 - th + j, half * 2 + 1, 1); }
+      const col = T.trees[(i / 11) % 2 | 0];
+      for (let j = 0; j < th; j++) {
+        const half = Math.floor((j * 5) / th) + 1;
+        xm.fillStyle = col; xm.fillRect(tx - half, 68 - th + j, half * 2 + 1, 1);
+        xm.fillStyle = shade(col, 0.22); xm.fillRect(tx - half, 68 - th + j, 1, 1);   // côté éclairé
+      }
+      xm.fillStyle = '#3b2a20'; xm.fillRect(tx, 68, 1, 2);
     }
   }
   if (T.stalactites) {
-    x.fillStyle = T.stalactites;
-    for (let i = 0; i < w; i += 9) { const len = 6 + ((i * 13) % 14); for (let j = 0; j < len; j++) { const half = Math.max(0, 2 - Math.floor((j * 3) / len)); x.fillRect(i - half, j, half * 2 + 1, 1); } }
+    for (let i = 0; i < w; i += 9) {
+      const len = 6 + ((i * 13) % 14);
+      for (let j = 0; j < len; j++) { const half = Math.max(0, 2 - Math.floor((j * 3) / len)); xm.fillStyle = T.stalactites; xm.fillRect(i - half, j, half * 2 + 1, 1); xm.fillStyle = shade(T.stalactites, 0.25); xm.fillRect(i - half, j, 1, 1); }
+    }
   }
   if (T.crystals) {
-    x.fillStyle = T.crystals;
-    [[20, 62], [70, 64], [128, 61], [150, 65]].forEach(([cx, cy]) => { x.fillRect(cx, cy - 4, 2, 6); x.fillRect(cx - 2, cy - 1, 2, 3); x.fillRect(cx + 2, cy - 2, 2, 4); });
+    [[20, 62], [70, 64], [128, 61], [150, 65]].forEach(([cx, cy]) => {
+      xm.fillStyle = T.crystals; xm.fillRect(cx, cy - 4, 2, 6); xm.fillRect(cx - 2, cy - 1, 2, 3); xm.fillRect(cx + 2, cy - 2, 2, 4);
+      xm.fillStyle = '#ffffff'; xm.fillRect(cx, cy - 4, 1, 2);
+    });
   }
   if (T.beams) {
-    x.fillStyle = T.beams;
-    [[24], [80], [136]].forEach(([bx]) => { x.fillRect(bx, 30, 3, 38); x.fillRect(bx + 22, 30, 3, 38); x.fillRect(bx - 2, 28, 29, 3); });
+    xm.fillStyle = T.beams;
+    [[24], [80], [136]].forEach(([bx]) => { xm.fillRect(bx, 30, 3, 38); xm.fillRect(bx + 22, 30, 3, 38); xm.fillRect(bx - 2, 28, 29, 3); });
+    xm.fillStyle = shade(T.beams, 0.3); [[24], [80], [136]].forEach(([bx]) => { xm.fillRect(bx, 30, 1, 38); xm.fillRect(bx + 22, 30, 1, 38); xm.fillRect(bx - 2, 28, 29, 1); });
   }
   if (T.walls) {
     const [wl, wh, wd] = T.walls;
-    x.fillStyle = wl; x.fillRect(0, 60, w, 8);
-    x.fillStyle = wh; x.fillRect(0, 60, w, 1);
-    x.fillStyle = wd;
-    for (let i = 0; i < w; i += 8) { x.fillRect(i, 57, 5, 3); x.fillRect(i + 4, 63, 1, 5); }
-    for (let i = 0; i < w; i += 8) { x.fillStyle = wh; x.fillRect(i, 57, 5, 1); }
+    xm.fillStyle = wl; xm.fillRect(0, 60, w, 8);
+    xm.fillStyle = wh; xm.fillRect(0, 60, w, 1);
+    xm.fillStyle = wd;
+    for (let i = 0; i < w; i += 8) { xm.fillRect(i, 57, 5, 3); xm.fillRect(i + 4, 63, 1, 5); }
+    for (let i = 0; i < w; i += 8) { xm.fillStyle = wh; xm.fillRect(i, 57, 5, 1); }
+    xm.fillStyle = shade(wl, -0.25); for (let i = 0; i < w; i += 4) xm.fillRect(i, 64 + (i % 8 ? 0 : 2), 3, 1);   // briques
   }
   if (T.banners) {
     [[18, '#c0392b'], [52, '#2e5aa8'], [108, '#2e5aa8'], [142, '#c0392b']].forEach(([bx, col]) => {
-      x.fillStyle = '#3a3344'; x.fillRect(bx + 2, 50, 1, 8);
-      x.fillStyle = col; x.fillRect(bx, 52, 5, 9); x.fillRect(bx + 1, 61, 3, 1);
-      x.fillStyle = '#e5b33a'; x.fillRect(bx + 2, 55, 1, 2);
+      xm.fillStyle = '#3a3344'; xm.fillRect(bx + 2, 50, 1, 8);
+      xm.fillStyle = col; xm.fillRect(bx, 52, 5, 9); xm.fillRect(bx + 1, 61, 3, 1);
+      xm.fillStyle = shade(col, 0.3); xm.fillRect(bx, 52, 1, 9);
+      xm.fillStyle = '#e5b33a'; xm.fillRect(bx + 2, 55, 1, 2);
     });
   }
   if (T.crowd) {
-    x.fillStyle = T.crowd;
-    for (let i = 0; i < w; i += 5) { const hgt = 3 + ((i * 7) % 3); x.fillRect(i, 68 - hgt, 4, hgt); x.fillRect(i + 1, 68 - hgt - 2, 2, 2); }
+    for (let i = 0; i < w; i += 5) { const hgt = 3 + ((i * 7) % 3); xm.fillStyle = T.crowd; xm.fillRect(i, 68 - hgt, 4, hgt); xm.fillRect(i + 1, 68 - hgt - 2, 2, 2); xm.fillStyle = shade(T.crowd, 0.3); xm.fillRect(i + 1, 68 - hgt - 2, 1, 1); }
   }
   if (T.tombs) {
-    x.fillStyle = T.tombs;
-    [[16, 4], [44, 3], [100, 4], [146, 3]].forEach(([tx, tw]) => { x.fillRect(tx, 61, tw * 2, 7); x.fillRect(tx + 1, 60, tw * 2 - 2, 1); x.fillStyle = '#3a3548'; x.fillRect(tx + tw - 1, 62, 2, 4); x.fillRect(tx + tw - 2, 63, 4, 1); x.fillStyle = T.tombs; });
+    [[16, 4], [44, 3], [100, 4], [146, 3]].forEach(([tx, tw]) => {
+      xm.fillStyle = T.tombs; xm.fillRect(tx, 61, tw * 2, 7); xm.fillRect(tx + 1, 60, tw * 2 - 2, 1);
+      xm.fillStyle = shade(T.tombs, 0.25); xm.fillRect(tx, 61, 1, 7);
+      xm.fillStyle = '#3a3548'; xm.fillRect(tx + tw - 1, 62, 2, 4); xm.fillRect(tx + tw - 2, 63, 4, 1);
+    });
   }
-  // sol
+  // --- sol
   const [g1, g2] = T.grass, [d1, d2, d3, d4] = T.ground;
-  x.fillStyle = g1; x.fillRect(0, 68, w, 3);
-  x.fillStyle = g2; x.fillRect(0, 68, w, 1);
-  x.fillStyle = d1; x.fillRect(0, 71, w, h - 71);
-  for (let yy = 71; yy < h; yy += 4) for (let xx = (yy / 4) % 2 ? 0 : 4; xx < w; xx += 8) { x.fillStyle = d2; x.fillRect(xx, yy, 4, 4); }
-  x.fillStyle = d3;
-  for (let i = 0; i < 40; i++) { const px = (i * 37) % w, py = 72 + ((i * 53) % 17); x.fillRect(px, py, 1, 1); }
-  x.fillStyle = d4; x.fillRect(0, 71, w, 1);
+  xg.fillStyle = g1; xg.fillRect(0, 68, w, 3);
+  xg.fillStyle = g2; xg.fillRect(0, 68, w, 1);
+  for (let i = 0; i < w; i += 3) { xg.fillStyle = (i * 7) % 2 ? g2 : g1; xg.fillRect(i, 67, 1, 1); }   // brins d'herbe
+  xg.fillStyle = d1; xg.fillRect(0, 71, w, h - 71);
+  for (let yy = 71; yy < h; yy += 4) for (let xx = (yy / 4) % 2 ? 0 : 4; xx < w; xx += 8) { xg.fillStyle = d2; xg.fillRect(xx, yy, 4, 4); }
+  xg.fillStyle = d3;
+  for (let i = 0; i < 40; i++) { const px = (i * 37) % w, py = 72 + ((i * 53) % 17); xg.fillRect(px, py, 1, 1); }
+  xg.fillStyle = shade(d1, 0.18);
+  for (let i = 0; i < 18; i++) { const px = (i * 61) % w, py = 73 + ((i * 29) % 15); xg.fillRect(px, py, 2, 1); }   // cailloux éclairés
+  xg.fillStyle = d4; xg.fillRect(0, 71, w, 1);
   if (T.lava) {
-    x.fillStyle = T.lava;
-    [[10, 78, 14], [52, 84, 10], [96, 76, 18], [140, 86, 12]].forEach(([lx, ly, lw]) => { x.fillRect(lx, ly, lw, 1); x.fillRect(lx + 3, ly + 1, lw - 6, 1); });
+    xg.fillStyle = T.lava;
+    [[10, 78, 14], [52, 84, 10], [96, 76, 18], [140, 86, 12]].forEach(([lx, ly, lw2]) => { xg.fillRect(lx, ly, lw2, 1); xg.fillRect(lx + 3, ly + 1, lw2 - 6, 1); });
   }
+  LAYERS[themeId] = { far, mid, gnd, T };
+  return LAYERS[themeId];
+}
+
+// Décor d'un seul tenant (utilisé par l'animation de guerre)
+const BG = {};
+function background(themeId = 'arena') {
+  if (BG[themeId]) return BG[themeId];
+  const L = sceneLayers(themeId), T = L.T;
+  const c = document.createElement('canvas');
+  c.width = 160; c.height = 90;
+  const x = c.getContext('2d');
+  T.sky.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * 7, 160, 7); });
+  x.drawImage(L.far, 0, 0); x.drawImage(L.mid, 0, 0); x.drawImage(L.gnd, 0, 0);
   BG[themeId] = c;
   return c;
 }
+
+// Ambiance animée de chaque décor
+const AMBIENT = {
+  arena: { kind: 'dust', color: '#ffe0b0', n: 10 }, cave: { kind: 'dust', color: '#9fffb0', n: 14 }, forest: { kind: 'firefly', color: '#e8ff7a', n: 14 },
+  crypt: { kind: 'wisp', color: '#c9c4ff', n: 10 }, swamp: { kind: 'firefly', color: '#b8ff7a', n: 16 }, mine: { kind: 'dust', color: '#ffd9a0', n: 14 },
+  volcano: { kind: 'ember', color: '#ffb347', n: 26 }, glacier: { kind: 'snow', color: '#ffffff', n: 40 }, castle: { kind: 'wisp', color: '#b9a8ff', n: 10 },
+  training: { kind: 'leaf', color: '#7fc96a', n: 8 }, meeting: { kind: 'confetti', color: '#ffd84a', n: 18 }, abyss: { kind: 'ember', color: '#c38bff', n: 26 },
+};
 
 // ------------------------------ Combat ------------------------------
 /**
@@ -579,6 +614,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       if (t.life <= 0) texts.splice(j, 1);
     }
     if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
+    updateAmb(s);
     shake = Math.max(0, shake - s * 30);
     for (const f of F) {
       f.hpShown += (f.hp - f.hpShown) * Math.min(1, s * 12);
@@ -915,26 +951,122 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     }
   }
 
-  function drawBackground() {
-    const T = THEMES[theme] || THEMES.arena;
-    const bg = background(theme);
-    const sb = (W + 12) / 160;              // le décor fait toute la largeur
-    const top = GROUND - 75 * sb;           // la ligne du sol tombe sous les pieds
-    ctx.fillStyle = T.sky[0];
-    ctx.fillRect(-10, -10, W + 20, top + 12);
-    // quelques étoiles au-dessus du décor (écran en hauteur)
-    if (top > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      for (let j = 0; j < 30; j++) ctx.fillRect((j * 97) % W, (j * 53) % Math.max(1, top), 2, 2);
+  // ---------- décor en profondeur + ambiance ----------
+  const AMB = AMBIENT[theme] || null;
+  const amb = [];
+  const spawnAmb = (fresh) => {
+    const k = AMB.kind;
+    const p = { x: Math.random() * W, y: Math.random() * H, ph: Math.random() * 6.3, front: Math.random() < 0.35, s: 0.6 + Math.random() * 0.8 };
+    if (!fresh) {
+      if (k === 'snow' || k === 'leaf' || k === 'confetti') p.y = -6;
+      else if (k === 'ember' || k === 'wisp') p.y = GROUND + Math.random() * 20;
     }
-    ctx.drawImage(bg, -6, top, W + 12, 90 * sb);
+    p.col = k === 'confetti' ? ['#ff5d6c', '#ffd84a', '#3d9bff', '#4cd964', '#ffffff'][Math.floor(Math.random() * 5)] : AMB.color;
+    return p;
+  };
+  if (AMB) for (let j = 0; j < AMB.n; j++) amb.push(spawnAmb(true));
+  function updateAmb(s) {
+    if (!AMB) return;
+    const k = AMB.kind;
+    for (let j = 0; j < amb.length; j++) {
+      const p = amb[j];
+      p.ph += s;
+      if (k === 'snow') { p.y += 22 * p.s * s; p.x += Math.sin(p.ph * 1.3) * 10 * s; }
+      else if (k === 'leaf' || k === 'confetti') { p.y += 16 * p.s * s; p.x += (Math.sin(p.ph * 2) * 18 + 6) * s; }
+      else if (k === 'ember') { p.y -= 26 * p.s * s; p.x += Math.sin(p.ph * 3) * 8 * s; }
+      else if (k === 'wisp') { p.y -= 6 * p.s * s; p.x += Math.sin(p.ph) * 5 * s; }
+      else { p.x += Math.sin(p.ph * 0.7) * 6 * s; p.y += Math.cos(p.ph * 0.5) * 4 * s; }
+      if (p.y > H + 8 || p.y < -10 || p.x < -10 || p.x > W + 10) amb[j] = spawnAmb(false);
+    }
+  }
+  function drawAmb(front) {
+    if (!AMB) return;
+    const k = AMB.kind;
+    for (const p of amb) {
+      if (p.front !== front) continue;
+      const tw = 0.55 + 0.45 * Math.sin(p.ph * 3);
+      if (k === 'firefly' || k === 'wisp' || k === 'ember') {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = (k === 'firefly' ? tw : 0.8) * 0.35; ctx.fillStyle = p.col;
+        ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+        ctx.globalAlpha = k === 'firefly' ? tw : k === 'ember' ? Math.max(0, Math.min(1, (p.y - 10) / 80)) : 0.7;
+        ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+        ctx.globalCompositeOperation = 'source-over';
+      } else if (k === 'leaf') {
+        ctx.globalAlpha = 0.9; ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, 3, 2); ctx.fillStyle = shade(p.col, -0.3); ctx.fillRect(p.x + (Math.sin(p.ph * 4) > 0 ? 2 : 0), p.y + 1, 1, 1);
+      } else if (k === 'confetti') {
+        ctx.globalAlpha = 0.9; ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, Math.abs(Math.sin(p.ph * 5)) * 3 + 1, 3);
+      } else {
+        ctx.globalAlpha = (k === 'snow' ? 0.85 : 0.35 * tw); ctx.fillStyle = p.col;
+        const sz = k === 'snow' ? (p.front ? 3 : 2) : 2;
+        ctx.fillRect(p.x, p.y, sz, sz);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawBackground() {
+    const L = sceneLayers(theme), T = L.T;
+    const sb = (W + 24) / 160;              // le décor déborde un peu pour pouvoir bouger
+    const top = GROUND - 75 * sb;           // la ligne du sol tombe sous les pieds
+    const sway = Math.sin(time * 0.22) * 5; // léger mouvement de caméra : les plans bougent à des vitesses différentes
+    const hz = top + 62 * sb;
+    // ciel en dégradé doux
+    const sg = ctx.createLinearGradient(0, top, 0, hz);
+    T.sky.forEach((c, i) => sg.addColorStop(i / (T.sky.length - 1), c));
+    ctx.fillStyle = sg; ctx.fillRect(-10, -10, W + 20, hz + 12);
+    // étoiles qui scintillent (ciels sombres)
+    const dark = parseInt(T.sky[0].slice(1, 3), 16) + parseInt(T.sky[0].slice(3, 5), 16) + parseInt(T.sky[0].slice(5, 7), 16) < 200;
+    if (dark) {
+      ctx.fillStyle = '#ffffff';
+      for (let j = 0; j < 44; j++) {
+        const sy = (j * 53) % Math.max(20, top + 40 * sb);
+        ctx.globalAlpha = 0.25 + 0.5 * Math.abs(Math.sin(time * 1.3 + j * 1.7));
+        ctx.fillRect((j * 97 + sway * 0.1) % W, sy, j % 5 ? 1.5 : 2.5, j % 5 ? 1.5 : 2.5);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // halo du soleil / de la lune
+    if (T.sun) {
+      const sx = -12 + sway * 0.15 + 117 * sb, sy = top + 39 * sb, r = 46 * sb;
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+      g.addColorStop(0, T.sun[0]); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.35; ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.drawImage(L.far, -12 + sway * 0.25, top, W + 24, 90 * sb);
+    // nuages qui dérivent
+    if (T.cloud) {
+      ctx.fillStyle = T.cloud;
+      for (let j = 0; j < 4; j++) {
+        const cw = (14 + j * 5) * sb, cx = ((j * 137 + time * (5 + j * 2)) % (W + cw * 2)) - cw, cy = top + (6 + j * 6) * sb;
+        ctx.globalAlpha = 0.85 - j * 0.12;
+        ctx.fillRect(cx, cy, cw, 2 * sb); ctx.fillRect(cx + 3 * sb, cy - 2 * sb, cw - 8 * sb, 2 * sb); ctx.fillRect(cx + 6 * sb, cy - 3 * sb, 5 * sb, sb);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // brume à l'horizon, entre le lointain et le milieu
+    const mg = ctx.createLinearGradient(0, top + 40 * sb, 0, top + 62 * sb);
+    mg.addColorStop(0, 'rgba(0,0,0,0)'); mg.addColorStop(1, T.sky[T.sky.length - 1]);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = mg; ctx.fillRect(-10, top + 40 * sb, W + 20, 22 * sb); ctx.globalAlpha = 1;
+    ctx.drawImage(L.mid, -12 + sway * 0.6, top, W + 24, 90 * sb);
+    ctx.drawImage(L.gnd, -12, top, W + 24, 90 * sb);
     // le sol continue jusqu'en bas, en s'assombrissant
     const band = 19 * sb;
-    for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(bg, 0, 71, 160, 19, -6, y, W + 12, band);
+    for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(L.gnd, 0, 71, 160, 19, -12, y, W + 24, band);
     const g = ctx.createLinearGradient(0, top + 90 * sb, 0, H);
     g.addColorStop(0, 'rgba(10,8,16,0)'); g.addColorStop(1, 'rgba(10,8,16,0.65)');
     ctx.fillStyle = g;
     ctx.fillRect(-10, top + 90 * sb, W + 20, H);
+    drawAmb(false);
+  }
+
+  function vignette() {
+    const r = Math.max(W, H) * 0.75;
+    const g = ctx.createRadialGradient(W / 2, H * 0.45, r * 0.45, W / 2, H * 0.45, r);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(5,3,10,0.45)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 
   function render() {
@@ -946,9 +1078,11 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     drawBackground();
     const order = [...F].sort((a, b) => (a.dead ? -1 : 0) - (b.dead ? -1 : 0));
     order.forEach(drawFighter);
+    drawAmb(true);
     effects.forEach(drawEffect);
     texts.forEach(drawText);
     ctx.restore();
+    vignette();
     drawHud();
   }
 
