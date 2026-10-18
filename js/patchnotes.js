@@ -4,6 +4,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1441', date: '18/10/2026', time: '14h41', title: 'Nouvel écran d’équipement',
+    sections: [
+      { title: 'Sac', items: [
+        'L’équipement s’affiche maintenant autour de ton héros : il est au centre, avec 3 emplacements à gauche (chapeau, armure, bottes) et 3 à droite (arme, amulette, familier).',
+        'Ton héros bouge, prend sa pose d’attaque de temps en temps, et son familier flotte à ses pieds.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1429', date: '18/10/2026', time: '14h29', title: 'Notes de mise à jour et joueurs en ligne',
     sections: [
       { title: 'Nouveau', items: [

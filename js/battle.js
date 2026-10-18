@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018142921';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018142921';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018142921';
+import { CLASSES } from './data.js?v=20261018144131';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018144131';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018144131';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -1390,4 +1390,59 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
   function stop() { alive = false; ro.disconnect(); }
   requestAnimationFrame(frame);
   return stop;
+}
+
+/**
+ * Héros au centre de l'écran d'équipement : il respire, son arme bouge,
+ * et de temps en temps il prend sa pose d'attaque. Son familier flotte à ses pieds.
+ */
+export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
+  const ctx = canvas.getContext('2d');
+  const sc = 6, LW = 44, LH = 60, K = 1.85;
+  canvas.width = LW * sc; canvas.height = LH * sc;
+  const idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
+  const weapon = CLASSES[classId].weapon;
+  const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
+  const pet = petItemId ? petCanvas(petItemId) : null;
+  let alive = true;
+  const t0 = performance.now();
+  function loop(now) {
+    if (!alive || !canvas.isConnected) return;
+    const t = (now - t0) / 1000;
+    ctx.setTransform(sc, 0, 0, sc, 0, 0);
+    ctx.clearRect(0, 0, LW, LH);
+    ctx.imageSmoothingEnabled = false;
+    // pose d'attaque quelques instants toutes les 4 secondes
+    const cyc = t % 4, inAtk = cyc > 3.2 && cyc < 3.85;
+    const pose = inAtk ? 'atk' : 'idle';
+    const W = HERO_W * K, H = HERO_H * K;
+    const ox = (LW - W) / 2 + 1, feet = LH - 4;
+    const bob = inAtk ? 0 : Math.sin(t * 2.6) * 0.35;
+    // socle lumineux
+    const g = ctx.createRadialGradient(LW / 2, feet, 0, LW / 2, feet, 16);
+    g.addColorStop(0, 'rgba(255,216,74,0.45)'); g.addColorStop(1, 'rgba(255,216,74,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, feet - 16, LW, 20);
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(LW / 2, feet, 10, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // familier
+    if (pet) {
+      const pw = lw(pet) * 0.9, ph = lh(pet) * 0.9;
+      ctx.drawImage(pet, 1, feet - ph - 1 + Math.sin(t * 3.2) * 0.8, pw, ph);
+    }
+    // héros + arme
+    const oy = feet - H + bob;
+    ctx.drawImage(pose === 'atk' ? atk : idle, ox, oy, W, H);
+    const hand = handOf(pose);
+    const swing = inAtk ? Math.sin(((cyc - 3.2) / 0.65) * Math.PI) : 0;
+    const ang = IDLE_ANGLE[weapon] + Math.sin(t * 2.6) * 3 + swing * (weapon === 'bow' ? -20 : 70);
+    ctx.save();
+    ctx.translate(ox + hand.x * K, oy + hand.y * K);
+    ctx.rotate((ang * Math.PI) / 180);
+    ctx.drawImage(wS, -px * K, -py * K, lw(wS) * K, lh(wS) * K);
+    ctx.restore();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  return () => { alive = false; };
 }

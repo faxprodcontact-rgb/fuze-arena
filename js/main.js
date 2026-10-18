@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018142921';
-import * as E from './engine.js?v=20261018142921';
-import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018142921';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018142921';
-import { hashStr, makeRng } from './rng.js?v=20261018142921';
-import { APP_VERSION } from './version.js?v=20261018142921';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018142921';
-import * as NET from './net.js?v=20261018142921';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018142921';
+} from './data.js?v=20261018144131';
+import * as E from './engine.js?v=20261018144131';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018144131';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018144131';
+import { hashStr, makeRng } from './rng.js?v=20261018144131';
+import { APP_VERSION } from './version.js?v=20261018144131';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018144131';
+import * as NET from './net.js?v=20261018144131';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018144131';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -94,6 +94,7 @@ function hydrate(root = document) {
   root.querySelectorAll('canvas[data-spell]').forEach(c => paint(c, spellIcon(c.dataset.spell), { scale: 3 }));
   root.querySelectorAll('canvas[data-chest]').forEach(c => paint(c, chestCanvas(c.dataset.chest, c.dataset.open === '1'), { scale: 6 }));
   root.querySelectorAll('canvas[data-hero]').forEach(c => stopPreviews.push(idlePreview(c, c.dataset.hero, c.dataset.pet || null, c.dataset.dye || null)));
+  root.querySelectorAll('canvas[data-doll]').forEach(c => stopPreviews.push(dollPreview(c, c.dataset.doll, c.dataset.pet || null, c.dataset.dye || null)));
 }
 
 function render() {
@@ -526,6 +527,12 @@ function invGrid(list) {
 
 function viewBag() {
   const eq = E.equippedItems(hero);
+  const slotHtml = (slot) => {
+    const it = eq[slot];
+    return it
+      ? `<button class="slot filled" style="--rc:${RARITIES[it.rarity].color}" data-act="item" data-id="${it.itemId}" data-r="${it.rarity}"><canvas class="px" data-icon="${it.itemId}"></canvas>${SLOTS[slot].name}</button>`
+      : `<div class="slot">${SLOTS[slot].name}<br>—</div>`;
+  };
   const st = stacks();
   const eqUids = new Set(Object.values(hero.equipped));
   const commons = hero.inventory.filter(i => i.rarity === 0 && !eqUids.has(i.uid)).length;
@@ -560,13 +567,11 @@ function viewBag() {
   return `
     <section class="card">
       <h2>Équipement</h2>
-      <div class="slots">
-        ${SLOT_ORDER.map(slot => {
-          const it = eq[slot];
-          return it
-            ? `<button class="slot filled" style="--rc:${RARITIES[it.rarity].color}" data-act="item" data-id="${it.itemId}" data-r="${it.rarity}"><canvas class="px" data-icon="${it.itemId}"></canvas>${SLOTS[slot].name}</button>`
-            : `<div class="slot">${SLOTS[slot].name}<br>—</div>`;
-        }).join('')}
+      <div class="doll">
+        <div class="doll-col">${['hat', 'armor', 'boots'].map(slotHtml).join('')}</div>
+        <div class="doll-stage"><canvas class="px" data-doll="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas>
+          <div class="doll-name">${CLASSES[hero.classId].name} <span>Nv.${hero.level}</span></div></div>
+        <div class="doll-col">${['weapon', 'amulet', 'pet'].map(slotHtml).join('')}</div>
       </div>
     </section>
     <section class="card">
