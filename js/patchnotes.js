@@ -4,7 +4,7 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
-    id: '2026-10-18-1445', date: '18/10/2026', time: '14h45', title: 'Notes de mise à jour et joueurs en ligne',
+    id: '2026-10-18-1429', date: '18/10/2026', time: '14h29', title: 'Notes de mise à jour et joueurs en ligne',
     sections: [
       { title: 'Nouveau', items: [
         'Bouton 📜 en haut de l’écran : les notes de chaque mise à jour, datées, la plus récente en premier. Un point rouge apparaît quand il y a du nouveau.',

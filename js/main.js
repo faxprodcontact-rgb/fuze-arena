@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018142915';
-import * as E from './engine.js?v=20261018142915';
-import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018142915';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018142915';
-import { hashStr, makeRng } from './rng.js?v=20261018142915';
-import { APP_VERSION } from './version.js?v=20261018142915';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018142915';
-import * as NET from './net.js?v=20261018142915';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018142915';
+} from './data.js?v=20261018142921';
+import * as E from './engine.js?v=20261018142921';
+import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018142921';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018142921';
+import { hashStr, makeRng } from './rng.js?v=20261018142921';
+import { APP_VERSION } from './version.js?v=20261018142921';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018142921';
+import * as NET from './net.js?v=20261018142921';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018142921';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
