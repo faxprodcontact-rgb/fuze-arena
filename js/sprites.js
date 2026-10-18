@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018142012';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018142441';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -70,26 +70,30 @@ function shadeC(hex, amt) {
   return shadeCache.get(k);
 }
 
-function lighting(g) {
+function lighting(g, k = 1) {
   const o = { w: g.w, h: g.h, p: g.p.slice() };
   let top = g.h, bot = 0;
   for (let i = 0; i < g.p.length; i++) if (g.p[i]) { const y = Math.floor(i / g.w); top = Math.min(top, y); bot = Math.max(bot, y); }
   const span = Math.max(1, bot - top);
+  // distance jusqu'au vide dans une direction (0 = pas de vide à moins de n pixels)
+  const gap = (x, y, dx, dy, n) => { for (let d = 1; d <= n; d++) if (!get(g, x + dx * d, y + dy * d)) return d; return 0; };
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = get(g, x, y);
     if (!c) continue;
-    const up = get(g, x, y - 1), dn = get(g, x, y + 1), lf = get(g, x - 1, y), rt = get(g, x + 1, y);
+    const up = get(g, x, y - 1), dn = get(g, x, y + 1);
     let a = 0.12 * (1 - (2 * (y - top)) / span);             // dégradé : plus clair en haut
-    if (!up) a += 0.34; else if (!get(g, x, y - 2)) a += 0.16; else if (up !== c) a += 0.07;
-    if (!dn) a -= 0.32; else if (!get(g, x, y + 2)) a -= 0.15; else if (dn !== c) a -= 0.08;
-    if (!lf) a += 0.12; else if (!get(g, x - 2, y)) a += 0.05;
-    if (!rt) a -= 0.16; else if (!get(g, x + 2, y)) a -= 0.07;
-    if (Math.abs(a) > 0.015) o.p[y * g.w + x] = shadeC(c, Math.max(-0.5, Math.min(0.5, a)));
+    const gu = gap(x, y, 0, -1, 2 * k), gd = gap(x, y, 0, 1, 2 * k), gl = gap(x, y, -1, 0, 2 * k), gr = gap(x, y, 1, 0, 2 * k);
+    if (gu) a += gu <= k ? 0.34 : 0.16; else if (up !== c) a += 0.07;
+    if (gd) a -= gd <= k ? 0.32 : 0.15; else if (dn !== c) a -= 0.08;
+    if (gl) a += gl <= k ? 0.12 : 0.05;
+    if (gr) a -= gr <= k ? 0.16 : 0.07;
+    if (k > 1 && gu && gl && gu <= k && gl <= 2 * k) a += 0.15;   // petit reflet brillant en haut à gauche
+    if (Math.abs(a) > 0.015) o.p[y * g.w + x] = shadeC(c, Math.max(-0.5, Math.min(0.55, a)));
   }
   return o;
 }
 
-function outline2(g) {
+function outline2(g, w = 1) {
   const ring = (src, colorOf) => {
     const o = { w: src.w, h: src.h, p: src.p.slice() };
     for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
@@ -99,12 +103,16 @@ function outline2(g) {
     }
     return o;
   };
-  const inner = ring(g, (n) => (n === OUT ? OUT : shadeC(n, -0.72)));
-  return ring(inner, () => OUT);
+  let out = g;
+  for (let i = 0; i < w; i++) out = ring(out, (n) => (n === OUT ? OUT : shadeC(n, -0.72)));
+  for (let i = 0; i < w; i++) out = ring(out, () => OUT);
+  return out;
 }
 
 /** Dessin HD complet à partir d'une grille de pixels */
 function render(g) { return toCanvas(outline2(lighting(scale2x(g))), U); }
+/** Très haute définition (×4, encore plus lisse) : pour les icônes, les familiers, les coffres et la monnaie */
+function renderHi(g) { return toCanvas(outline2(lighting(scale2x(scale2x(g)), 2), 2), 4); }
 function cached(key, fn) { if (!cache.has(key)) cache.set(key, fn()); return cache.get(key); }
 
 export function shade(hex, amt) {
@@ -319,7 +327,7 @@ const WEAPON_MAPS = {
 export function weaponCanvas(kind) {
   return cached('weapon:' + kind, () => {
     const w = WEAPON_MAPS[kind];
-    return render((fromMap(w.rows, w.pal)));
+    return renderHi(fromMap(w.rows, w.pal));
   });
 }
 export function weaponPivot(kind) { return WEAPON_MAPS[kind].pivot; }
@@ -338,7 +346,7 @@ export function petCanvas(itemId) {
     const it = ITEMS[itemId];
     const [m, l] = it.colors;
     const pal = { m, l, d: shade(m, -0.35), e: it.eye || '#1b1530', o: '#ff9f43', w: '#fff', k: shade(m, -0.55), p: '#ff8fa3', n: '#1b1530' };
-    return render((fromMap(PET_MAPS[it.icon], pal)));
+    return renderHi(fromMap(PET_MAPS[it.icon], pal));
   });
 }
 
@@ -584,7 +592,7 @@ Object.assign(ICON_MAPS, {
   bald: ['...ssssssss...', '..sswwsssssS..', '.sswsssssssSS.', '.sssssssssssS.', 'Ssssssssssssss', '.sseesssseesS.', '.sssssssssssS.', '.sssssSSsssS..', '..sssssssssS..', '...SsssssSS...', '....SSSSSS....'],
   glasses: ['.mmmm....mmmm.', 'mwgggm..mwgggm', 'mggggmmmmggggm', 'mggggm..mggggm', '.mmmm....mmmm.'],
   halo: ['..w........w..', '...mmmmmmmm...', '.mmllllllllmm.', 'mmm........mmm', '.mmmmmmmmmmmm.', '...dddddddd...', '.w..........w.'],
-  cap: ['.....mmmmmm....', '...mmlmmmmmmm..', '..mlmmmmmmmmmm.', '..mmmmmaammmmm.', '..mmmmmaammmmm.', '..ddddddddddmmmmm', '............ddddd'],
+  cap: ['.....mmmmm.......', '...mmmlmmmmm.....', '..mmlmmmmmmmm....', '.mmlmmmaammmmm...', '.mmmmmmaammmmm...', '.mmmmmmmmmmmmm...', '.ddddddddddmmmmmm', '...........ddddddd'],
   gel: ['..m..m..m..m..', '.mm.mm.mm.mm.m', '.mmmmmmmmmmmmm', 'mmlmmmlmmmlmmm', 'mmmmmmmmmmmmmm', 'msssssssssssm.', '.ssesssssesss.', '.ssssssssssss.', '..ssssSSsssS..', '...sssssssS...'],
   santa: ['...........ww.', '.........mmww.', '.......mmmm...', '.....mmmmmm...', '...mmmmmmmmm..', '..mmmmmmmmmmm.', '.mmlmmmmmmmmmm', 'wwwwwwwwwwwwww', 'wwwwwwwwwwwwww'],
   // Armes
@@ -628,7 +636,7 @@ Object.assign(ICON_MAPS, {
   gaiter: ['..mmmmmmmm..', '.mlmmmmmmmm.', '.mmaammaamm.', '.mmmmmmmmmm.', '.mmaammaamm.', '.mmmmmmmmmm.', '..dddddddd..'],
   fries: ['..a.a..a.a..', '..aAa.aAa...', '.a.aAaAa.a..', '.aAaAaAaAa..', '..aAaAaAa...', '.mmmmmmmmmm.', '.mlmmyymmmd.', '..mlmyymmd..', '..mlmmmmmd..', '...mmmmmd...', '...mmmmmd...', '....dddd....'],
   mcshirt: ['.mmm....mmm.', 'mmmmm..mmmmm', 'mmmmmmmmmmmm', '.mmmmmmmmmm.', '..maamaamm..', '..mamaamam..', '..mammmmam..', '..mammmmam..', '..mmmmmmmm..', '..dddddddd..'],
-  headband: ['....kkkk....', '..kkkkkkkk..', '.mmmmmmmmmm.', 'mmaaammmmmmm', 'mmmmmmmmmmmm', '.dddddddddd.', '.kk......kk.', '..........mm', '.........mm.', '.........m..'],
+  headband: ['..mmmmmmmmmm....', '.mmllllllllmm...', 'mmmaaammmmmmmmm.', 'mmmmmmmmmmmmmmmm', '.dddddddddddddm.', '............mmm.', '...........mm.m.', '..........mm...m'],
   ball: ['....mmmm....', '..mmlmmmmm..', '.mlmmkkmmmd.', '.mlmkkkkmmd.', 'mmmmkkkkmmmd', 'mmkmmkkmmkmd', 'mkkkmmmmkkkd', '.mkmmmmmmkd.', '.mmmkkkkmmd.', '..mmkkkkmd..', '....dddd....'],
   jersey: ['.mm......mm.', 'mmmmwmmwmmmm', 'mmmmmwwmmmmm', '.mmmmmmmmmm.', '..mamaaamm..', '..mamamamm..', '..mamamamm..', '..mamaaamm..', '..mmmmmmmm..', '..dddddddd..'],
   cleats: ['...mmmm.......', '..mmmmmmm.....', '..mlmmmmmmmm..', '.mmmmaammmmmm.', '.mmmmmmmmmmmmm', 'wwwwwwwwwwwwww', '.k.k..k..k.k..'],
@@ -642,10 +650,10 @@ Object.assign(PET_MAPS, {
   catThin: ['.m....m..', '.mm..mm..', '.mmmmmm..', '.memmem..', '.mmmpmm..', '..mmmm...', '..mmmm...', '..mlmm..m', '..mlmm..m', '..mmmm.m.', '..mmmmm..', '..d..d...'],
   catBig: ['..m......m...', '..mm....mm...', '..mmmmmmmm...', '.mmmmmmmmmm..', '.mmemmmmemm..', '.mmmmmpmmmm..', '..mmmmmmmm...', '.mmmmmmmmmm..', 'mmmmmmmmmmmm.m', 'mmmmllllmmmm.m', 'mmmmllllmmmmmm', 'mmmmmmmmmmmmm.', '.ddd.d..d.ddd.'],
   catTiger: ['.m.....m..', '.mm...mm..', '.mkmkmkm..', 'mmemmmemm.', 'mmmmpmmmm.', '.mmmmmmm..', '..mmmmm...', '.mkmmmkmm.', '.mmlmmmmmkm', '.kmlmmmkm.k', '.mmmmmmmmmm', '..d.d..d.d.'],
-  dog: ['.........mmm...', '........mmmmmm.', '........mmemmmn', '.m......mmmmmm.', '.mm.....dmmm...', '..mmmmmmmmmm...', '..mmmmmmmmmm...', '..mlllmmmmm....', '..mm.m...m.mm..', '..mm.m...m.mm..'],
-  greyhound: ['..........mm....', '.........mmmmmmn', '.........mem....', '.m.......mm.....', '..m.mmmmmmm.....', '..mmmmmmmmmm....', '...mmmm..mmm....', '...m..m..m..m...', '...m..m..m..m...', '..m...m..m...m..'],
-  canecorso: ['........mmmmm..', '.......mmmmmmm.', '.......mmemmmmn', '.......mmmmmmmm', '.m.....dmmmmmd.', '.mm...mmmmmm...', '..mmmmmmmmmm...', '..mmmmmmmmmm...', '..mlllmmmmm....', '..mm.mm..mm.mm.', '..mm.mm..mm.mm.'],
-  shepherd: ['.........m..m..', '.........mmmm..', '........mmmemm.', '........mmmmmmn', '.mm.....mmmm...', 'mmmmmmmmmmmm...', '.mmmmmmmmmmm...', '..mlllmmmmm....', '..mm.m...m.mm..', '..mm.m...m.mm..'],
+  dog: ['............mm...', '...........mmmm..', '..........mmmemm.', '..........mmmmmmn', '.m........mmmmm..', '.mm......dmmm....', '..mmmmmmmmmmm....', '..mmmmmmmmmmm....', '..mmlllllmmmm....', '..mmlllllmmm.....', '..mm.mm...mm.mm..', '..mm.mm...mm.mm..', '..dd.dd...dd.dd..'],
+  greyhound: ['.............mm...', '............mmmmm.', '............memmmn', '.m.........mm.....', '..m.......mmm.....', '..mmmmmmmmmmm.....', '...mmmmmmmmmm.....', '...mmllllmmm......', '...m..m...m..m....', '...m..m...m..m....', '..m...m...m...m...', '..d...d...d...d...'],
+  canecorso: ['...........mmmmm...', '..........mmmmmmm..', '..........mmemmmmn.', '..........mmmmmmmmm', '.m........dmmmmmd..', '.mm......mmmmmm....', '..mmmmmmmmmmmmm....', '..mmmmmmmmmmmmm....', '..mmmlllllmmmm.....', '..mmm.mm...mmmm....', '..mmm.mm...mm.mm...', '..ddd.dd...dd.dd...'],
+  shepherd: ['...........m..m...', '...........mmmm...', '..........mmmemm..', '..........mmmmmmmn', '.mm.......mmmmm...', 'mmmm.....mmmm.....', '.mmmmmmmmmmmm.....', '..mmmmmmmmmmm.....', '..mmlllllmmmm.....', '..mm.mm...mm.mm...', '..mm.mm...mm.mm...', '..dd.dd...dd.dd...'],
   snake: ['.......mmm...', '......mmemm..', '......mmmmmpp', '.......mmm...', '....mmmmm....', '...mlmmm.....', '..mmm........', '..mmmmmmmmm..', '...mmlmmmmmm.', '.mmmmmmmmmmm.', 'mmllllmmmmm..', '.mmmmmmmm....'],
 });
 
@@ -659,7 +667,7 @@ export function itemIcon(itemId) {
       m, l: shade(m, 0.4), d: shade(m, -0.35), w: '#ffffff', a, A: shade(a, 0.4), c: a,
       s: skin, S: shade(skin, -0.18), k: '#2a2238', g: '#bfe6ff', y: '#ffe08a', G: '#4cd964', b: '#6b4423', e: '#1b1530',
     };
-    return render((fromMap(ICON_MAPS[it.icon], pal)));
+    return renderHi(fromMap(ICON_MAPS[it.icon], pal));
   });
 }
 
@@ -679,7 +687,7 @@ export function chestCanvas(kind = 'normal', open = false) {
       '.bwwwwwwwwwwwwb.', 'bddddddddddddddb', '.bbbbbbbbbbbbbb.', '..gggggggggggg..', 'bgggggggBggggggb',
       'bwwwwwwbkbwwwwwb', 'bwwwwwwbbbwwwwwb', 'bwwwwwwwwwwwwwwb', 'bwwwwwwwwwwwwwwb', 'bdddddddddddddb', 'bbbbbbbbbbbbbbbb',
     ];
-    return render((fromMap(open ? opened : closed, pal)));
+    return renderHi(fromMap(open ? opened : closed, pal));
   });
 }
 
@@ -712,7 +720,7 @@ export function heroPortrait(classId, weaponKind, dyeId = null) {
     ctx.drawImage(h, 0, 0);
     ctx.translate(HAND.x * U, HAND.y * U);
     ctx.rotate((IDLE_ANGLE[weaponKind] * Math.PI) / 180);
-    ctx.drawImage(w, -px * U, -py * U);
+    ctx.drawImage(w, -px * U, -py * U, lw(w) * U, lh(w) * U);
     return c;
   });
 }
@@ -723,13 +731,13 @@ export function rarityColor(r) { return RARITIES[r].color; }
 //  FLOUZE (monnaie : une liasse de billets verts) et CLEF
 // =====================================================================
 export function clatCanvas() {
-  return cached('flouze', () => render((fromMap(
+  return cached('flouze', () => renderHi((fromMap(
     ['..dddddddddd', '..dGGGGGGGGd', 'dddddddddddd', 'dGGGGGGGGGGd', 'dGlGGwwGGlGd', 'dGGGwGGwGGGd', 'dGGGwGGwGGGd', 'dGlGGwwGGlGd', 'dGGGGGGGGGGd', 'dddddddddddd'],
     { G: '#2ecc71', d: '#1e8449', l: '#a8f0c0', w: '#e8fff0' },
   ))));
 }
 export function keyCanvas() {
-  return cached('key', () => render((fromMap(
+  return cached('key', () => renderHi((fromMap(
     ['.yyy........', 'yYYYy.......', 'yY.Yyyyyyyyy', 'yYYYy...y.y.', '.yyy....y.y.'],
     { y: '#e5b33a', Y: '#ffe08a' },
   ))));
@@ -813,16 +821,16 @@ export function spellIcon(id) {
     const ox = Math.floor((S - gw) / 2), oy = Math.floor((S - gh) / 2);
     const art = grid(S, S);
     rows.forEach((r, y) => [...r].forEach((ch, x) => { if (pal[ch]) set(art, ox + x, oy + y, pal[ch]); }));
-    const hd = upscale(g);
-    outline2(lighting(scale2x(art))).p.forEach((c, i) => { if (c) hd.p[i] = c; });
+    const hd = upscale(g, 4);
+    outline2(lighting(scale2x(scale2x(art)), 2), 2).p.forEach((c, i) => { if (c) hd.p[i] = c; });
     const b = spellBadge(sp);
     if (b) {
       const [map, col] = BADGES[b];
       const bd = grid(S, S);
       rect(bd, S - 6, S - 6, 5, 5, OUT);
       map.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') set(bd, S - 5 + x, S - 5 + y, col); }));
-      upscale(bd).p.forEach((c, i) => { if (c) hd.p[i] = c; });
+      upscale(bd, 4).p.forEach((c, i) => { if (c) hd.p[i] = c; });
     }
-    return toCanvas(hd, U);
+    return toCanvas(hd, 4);
   });
 }

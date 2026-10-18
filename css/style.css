@@ -589,3 +589,18 @@ body {
 .opp.dj .av.duo canvas { width: 40px; margin: 0 8px 6px 0; }
 .opp.dj .av.duo canvas.alt { position: absolute; right: 1px; bottom: 2px; width: 26px; margin: 0; filter: drop-shadow(0 0 0 #0e0b16) drop-shadow(-1px -1px 0 #0e0b16); }
 .opp.locked .av.duo canvas.alt { filter: brightness(0); }
+
+/* Refonte étape 4 : icônes plus grandes */
+.it canvas { width: 82%; }
+.slot canvas { width: 58px; }
+.item-head .big-ic { width: 92px; height: 92px; }
+.item-head .big-ic canvas { width: 74px; }
+.loot-card canvas { width: 78px; }
+.loot.many .loot-card canvas { width: 52px; }
+.tile canvas { width: 56px; height: 56px; }
+.sh-prev canvas { width: 60px; }
+.spell .sp-ic, .spell .sp-ic canvas { width: 46px; height: 46px; }
+.sb, .sb canvas { width: 50px; height: 50px; }
+.pill.clat canvas { width: 16px; }
+.tab canvas { width: 28px; height: 28px; }
+.chest-card canvas { width: 140px; }
