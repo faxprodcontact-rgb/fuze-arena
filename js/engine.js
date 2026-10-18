@@ -5,11 +5,11 @@
 import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
-  DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018163316';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018163316';
+} from './data.js?v=20261018171857';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018171857';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -386,6 +386,85 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
     /** Termine le combat (si besoin) et renvoie { log, winner, usedManual, hp } (hp = PV restants de chacun) */
     result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual, hp: F.map(f => Math.max(0, Math.round(f.hp))) }; },
   };
+}
+
+// ------------------------------ La Horde ------------------------------
+export { HORDE };
+/** Le n-ième monstre de la horde (n = 0, 1, 2…) : de plus en plus fort, jamais deux fois de suite le même */
+export function hordeMonster(seed, n) {
+  const pool = DUNGEONS.flatMap(dungeonFoes);
+  const rng = makeRng(seed * 31 + n * 7919);
+  let src = pool[Math.floor(rng() * pool.length)];
+  if (n > 0) {
+    const prev = pool[Math.floor(makeRng(seed * 31 + (n - 1) * 7919)() * pool.length)];
+    if (src.sprite === prev.sprite) src = pool[(pool.indexOf(src) + 1) % pool.length];
+  }
+  // au-delà du niveau 100, les monstres gardent leurs stats de niveau 100 et prennent +8 % par monstre
+  const lvl = 1 + HORDE.step * n, over = Math.max(0, lvl - 100) / HORDE.step, boost = Math.pow(1.08, over);
+  const m = buildMonster({ ...src, lvl: Math.min(lvl, 100) });
+  m.level = lvl;
+  for (const k in m.stats) m.stats[k] = Math.max(1, Math.round(m.stats[k] * HORDE.power * boost));
+  m.maxHp = Math.max(10, Math.round(m.maxHp * HORDE.hp * boost));
+  m.hordeN = n + 1;
+  return m;
+}
+/** Flouze gagné selon le nombre de monstres battus */
+export const hordeFlouze = (kills) => (kills > 0 ? Math.round(1 + kills * HORDE.flouzePer) : 0);
+
+/**
+ * Combat de la horde : même interface qu'un combat normal (next, queue, manual, result),
+ * mais quand le monstre tombe, le suivant arrive aussitôt. Le héros garde ses PV (aucun soin).
+ * Événements en plus : { type: 'kill', n } puis { type: 'nextFoe', foe, n }.
+ */
+export function createHorde(A, seed, { manual = false } = {}) {
+  let n = 0, kills = 0, hp = A.maxHp, done = false, usedManual = false, manualMode = manual;
+  const pending = [], log = [];
+  let cur = createFight({ ...A, hp }, hordeMonster(seed, 0), seed, { manual: manualMode });
+  const pull = () => {
+    if (pending.length) return pending.shift();
+    if (done) return null;
+    const e = cur.next();
+    if (!e) return null;
+    if (e.type !== 'end') return e;
+    const r = cur.result();
+    if (r.usedManual) usedManual = true;
+    if (e.winner !== 0) { done = true; return { ...e, winner: 1, kills }; }
+    // monstre vaincu : le suivant arrive tout de suite, le héros garde ses PV
+    kills++;
+    hp = Math.max(1, r.hp[0]);
+    n++;
+    const foe = hordeMonster(seed, n);
+    const q = cur.queued;
+    cur = createFight({ ...A, hp }, foe, seed + n * 101, { manual: manualMode });
+    if (q) cur.queue(q);
+    pending.push({ type: 'nextFoe', foe, n: n + 1, kills });
+    return { type: 'kill', kills, flouze: hordeFlouze(kills), s: e.s };
+  };
+  const api = {
+    next() { const e = pull(); if (e) log.push(e); return e; },
+    queue(id) { cur.queue(id); },
+    get queued() { return cur.queued; },
+    setManual(v) { manualMode = v; cur.setManual(v); },
+    get manual() { return manualMode; },
+    result() { while (api.next()); return { log, winner: 1, kills, usedManual }; },
+  };
+  return api;
+}
+/** Essais de la horde (par compte, remis à zéro à minuit et à midi) */
+export function hordeState(acc) {
+  const k = halfKey();
+  if (!acc.horde || acc.horde.half !== k) acc.horde = { half: k, used: 0, best: (acc.horde && acc.horde.best) || 0 };
+  return acc.horde;
+}
+export const hordeRunsLeft = (acc) => Math.max(0, HORDE.runsPerHalf - hordeState(acc).used);
+/** Fin d'un essai : Flouze selon les monstres battus, et record du compte */
+export function hordeResult(acc, kills) {
+  const st = hordeState(acc);
+  const flouze = hordeFlouze(kills);
+  acc.clat += flouze;
+  const record = kills > (st.best || 0);
+  if (record) st.best = kills;
+  return { flouze, record };
 }
 
 /**

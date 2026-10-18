@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018163316';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018171857';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -763,6 +763,19 @@ const EMBLEMS = {
       rr(g, x - 0.5, 15, 2, 5, '#6b4226'); rr(g, x - 1, 14, 3, 1.5, '#3a2a1a');
       ellipse(g, x + 0.5, 11.5, 1.8, 2.6, '#ff8a2a'); ellipse(g, x + 0.5, 12.2, 0.9, 1.4, '#ffe08a');
     }
+    return g;
+  },
+  horde() {   // trois crânes empilés aux yeux rouges : la horde
+    const g = grid(28, 25);
+    const skull = (ox, oy) => {
+      ellipse(g, ox + 6, oy + 6, 4.2, 3.8, '#e8e2d0'); rr(g, ox + 3, oy + 8, 6, 3.5, '#e8e2d0');
+      rr(g, ox + 3, oy + 5, 2, 2, '#1b1530'); rr(g, ox + 7, oy + 5, 2, 2, '#1b1530');
+      set(g, ox + 4, oy + 5, '#ff3d5a'); set(g, ox + 7, oy + 5, '#ff3d5a');
+      set(g, ox + 5, oy + 8, '#1b1530'); set(g, ox + 6, oy + 8, '#1b1530');
+      for (const x of [4, 7]) rr(g, ox + x, oy + 10, 1, 2, '#9a937e');
+    };
+    skull(8, 0); skull(1, 11); skull(15, 11);
+    for (const [x, y] of [[2, 4], [25, 3], [26, 9], [1, 9]]) { set(g, x, y, '#ff8a94'); set(g, x - 1, y, '#e8364a'); set(g, x + 1, y, '#e8364a'); set(g, x, y - 1, '#e8364a'); set(g, x, y + 1, '#e8364a'); }
     return g;
   },
   skull() {   // le crâne aux yeux verts du donjon, seul (bouton « Entrer »)

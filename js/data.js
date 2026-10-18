@@ -498,6 +498,17 @@ export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de re
 // =====================================================================
 //  TOUR INFINIE
 // =====================================================================
+// =====================================================================
+//  LA HORDE — des monstres à la chaîne, de plus en plus forts, sans soin. Plus tu vas loin, plus tu gagnes de Flouze.
+//  3 essais par compte toutes les 12 h (minuit et midi).
+// =====================================================================
+export const HORDE = {
+  runsPerHalf: 3,
+  step: 4,        // niveau du monstre n = 1 + step × (n − 1)
+  power: 1,       // stats des monstres par rapport à un boss de donjon du même niveau
+  hp: 0.6,        // et leurs PV
+  flouzePer: 0.22, // Flouze = 1 + 0.22 par monstre battu (arrondi)
+};
 export const TOWER = { clatPerFloor: 1, clatEvery10: 10 };   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné
 
 // =====================================================================

@@ -4,17 +4,17 @@
 import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
-  DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
+  DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018163316';
-import * as E from './engine.js?v=20261018163316';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018163316';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018163316';
-import { hashStr, makeRng } from './rng.js?v=20261018163316';
-import { APP_VERSION } from './version.js?v=20261018163316';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018163316';
-import * as NET from './net.js?v=20261018163316';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018163316';
+} from './data.js?v=20261018171857';
+import * as E from './engine.js?v=20261018171857';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018171857';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018171857';
+import { hashStr, makeRng } from './rng.js?v=20261018171857';
+import { APP_VERSION } from './version.js?v=20261018171857';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018171857';
+import * as NET from './net.js?v=20261018171857';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018171857';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1171,7 +1171,7 @@ const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p 
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { fights: 'combat', dungeons: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
+const PARENT = { fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 const PARENT_NAME = { combat: 'Combats', social: 'Social' };
 
 function setBadge(id, n) {
@@ -1275,6 +1275,7 @@ function viewCombat() {
     { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
     { id: 'raid', name: RAID.boss.name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft, c: '#ff8a3d' },
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
+    { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
     { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd84a' },
   ];
   return charsCard() + missionsCard() + `
@@ -1749,6 +1750,75 @@ function claimRaid(week) {
   toast(`Récompense : ${rw.chests ? `${rw.chests} coffre${rw.chests > 1 ? 's' : ''} de guerre + ` : ''}${rw.clat} Flouze !`);
 }
 
+// ------------------------------ La Horde ------------------------------
+function viewHorde() {
+  const st = E.hordeState(acc);
+  const left = E.hordeRunsLeft(acc);
+  const ex = [3, 10, 20, 30].map(k => `<span><b>${k}</b> monstres <i>→</i> <b>${E.hordeFlouze(k)}</b><canvas class="px" data-clat></canvas></span>`).join('');
+  return modeHead({
+    id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
+    title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
+    chips: [
+      mchip(ico('swords'), 'Essais', `${left} / ${HORDE.runsPerHalf}`, left ? 'hot' : ''),
+      mchip(ico('trophy'), 'Ton record', `${st.best || 0}`),
+      mchip(ico('clock'), 'Nouveaux essais', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+    ],
+    info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
+      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi), pour tout le compte : c’est ton perso actif qui se bat.`,
+  }) + `
+    <section class="card hx horde-stage" style="--hc:#ff3d6e">
+      ${secHead(ico('flag'), 'Combien tu gagnes', 'Flouze selon les monstres battus')}
+      <div class="horde-ex">${ex}</div>
+      <button class="btn danger block big-go" data-act="startHorde" ${left ? '' : 'disabled'}>${left ? `${ico('swords')} Lancer la horde` : 'Plus d’essai : reviens à minuit ou à midi'}</button>
+    </section>
+    <section class="card hx" style="--hc:#ff3d6e">
+      ${secHead(ico('trophy'), 'Classement', 'Le record de chaque joueur')}
+      ${hordeBoard().map((r, i) => `
+        <div class="opp rank ${r.me ? 'me' : ''}"><div class="pos">${[ico('medal1'), ico('medal2'), ico('medal3')][i] || i + 1}</div>
+          <div class="av"><canvas class="px" data-portrait="${r.classId}"></canvas></div>
+          <div class="o-body"><div class="o-name">${nameHtml(r.name, r.data)}</div><div class="o-sub">${CLASSES[r.classId].name}</div></div>
+          <div class="score">${r.best} monstre${r.best > 1 ? 's' : ''}</div></div>`).join('')}
+    </section>`;
+}
+
+/** Classement de la horde : le record de chaque joueur (monstres battus en un essai) */
+function hordeBoard() {
+  const row = (name, data, best, me = false) => { const h = data ? E.strongestHero(data) : null; return { name, data, best, classId: h ? h.classId : 'guerrier', me }; };
+  const rows = [row(acc.pseudo, acc, E.hordeState(acc).best || 0, true)];
+  if (NET.online) players.forEach(p => rows.push(row(p.pseudo, p.data, (p.data.horde && p.data.horde.best) || 0)));
+  else opponents().forEach(o => rows.push({ name: o.name, data: null, classId: o.classId, best: Math.max(1, Math.round(o.level / 4)) }));
+  return rows.sort((a, b) => b.best - a.best || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+}
+
+function startHorde() {
+  if (E.hordeRunsLeft(acc) <= 0) { toast('Plus d’essai : reviens à minuit ou à midi.'); return; }
+  E.hordeState(acc).used++;
+  save();
+  const me = mySnap();
+  const seed = (Math.random() * 2 ** 31) | 0;
+  const live = E.createHorde(me, seed);
+  const head = (kills) => `La Horde <span style="color:var(--gold)">·</span> ${kills} monstre${kills > 1 ? 's' : ''} battu${kills > 1 ? 's' : ''} <span style="color:var(--gold)">·</span> +${E.hordeFlouze(kills)} <canvas class="px ico" data-clat></canvas>`;
+  runBattle({
+    me, foe: E.hordeMonster(seed, 0), live, theme: 'abyss', manual: true, victory: myVictory(),
+    title: head(0),
+    onEvent: (e) => {
+      if (e.type !== 'kill') return;
+      const t = document.querySelector('.battle-vs');
+      if (t) { t.innerHTML = head(e.kills); hydrate(t); }
+    },
+    finish: (result) => {
+      const rw = E.hordeResult(acc, result.kills);
+      save();
+      return {
+        headline: `${result.kills} MONSTRE${result.kills > 1 ? 'S' : ''}`, headClass: result.kills ? 'win' : 'lose',
+        rewardsHtml: `
+          <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
+          <p style="color:var(--muted);margin:0">Encore ${E.hordeRunsLeft(acc)} essai${E.hordeRunsLeft(acc) > 1 ? 's' : ''} d’ici ${fmt(E.msToNextHalf())}.</p>`,
+      };
+    },
+  });
+}
+
 // ------------------------------ Tour infinie ------------------------------
 function towerBoard() {
   const bestOf = (data) => data.heroes.reduce((b, h) => ((h.tower && h.tower.best) > b.floor ? { floor: h.tower.best, classId: h.classId } : b), { floor: 0, classId: data.heroes[0].classId });
@@ -1890,7 +1960,7 @@ function updateXpBonus() {
 }
 
 const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
-  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, bets: viewBets, journal: viewJournal, players: viewPlayers };
+  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, bets: viewBets, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
@@ -2006,12 +2076,13 @@ function updateSpellBar(e) {
 const PX_CAPS = { À: 'A', Â: 'A', Ä: 'A', É: 'E', È: 'E', Ê: 'E', Ë: 'E', Î: 'I', Ï: 'I', Ô: 'O', Ö: 'O', Ù: 'U', Û: 'U', Ü: 'U', Ç: 'C' };
 const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch => PX_CAPS[ch]);
 let waveNext = null;   // combat suivant d'une vague de donjon
-function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true }) {
+function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
   let out = null;
   battleFight = null;
-  if (manual) battleFight = E.createFight(me, foe, seed, { ...sim, manual: manualPref() });
+  if (live) { battleFight = live; live.setManual(manualPref()); }   // combat déjà préparé (la Horde)
+  else if (manual) battleFight = E.createFight(me, foe, seed, { ...sim, manual: manualPref() });
   else {
     if (!result) result = E.simulate(me, foe, seed, sim);
     out = finish(result) || {};
@@ -2039,7 +2110,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
     <div class="battle-after" id="result-slot"></div>`;
   document.body.appendChild(ov);
   hydrate(ov);
-  battleCtl = playBattle(ov.querySelector('#arena'), me, foe, fight || result, { theme, victory, spellBar: spells.length > 0, onBegin: updateSpellBar });
+  battleCtl = playBattle(ov.querySelector('#arena'), me, foe, fight || result, { theme, victory, spellBar: spells.length > 0, onBegin: (e) => { updateSpellBar(e); if (onEvent) onEvent(e); } });
   battleCtl.speedIdx = 0;
   battleCtl.promise.then(() => {
     if (fight) {
@@ -2253,7 +2324,7 @@ const ACTIONS = {
   tab: (d) => {
     SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
-    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
+    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets') refreshBets().then(() => { if (tab === 'bets') softRender(); });
     if (d.id === 'raid') loadRaid().then(() => { if (tab === 'raid') softRender(); });
@@ -2276,6 +2347,7 @@ const ACTIONS = {
     el.textContent = on ? '−' : '+';
   },
   skipDungeon: (d) => skipDungeonFlow(d.id),
+  startHorde: () => startHorde(),
   skipDungeonGo: (d) => skipDungeonFlow(d.id, true),
   switchHero: (d) => {
     const i = +d.i;

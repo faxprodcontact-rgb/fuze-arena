@@ -4,6 +4,18 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1718', date: '18/10/2026', time: '17h18', title: 'Nouveau mode : La Horde',
+    sections: [
+      { title: 'La Horde', items: [
+        'Des monstres arrivent à la chaîne, l’un après l’autre, sans pause et de plus en plus forts (le 1er est niveau 1).',
+        'Aucun soin entre deux monstres : tu gardes tes PV jusqu’à tomber. Le but : aller le plus loin possible.',
+        'Tu gagnes du Flouze selon le nombre de monstres battus (environ 2 par essai au début, 7 à 8 en fin de jeu).',
+        '3 essais toutes les 12 h (minuit et midi) pour tout le compte, avec ton perso actif.',
+        'Classement de la Horde : le record de chaque joueur.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1633', date: '18/10/2026', time: '16h33', title: 'Modes de combat refaits et donjons en vagues',
     sections: [
       { title: 'Donjons', items: [
