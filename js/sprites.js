@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018173120';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018174023';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -219,7 +219,7 @@ function paintLayer(g, segs, dx, dy, pal, stride = 0) {
  */
 export function heroCanvas(classId, dyeId = null, pose = 'idle') {
   return cached(`hero5:${classId}:${dyeId || ''}:${pose}`, () => {
-    const dye = dyeId && COSMETIC[dyeId] ? COSMETIC[dyeId].dye : null;
+    const dye = dyeId && COSMETIC[dyeId] && (!COSMETIC[dyeId].cls || COSMETIC[dyeId].cls === classId) ? COSMETIC[dyeId].look || COSMETIC[dyeId].dye : null;   // skin de la classe (ou ancienne teinture)
     const L = { ...LOOKS[classId], ...(dye || {}) };
     const A = HERO_ART[classId];
     const pal = heroPalette(L);
@@ -763,6 +763,15 @@ const EMBLEMS = {
       rr(g, x - 0.5, 15, 2, 5, '#6b4226'); rr(g, x - 1, 14, 3, 1.5, '#3a2a1a');
       ellipse(g, x + 0.5, 11.5, 1.8, 2.6, '#ff8a2a'); ellipse(g, x + 0.5, 12.2, 0.9, 1.4, '#ffe08a');
     }
+    return g;
+  },
+  shop() {   // le sac du marchand, plein de Flouze
+    const g = grid(28, 27);
+    ellipse(g, 14, 18, 11, 8.5, '#b07a48'); rr(g, 9, 6, 10, 6, '#b07a48'); ellipse(g, 14, 6, 6, 2.5, '#b07a48');
+    rr(g, 8, 10, 12, 2, '#7a4e2a'); rr(g, 13, 9, 2, 4, '#ffd84a');
+    rr(g, 16, 1, 8, 6, '#1e8449'); rr(g, 17, 2, 6, 4, '#2ecc71'); rr(g, 6, 2, 7, 5, '#1e8449'); rr(g, 7, 3, 5, 3, '#2ecc71');
+    ellipse(g, 14, 19, 4, 4, '#ffd84a'); ellipse(g, 14, 19, 2.6, 2.6, '#c98a1a'); rr(g, 13.5, 16.5, 1, 5, '#fff3b0');
+    for (const [x, y] of [[3, 8], [25, 9], [26, 22]]) { set(g, x, y, '#fff3b0'); set(g, x - 1, y, '#ffd84a'); set(g, x + 1, y, '#ffd84a'); set(g, x, y - 1, '#ffd84a'); set(g, x, y + 1, '#ffd84a'); }
     return g;
   },
   journal() {   // livre ouvert avec un marque-page rouge et une épée gravée

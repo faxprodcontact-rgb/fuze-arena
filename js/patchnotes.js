@@ -4,6 +4,19 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1740', date: '18/10/2026', time: '17h40', title: 'Nouvelle Boutique et skins',
+    sections: [
+      { title: 'Le marchand', items: [
+        'La clef coûte maintenant 50 Flouze (au lieu de 100).',
+        'Chaque jour, 3 objets gris à 10 Flouze pièce, un exemplaire de chaque, renouvelés à minuit.',
+      ] },
+      { title: 'Apparences', items: [
+        'Les teintures sont remplacées par des skins : 4 par classe (Chevalier noir, Samouraï, Nécromancien, Mage de glace, Assassin, Elfe des neiges, Croisé, Paladin des ténèbres…). Ceux qui avaient une teinture la gardent.',
+        '14 nouveaux titres, 9 nouvelles couleurs de pseudo (dont « feu » et « galaxie », animées) et 6 nouveaux effets de victoire.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1731', date: '18/10/2026', time: '17h31', title: 'Nouveau Social et podium des champions',
     sections: [
       { title: 'Social', items: [

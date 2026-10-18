@@ -1181,3 +1181,35 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .idc-heroes canvas { width: 34px; height: auto; }
 .idc-heroes small { font-family: var(--pixel); font-size: 6.5px; color: var(--gold); }
 .podium:not(.big) { margin-top: 34px; }
+
+/* ---------- Boutique ---------- */
+.pname.fire { background: linear-gradient(90deg, #ff3a1a, #ff9f1a, #ffd84a, #ff9f1a, #ff3a1a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbow 1.4s linear infinite; }
+.pname.galaxy { background: linear-gradient(90deg, #b05cff, #3d9bff, #ff8fc7, #ffffff, #b05cff); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbow 3s linear infinite; }
+.key-deal { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px;
+  background: radial-gradient(ellipse 50% 100% at 12% 50%, rgba(255,216,74,.2), transparent 70%), linear-gradient(180deg, #241d36, #17131f); box-shadow: inset 0 0 0 2px rgba(255,216,74,.4), 0 3px 0 rgba(0,0,0,.35); }
+.kd-art { width: 52px; height: 52px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(0,0,0,.35); }
+.kd-art canvas { width: 40px; height: auto; filter: drop-shadow(0 0 8px rgba(255,216,74,.5)); animation: cbt-bob 2.4s ease-in-out infinite; }
+.key-deal .o-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.key-deal b { font-family: var(--pixel); font-size: 11px; color: #fff; }
+.key-deal small { color: var(--muted); font-size: 12px; font-weight: 700; margin-top: 3px; }
+.key-deal .foe-btn { min-width: 72px; font-size: 11px; }
+.key-deal .foe-btn i canvas.ico { width: 18px; height: 18px; }
+.daily { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.dl { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 14px; text-align: center;
+  background: linear-gradient(180deg, #241d36, #15111e); box-shadow: inset 0 0 0 2px rgba(255,255,255,.07), 0 3px 0 rgba(0,0,0,.35); }
+.dl-ico { width: 56px; height: 56px; aspect-ratio: auto; }
+.dl-ico canvas { width: 40px; height: 40px; object-fit: contain; }
+.dl b { font-size: 11.5px; line-height: 1.2; color: #fff; }
+.dl small { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.dl-st i { font-style: normal; font-family: var(--pixel); font-size: 7px; white-space: nowrap; }
+.dl .btn { width: 100%; margin-top: auto; }
+.dl .btn canvas { width: 12px; height: auto; margin-left: 3px; }
+.dl.sold { opacity: .5; }
+.dl-sold { margin-top: auto; font-family: var(--pixel); font-size: 8px; color: #7bf09a; padding: 6px 0; }
+.hx .shop { margin-top: 12px; }
+.hx .shop-item { background: linear-gradient(180deg, #241d36, #15111e); box-shadow: inset 0 0 0 2px rgba(255,255,255,.07), 0 3px 0 rgba(0,0,0,.35); }
+.hx .shop-item.owned { box-shadow: inset 0 0 0 2px rgba(176,92,255,.35), 0 3px 0 rgba(0,0,0,.35); }
+.hx .shop-item.on { box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(255,216,74,.3); }
+.shop.skins .sh-prev { min-height: 120px; width: 100%; border-radius: 12px; background: radial-gradient(ellipse 60% 18% at 50% 88%, rgba(176,92,255,.35), transparent 70%); }
+.shop.skins .sh-prev canvas { width: 100%; max-width: 130px; height: auto; }
+.sh-name small { display: block; font-size: 10px; color: var(--muted); font-weight: 700; }

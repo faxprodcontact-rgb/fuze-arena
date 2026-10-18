@@ -5,16 +5,16 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018173120';
-import * as E from './engine.js?v=20261018173120';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018173120';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018173120';
-import { hashStr, makeRng } from './rng.js?v=20261018173120';
-import { APP_VERSION } from './version.js?v=20261018173120';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018173120';
-import * as NET from './net.js?v=20261018173120';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018173120';
+  KEY_PRICE, SHOP_DAILY, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+} from './data.js?v=20261018174023';
+import * as E from './engine.js?v=20261018174023';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174023';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174023';
+import { hashStr, makeRng } from './rng.js?v=20261018174023';
+import { APP_VERSION } from './version.js?v=20261018174023';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018174023';
+import * as NET from './net.js?v=20261018174023';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174023';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1171,9 +1171,11 @@ async function sendChat() {
 const cosOf = (data) => (data && data.cosmetics) || { owned: [], title: null, color: null, victory: null };
 const titleOf = (data) => { const t = cosOf(data).title; return t && COSMETIC[t] ? COSMETIC[t].name : ''; };
 const colorOf = (data) => { const c = cosOf(data).color; return c && COSMETIC[c] ? COSMETIC[c].color : null; };
+const NAME_FX = ['rainbow', 'fire', 'galaxy'];   // pseudos animés
 const nameHtml = (name, data) => {
   const col = colorOf(data);
-  return `<span class="pname ${col === 'rainbow' ? 'rainbow' : ''}" ${col && col !== 'rainbow' ? `style="color:${col}"` : ''}>${esc(name)}</span>`;
+  const fx = NAME_FX.includes(col);
+  return `<span class="pname ${fx ? col : ''}" ${col && !fx ? `style="color:${col}"` : ''}>${esc(name)}</span>`;
 };
 const titleHtml = (data) => { const t = titleOf(data); return t ? `<span class="ptitle">« ${esc(t)} »</span>` : ''; };
 const dataOfPseudo = (pseudo) => (pseudo === acc.pseudo ? acc : (players.find(p => p.pseudo === pseudo) || {}).data);
@@ -2005,39 +2007,59 @@ function attackTower() {
 }
 
 // ------------------------------ Boutique ------------------------------
-let shopKind = 'title';
-const SHOP_TABS = [['title', 'Titres'], ['color', 'Pseudo'], ['dye', 'Teintures'], ['victory', 'Victoire']];
+let shopKind = 'skin';
+const SHOP_TABS = [['skin', 'Skins'], ['title', 'Titres'], ['color', 'Pseudo'], ['victory', 'Victoire']];
 
 function viewShop() {
   const owned = new Set(acc.cosmetics.owned);
-  const list = COSMETICS.filter(c => c.kind === shopKind).sort((a, b) => a.price - b.price);
-  const isOn = (c) => (c.kind === 'dye' ? hero.dye === c.id : acc.cosmetics[c.kind] === c.id);
+  const daily = E.dailyShop(acc);
+  const left = daily.filter(d => !d.bought).length;
+  let list = COSMETICS.filter(c => c.kind === shopKind);
+  if (shopKind === 'skin') list = [...list.filter(c => c.cls === hero.classId), ...COSMETICS.filter(c => c.kind === 'dye' && owned.has(c.id))];
+  list.sort((a, b) => (a.kind === 'dye') - (b.kind === 'dye') || a.price - b.price);
+  const isOn = (c) => (c.kind === 'dye' || c.kind === 'skin' ? hero.dye === c.id : acc.cosmetics[c.kind] === c.id);
   const preview = (c) => {
     if (c.kind === 'title') return `<span class="ptitle big">« ${esc(c.name)} »</span>`;
-    if (c.kind === 'color') return `<span class="pname big ${c.color === 'rainbow' ? 'rainbow' : ''}" ${c.color !== 'rainbow' ? `style="color:${c.color}"` : ''}>${esc(acc.pseudo)}</span>`;
-    if (c.kind === 'dye') return `<canvas class="px" data-portrait="${hero.classId}" data-dye="${c.id}"></canvas>`;
+    if (c.kind === 'color') { const fx = NAME_FX.includes(c.color); return `<span class="pname big ${fx ? c.color : ''}" ${fx ? '' : `style="color:${c.color}"`}>${esc(acc.pseudo)}</span>`; }
+    if (c.kind === 'dye' || c.kind === 'skin') return `<canvas class="px" data-hero="${hero.classId}" data-dye="${c.id}"></canvas>`;
     return `<div class="dots">${c.colors.map(col => `<i style="background:${col}"></i>`).join('')}</div>`;
   };
-  return `
-    <section class="card">
-      <h2>Boutique</h2>
-      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span></div>
-      <div class="key-shop">
-        <canvas class="px" data-key></canvas>
-        <div class="o-body"><b>Clef</b><small>Ouvre 1 coffre. Pour ton ${CLASSES[hero.classId].name} (tu en as ${hero.keys}).</small></div>
-        <button class="btn small green" data-act="buyKey" ${acc.clat < KEY_PRICE ? 'disabled' : ''}>${KEY_PRICE}<canvas class="px" data-clat></canvas></button>
+  return modeHead({
+    id: 'shop', c: '#ffd84a', art: '<canvas class="px" data-emblem="shop"></canvas>',
+    title: 'Boutique', sub: 'Dépense ton Flouze',
+    chips: [
+      mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', fmtNum(acc.clat), 'hot'),
+      mchip('<canvas class="px" data-key></canvas>', `Clefs ${CLASSES[hero.classId].name}`, hero.keys),
+      mchip(ico('bag'), 'Objets du jour', `${left} / ${SHOP_DAILY.count}`),
+    ],
+    info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Objets du jour</b> : 3 objets gris à ${SHOP_DAILY.price} Flouze, un seul exemplaire de chaque, renouvelés à minuit. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
+  }) + `
+    <section class="card hx merchant" style="--hc:#ffd84a">
+      ${secHead(ico('star'), 'Le marchand', `Nouveaux objets dans <span data-timer="day3">${fmt(msToMidnight())}</span>`)}
+      <div class="key-deal">
+        <span class="kd-art"><canvas class="px" data-key></canvas></span>
+        <div class="o-body"><b>Clef</b><small>Ouvre 1 coffre de ton ${CLASSES[hero.classId].name} · tu en as ${hero.keys}</small></div>
+        <button class="foe-btn fight gold" data-act="buyKey" ${acc.clat < KEY_PRICE ? 'disabled' : ''}><i><canvas class="px ico" data-clat></canvas></i>${KEY_PRICE}</button>
       </div>
-      <p class="hint" style="margin:12px 0 0">Et des apparences pour frimer : aucun effet sur la force.${shopKind === 'dye' ? ` Les teintures s’appliquent à ton personnage actif (${CLASSES[hero.classId].name}).` : ''}</p>
-      <div class="seg seg4" style="margin-top:12px">
-        ${SHOP_TABS.map(([k, n]) => `<button class="${shopKind === k ? 'on' : ''}" data-act="shopKind" data-k="${k}">${n}</button>`).join('')}
+      <div class="daily">
+        ${daily.map(d => `
+          <div class="dl ${d.bought ? 'sold' : ''}">
+            <div class="it r0 dl-ico" style="--rc:${RARITIES[0].color}"><canvas class="px" data-icon="${d.itemId}"></canvas></div>
+            <b>${esc(ITEMS[d.itemId].name)}</b><small>${SLOTS[ITEMS[d.itemId].slot].name}</small>
+            <small class="dl-st">${Object.entries(E.itemStats(d.itemId, 0)).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ')}</small>
+            ${d.bought ? '<span class="dl-sold">Acheté</span>'
+              : `<button class="btn small green" data-act="buyDaily" data-i="${d.i}" ${acc.clat < d.price ? 'disabled' : ''}>${d.price}<canvas class="px" data-clat></canvas></button>`}
+          </div>`).join('')}
       </div>
     </section>
-    <section class="card">
-      <div class="shop">
+    <section class="card hx" style="--hc:#b05cff">
+      ${secHead(ico('magic'), 'Apparences', shopKind === 'skin' ? `Skins de ton ${CLASSES[hero.classId].name}` : 'Pour frimer : aucun effet sur la force')}
+      <div class="seg seg4">${SHOP_TABS.map(([k, n]) => `<button class="${shopKind === k ? 'on' : ''}" data-act="shopKind" data-k="${k}">${n}</button>`).join('')}</div>
+      <div class="shop ${shopKind === 'skin' ? 'skins' : ''}">
         ${list.map(c => `
-          <div class="shop-item ${isOn(c) ? 'on' : ''}">
+          <div class="shop-item ${isOn(c) ? 'on' : ''} ${owned.has(c.id) ? 'owned' : ''}">
             <div class="sh-prev">${preview(c)}</div>
-            <div class="sh-name">${esc(c.name)}</div>
+            <div class="sh-name">${esc(c.name)}${c.kind === 'dye' ? '<small>ancienne teinture</small>' : ''}</div>
             ${owned.has(c.id)
               ? `<button class="btn small ${isOn(c) ? '' : 'primary'}" data-act="equipCos" data-id="${c.id}">${isOn(c) ? 'Retirer' : 'Porter'}</button>`
               : `<button class="btn small green" data-act="buyCos" data-id="${c.id}" ${acc.clat < c.price ? 'disabled' : ''}>${c.price}<canvas class="px" data-clat></canvas></button>`}
@@ -2546,6 +2568,12 @@ const ACTIONS = {
   spellOn: (d) => { if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id)) { hero.spells.push(d.id); save(); render(); } },
   openChest: (d) => openChestFlow(d.kind),
   openAll: () => openChestFlow('normal', true),
+  buyDaily: (d) => {
+    const it = E.buyDaily(acc, hero, +d.i);
+    if (!it) { toast(`Il faut ${SHOP_DAILY.price} Flouze.`); return; }
+    SFX.loot(0); save(); render();
+    toast(`${ITEMS[it.itemId].name} ajouté au sac de ton ${CLASSES[hero.classId].name} !`);
+  },
   buyKey: () => {
     if (!E.buyKey(acc, hero)) { toast(`Il faut ${KEY_PRICE} Flouze.`); return; }
     SFX.loot(2); save(); render();

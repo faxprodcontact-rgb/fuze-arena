@@ -11,7 +11,7 @@ export const MAX_ACTIVE_SPELLS = 4;
 export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h (remise à zéro à minuit et à midi), par personnage
 export const DUNGEON_KEYS_MAX = 5;  // clefs gagnées au maximum en donjon toutes les 12 h, par personnage (ensuite : XP seulement)
 export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
-export const KEY_PRICE = 100;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
+export const KEY_PRICE = 50;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
 export const SELL_PRICE = [1, 3, 7, 16, 40];   // revente d'un objet selon sa rareté (en Flouze)
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
@@ -587,6 +587,9 @@ const T = (id, name, price) => ({ id: 't_' + id, kind: 'title', name, price });
 const C = (id, name, price, color) => ({ id: 'c_' + id, kind: 'color', name, price, color });
 const D = (id, name, price, dye) => ({ id: 'd_' + id, kind: 'dye', name, price, dye });
 const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, price, colors });
+// Skin : une tenue propre à une classe (remplace les anciennes teintures, qui restent portables par ceux qui les ont)
+const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price, look });
+export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
 
 export const COSMETICS = [
   // Titres (affichés sous ton pseudo)
@@ -600,10 +603,17 @@ export const COSMETICS = [
   T('intouchable', 'Intouchable', 120), T('boss', 'Le Boss', 150), T('dieu', 'Dieu de l’Arène', 200),
   T('president', 'Président', 250),
   T('naine', 'Destructeur de naine', 500),
+  T('dormeur', 'Gros dormeur', 8), T('tchatteur', 'Roi du tchat', 12), T('philo', 'Philosophe', 15), T('flambeur', 'Flambeur', 20),
+  T('tacticien', 'Tacticien', 25), T('clefs', 'Maître des clefs', 30), T('donjon', 'Roi du donjon', 35), T('fantome', 'Le Fantôme', 35),
+  T('horde', 'Survivant de la Horde', 45), T('mecene', 'Mécène', 60), T('melenchon', 'Chasseur de Mélenchon', 70),
+  T('seigneur', 'Seigneur de guerre', 90), T('legende', 'Légende vivante', 180), T('immortel', 'Immortel', 300),
   // Couleurs de pseudo
   C('vert', 'Pseudo vert', 15, '#4cd964'), C('bleu', 'Pseudo bleu', 15, '#3d9bff'), C('rouge', 'Pseudo rouge', 15, '#ff5d6c'),
   C('cyan', 'Pseudo cyan', 20, '#48dbfb'), C('rose', 'Pseudo rose', 25, '#ff8fc7'), C('violet', 'Pseudo violet', 30, '#b05cff'),
   C('orange', 'Pseudo orange', 30, '#ff9f1a'), C('or', 'Pseudo doré', 60, '#ffd84a'), C('arcenciel', 'Pseudo arc-en-ciel', 150, 'rainbow'),
+  C('menthe', 'Pseudo menthe', 20, '#7bf09a'), C('glace', 'Pseudo glace', 25, '#9fd0ff'), C('corail', 'Pseudo corail', 25, '#ff7f6b'),
+  C('lavande', 'Pseudo lavande', 30, '#c9a7ff'), C('argent', 'Pseudo argent', 45, '#d8dee6'), C('rubis', 'Pseudo rubis', 50, '#ff2e63'),
+  C('emeraude', 'Pseudo émeraude', 50, '#2ee59d'), C('feu', 'Pseudo de feu', 120, 'fire'), C('galaxie', 'Pseudo galaxie', 180, 'galaxy'),
   // Teintures de tenue (pour le personnage actif)
   D('noir', 'Noir corbeau', 20, { body: '#34303d', sleeve: '#2b2733', accent: '#8e2b2b', headC: '#3d3947', legs: '#26232c' }),
   D('blanc', 'Blanc neige', 20, { body: '#eef2f6', sleeve: '#d9e0e8', accent: '#3d9bff', headC: '#f4f8fc', legs: '#c9d1da' }),
@@ -626,5 +636,25 @@ export const COSMETICS = [
   V('feu', 'Feu d’artifice', 60, ['#ff9f1a', '#ffd84a', '#ff3a1a', '#ffffff']),
   V('or', 'Pluie d’or', 80, ['#ffd84a', '#e5b33a', '#fff3b0']),
   V('clat', 'Pluie de Flouze', 100, ['#2ecc71', '#a8f0c0', '#1e8449']),
+  V('neige', 'Neige', 35, ['#ffffff', '#e0f7ff', '#9fd0ff']), V('petales', 'Pétales', 40, ['#ff8fc7', '#ffd1e8', '#ffffff']),
+  V('etoiles', 'Étoiles filantes', 45, ['#fff3b0', '#ffd84a', '#ffffff']), V('poison', 'Nuage toxique', 50, ['#7bed6f', '#3fbf3f', '#b05cff']),
+  V('dragon', 'Sang du dragon', 70, ['#e8364a', '#a8182c', '#ff9f1a']), V('galaxie', 'Galaxie', 120, ['#b05cff', '#3d9bff', '#ff8fc7', '#ffffff']),
+  // Skins : 4 par classe
+  K('guerrier', 'noir', 'Chevalier noir', 60, { body: '#34303d', sleeve: '#2b2733', accent: '#e8364a', headC: '#3d3947', headA: '#e8364a', legs: '#26232c', boots: '#1b1530', glove: '#2b2733' }),
+  K('guerrier', 'samourai', 'Samouraï', 80, { body: '#d63031', sleeve: '#b02525', accent: '#ffd84a', headC: '#1b1530', headA: '#ffd84a', legs: '#2b2733', boots: '#1b1530', glove: '#1b1530', hair: '#1b1530' }),
+  K('guerrier', 'viking', 'Viking', 90, { hair: '#e07b24', body: '#8a5a2b', sleeve: '#6b4423', accent: '#3d9bff', headC: '#c9d1dc', headA: '#f3dfb0', legs: '#3b2a20', boots: '#2a1d10', glove: '#6b4423', skin: '#f6caa0' }),
+  K('guerrier', 'templier', 'Templier doré', 150, { body: '#ffd84a', sleeve: '#e5b33a', accent: '#f4f8fc', headC: '#ffe680', headA: '#e8364a', legs: '#b8860b', boots: '#7a4e2a', glove: '#e5b33a' }),
+  K('mage', 'necro', 'Nécromancien', 70, { body: '#1f1a2e', sleeve: '#16121f', accent: '#4cd964', headC: '#16121f', headA: '#4cd964', legs: '#1f1a2e', boots: '#0e0b16', beard: '#9aa3ad', skin: '#d6cdb8' }),
+  K('mage', 'glace', 'Mage de glace', 80, { body: '#3d9bff', sleeve: '#2e7fd6', accent: '#e0f7ff', headC: '#2e7fd6', headA: '#e0f7ff', legs: '#3d9bff', boots: '#1c3566', beard: '#f4f8fc', hair: '#f4f8fc' }),
+  K('mage', 'feu', 'Mage de feu', 90, { body: '#c0392b', sleeve: '#a82424', accent: '#ff9f1a', headC: '#a82424', headA: '#ffd84a', legs: '#c0392b', boots: '#3b1a10', beard: '#d9822b', hair: '#d9822b' }),
+  K('mage', 'archimage', 'Archimage', 150, { body: '#eef2f6', sleeve: '#d9e0e8', accent: '#ffd84a', headC: '#f4f8fc', headA: '#ffd84a', legs: '#eef2f6', boots: '#8a6a3a' }),
+  K('archer', 'assassin', 'Assassin', 70, { body: '#2b2733', sleeve: '#1f1a2e', headC: '#1f1a2e', accent: '#e8364a', legs: '#1b1530', boots: '#16121f', glove: '#2b2733' }),
+  K('archer', 'automne', 'Chasseur d’automne', 60, { body: '#c0662b', sleeve: '#a8541f', headC: '#8a3d1a', accent: '#ffd84a', legs: '#5a3a22', glove: '#7a4e2a' }),
+  K('archer', 'elfe', 'Elfe des neiges', 90, { body: '#eef2f6', sleeve: '#d9e0e8', headC: '#c9d1da', accent: '#3d9bff', legs: '#9aa3ad', boots: '#6b7684', hair: '#f4f8fc', skin: '#f6d6b8' }),
+  K('archer', 'royal', 'Ranger royal', 150, { body: '#5b3fa8', sleeve: '#4e3594', headC: '#4a2f91', accent: '#ffd84a', legs: '#2b2140', boots: '#ffd84a', glove: '#ffd84a' }),
+  K('paladin', 'croise', 'Croisé', 70, { body: '#f4f8fc', sleeve: '#d9e0e8', accent: '#e8364a', cape: '#e8364a', headC: '#ffd84a', legs: '#9aa3ad' }),
+  K('paladin', 'jade', 'Chevalier de jade', 80, { body: '#1abc9c', sleeve: '#16a085', accent: '#ffd84a', cape: '#0e6655', headC: '#ffd84a', legs: '#0e6655', glove: '#16a085' }),
+  K('paladin', 'tenebres', 'Paladin des ténèbres', 90, { body: '#34303d', sleeve: '#2b2733', accent: '#b05cff', cape: '#4a2f91', headC: '#8a93a3', legs: '#26232c', boots: '#16121f', glove: '#2b2733', hair: '#1b1530' }),
+  K('paladin', 'solaire', 'Gardien solaire', 150, { body: '#ffd84a', sleeve: '#e5b33a', accent: '#ff9f1a', cape: '#c0392b', headC: '#fff3b0', legs: '#b8860b', glove: '#e5b33a' }),
 ];
 export const COSMETIC = Object.fromEntries(COSMETICS.map(c => [c.id, c]));

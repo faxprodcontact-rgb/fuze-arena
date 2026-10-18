@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018173120';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018173120';
+} from './data.js?v=20261018174023';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018174023';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -1265,8 +1265,30 @@ export function buyCosmetic(acc, id) {
 export function equipCosmetic(acc, hero, id) {
   const c = COSMETIC[id];
   if (!c || !acc.cosmetics.owned.includes(id)) return;
-  if (c.kind === 'dye') hero.dye = hero.dye === id ? null : id;
+  if (c.kind === 'dye' || c.kind === 'skin') {
+    if (c.cls && c.cls !== hero.classId) return;   // un skin ne va qu'à sa classe
+    hero.dye = hero.dye === id ? null : id;
+  }
   else acc.cosmetics[c.kind] = acc.cosmetics[c.kind] === id ? null : id;
+}
+
+// ------------------------------ Marchand du jour ------------------------------
+/** Les 3 objets gris du jour (les mêmes pour tout le monde), et ce qui a déjà été acheté aujourd'hui */
+export function dailyShop(acc) {
+  const day = dayKey();
+  if (!acc.shop || acc.shop.day !== day) acc.shop = { day, bought: {} };
+  const rng = makeRng(hashStr('marchand' + day));
+  const pool = ITEM_LIST.filter(i => i.slot !== 'pet');
+  const items = [];
+  while (items.length < SHOP_DAILY.count && pool.length) items.push(pool.splice(Math.floor(rng() * pool.length), 1)[0].id);
+  return items.map((itemId, i) => ({ i, itemId, rarity: SHOP_DAILY.rarity, price: SHOP_DAILY.price, bought: !!acc.shop.bought[i] }));
+}
+export function buyDaily(acc, hero, i) {
+  const it = dailyShop(acc)[i];
+  if (!it || it.bought || acc.clat < it.price) return null;
+  acc.clat -= it.price;
+  acc.shop.bought[i] = true;
+  return addItem(hero, it.itemId, it.rarity);
 }
 
 // ------------------------------ Paris ----------------------------------
