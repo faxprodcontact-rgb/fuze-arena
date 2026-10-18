@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018200055';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018200055';
+} from './data.js?v=20261018201020';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018201020';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -890,6 +890,9 @@ export function friendlyRewards(acc, won, foeId) {
 export const DUNGEON_HP_MULT = 1.15;      // les boss ont un peu plus de PV
 /** Difficulté : un peu plus dure au début, plus douce à haut niveau (où l'équipement compte beaucoup) */
 export const dungeonDifficulty = (lvl) => 1.35 - 0.004 * lvl;
+// Vagues de donjon (à partir du donjon niveau 10) : monstres bien plus costauds, il faut quelques niveaux d'avance
+// (le premier donjon reste comme avant pour les nouveaux ; la Horde, la Tour et le raid ne changent pas)
+export const DUNGEON_HARD = { from: 10, hp: 1.6, diff: (lvl) => 1.7 - 0.002 * lvl };
 
 export function dungeonXp(d) { return 25 + 5 * d.lvl; }
 
@@ -900,17 +903,19 @@ export function dungeonOdds(d) {
 }
 
 /** Crée le boss d'un donjon à partir de son niveau et de son profil */
-export function buildMonster(d) {
+export function buildMonster(d, hard = false) {
   const avg = 8 + 1.25 * d.lvl;
   const stats = {};
-  for (const k of STAT_KEYS) stats[k] = Math.max(1, Math.round(avg * d.profile[k] * dungeonDifficulty(d.lvl)));
+  hard = hard && d.lvl >= DUNGEON_HARD.from;
+  const diff = hard ? DUNGEON_HARD.diff(d.lvl) : dungeonDifficulty(d.lvl);
+  for (const k of STAT_KEYS) stats[k] = Math.max(1, Math.round(avg * d.profile[k] * diff));
   return {
     name: d.boss,
     monster: d.sprite,
     classId: null,
     level: d.lvl,
     stats,
-    maxHp: Math.round(maxHp(stats, d.lvl) * DUNGEON_HP_MULT),
+    maxHp: Math.round(maxHp(stats, d.lvl) * (hard ? DUNGEON_HARD.hp : DUNGEON_HP_MULT)),
     spells: d.spells.slice(),
     basic: d.basic,
     pet: null,
@@ -934,13 +939,13 @@ export function dungeonWave(d, rng = Math.random) {
   const picks = [];
   while (picks.length < WAVE_MINIONS && pool.length) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
   const minions = picks.map(src => {
-    const m = buildMonster({ ...src, lvl: d.lvl });
+    const m = buildMonster({ ...src, lvl: d.lvl }, true);
     for (const k in m.stats) m.stats[k] = Math.max(1, Math.round(m.stats[k] * MINION_POWER));
     m.maxHp = Math.round(m.maxHp * MINION_HP);
     m.minion = true;
     return m;
   });
-  const boss = buildMonster(pickDungeonFoe(d, rng));
+  const boss = buildMonster(pickDungeonFoe(d, rng), true);
   boss.maxHp = Math.round(boss.maxHp * WAVE_BOSS_HP);
   return [...minions, boss];
 }

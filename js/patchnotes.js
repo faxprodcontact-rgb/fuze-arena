@@ -5,6 +5,16 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2010', date: '18/10/2026', time: '20h10', title: 'Donjons plus difficiles',
+    sections: [
+      { title: 'Donjons', items: [
+        'Les monstres et les boss des donjons (à partir de C3 Blanche, niveau 10) sont beaucoup plus forts : plus de stats et plus de PV.',
+        'Au niveau exact du donjon, le boss est très dur à battre : il faut quelques niveaux d’avance, un bon équipement et bien choisir ses sorts.',
+        'Le premier donjon (Appartement 33) ne change pas, pour les nouveaux joueurs. La Horde, la Tour infinie et le raid non plus.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2000', date: '18/10/2026', time: '20h00', title: 'Correctif : bonus d’XP',
     sections: [
       { title: 'XP', items: [
