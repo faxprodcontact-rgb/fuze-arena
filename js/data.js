@@ -593,6 +593,8 @@ const D = (id, name, price, dye) => ({ id: 'd_' + id, kind: 'dye', name, price, 
 const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, price, colors });
 // Skin : une tenue propre à une classe (remplace les anciennes teintures, qui restent portables par ceux qui les ont)
 const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price, look });
+// PvP en direct : défi entre joueurs en ligne, tous les persos de chacun à la suite (relais)
+export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
 export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
 
 export const COSMETICS = [

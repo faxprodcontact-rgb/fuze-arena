@@ -1269,3 +1269,42 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 /* Tchat : un seul défilement (la page), le dernier message reste au-dessus de la barre d'écriture */
 #view.is-chat { padding-bottom: calc(150px + var(--safe-bot)); }
 .chat-list { height: auto; min-height: 160px; overflow: visible; }
+
+/* ---------- PvP en direct ---------- */
+.tm-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tm-h { --cc: #ff5d6c; position: relative; aspect-ratio: 1 / 1.15; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 4px; overflow: hidden;
+  background: radial-gradient(ellipse 80% 35% at 50% 85%, color-mix(in srgb, var(--cc) 45%, transparent), transparent 70%), #15111e; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cc) 50%, transparent), 0 2px 0 rgba(0,0,0,.35); }
+.tm-h.cls-mage { --cc: #a77bff; } .tm-h.cls-archer { --cc: #4cd964; } .tm-h.cls-paladin { --cc: #ffd84a; }
+.tm-h canvas { width: 78%; height: auto; }
+.tm-h b { font-family: var(--pixel); font-size: 7px; color: var(--gold); margin-top: 2px; }
+.tm-h.empty { background: repeating-linear-gradient(135deg, #1a1526 0 6px, #15111e 6px 12px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.06); justify-content: center; color: var(--muted); }
+.tm-strip.big .tm-h b { font-size: 8px; }
+.pvp-row { padding: 10px; margin-bottom: 8px; border-radius: 14px; background: linear-gradient(180deg, #241d36, #17131f); box-shadow: inset 0 0 0 2px rgba(176,92,255,.3), 0 3px 0 rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 8px; }
+.pvp-row:last-child { margin-bottom: 0; }
+.pr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pr-top small { font-family: var(--pixel); font-size: 8px; color: var(--gold); display: inline-flex; align-items: center; gap: 3px; }
+.pr-wait { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.pvp-match { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 2px 10px; align-items: center; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px;
+  background: linear-gradient(180deg, #241d36, #17131f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+.pvp-match:last-child { margin-bottom: 0; }
+.pvp-match.win { box-shadow: inset 0 0 0 2px rgba(76,217,100,.45); }
+.pvp-match.loss { box-shadow: inset 0 0 0 2px rgba(255,93,108,.4); }
+.pm-names { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; min-width: 0; }
+.pm-names span { font-family: var(--pixel); font-size: 8px; color: var(--gold); }
+.pm-names b.w { color: #7bf09a; }
+.pvp-match small { grid-row: 2; font-size: 11.5px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.pvp-match .ibtn { grid-row: 1 / span 2; grid-column: 2; }
+/* écran VS */
+.pvp-vs { text-align: center; }
+.vs-title { font-family: var(--pixel); font-size: 13px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px rgba(176,92,255,.7); margin: 4px 0 12px; }
+.vs-grid { display: grid; grid-template-columns: 1fr 44px 1fr; gap: 6px; align-items: center; }
+.vs-side { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border-radius: 14px; min-width: 0; }
+.vs-side.blue { background: linear-gradient(180deg, rgba(61,155,255,.22), rgba(61,155,255,.04)); box-shadow: inset 0 0 0 2px rgba(61,155,255,.55); }
+.vs-side.red { background: linear-gradient(180deg, rgba(232,54,74,.22), rgba(232,54,74,.04)); box-shadow: inset 0 0 0 2px rgba(232,54,74,.55); }
+.vs-side > b { font-family: var(--pixel); font-size: 9px; color: #fff; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-side small { font-family: var(--pixel); font-size: 8px; color: var(--gold); display: inline-flex; align-items: center; gap: 3px; }
+.tm-strip.col { grid-template-columns: 1fr; width: 100%; max-width: 92px; }
+.vs-mid { font-family: var(--pixel); font-size: 18px; color: var(--gold); text-shadow: 0 3px 0 #7a4a0a, 0 0 14px rgba(255,216,74,.7); animation: cbt-bob 1.6s ease-in-out infinite; }
+.pips-vs { display: inline-flex; gap: 2px; vertical-align: middle; }
+.pips-vs i { width: 6px; height: 6px; border-radius: 2px; background: rgba(255,255,255,.2); }
+.pips-vs i.on { background: #7bf09a; box-shadow: 0 0 4px #4cd964; }

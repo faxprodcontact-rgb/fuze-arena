@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018192242';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018192242';
+} from './data.js?v=20261018193915';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018193915';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -405,6 +405,57 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
 
 /** XP d'un assaut de raid (à chaque assaut, selon le niveau du perso) */
 export function raidAssaultXp(hero) { return gainXp(hero, 25 + 5 * hero.level); }
+
+// ------------------------------ PvP en relais ------------------------------
+export { PVP };
+/**
+ * Combat en relais : les persos de chaque équipe entrent l'un après l'autre. Quand un perso tombe, le suivant
+ * de son équipe arrive aussitôt ; le gagnant du duel garde ses PV. L'équipe qui n'a plus personne perd.
+ * Événements en plus : { type: 'kill', target, score } puis { type: 'nextFoe', side, foe, score }.
+ */
+export function createRelay(teamA, teamB, seed) {
+  const T = [teamA, teamB], idx = [0, 0], log = [], pending = [];
+  let hp = [teamA[0].maxHp, teamB[0].maxHp], done = false, winner = null, n = 0;
+  const alive = () => [T[0].length - idx[0], T[1].length - idx[1]];
+  const start = () => createFight({ ...T[0][idx[0]], hp: hp[0] }, { ...T[1][idx[1]], hp: hp[1] }, seed + n * 101, {});
+  let cur = start();
+  const pull = () => {
+    if (pending.length) return pending.shift();
+    if (done) return null;
+    const e = cur.next();
+    if (!e) return null;
+    if (e.type !== 'end') return e;
+    const r = cur.result();
+    const w = e.winner === 0 ? 0 : 1, l = 1 - w;
+    idx[l]++;
+    if (idx[l] >= T[l].length) { done = true; winner = w; return { ...e, winner: w, score: alive() }; }
+    hp[w] = Math.max(1, r.hp[w]);
+    hp[l] = T[l][idx[l]].maxHp;
+    n++;
+    cur = start();
+    pending.push({ type: 'nextFoe', side: l, foe: T[l][idx[l]], score: alive() });
+    return { type: 'kill', target: l, label: 'K.O.', score: alive(), s: e.s };
+  };
+  const api = {
+    next() { const e = pull(); if (e) log.push(e); return e; },
+    result() { while (api.next()); return { log, winner, score: alive() }; },
+  };
+  return api;
+}
+export const simulateRelay = (teamA, teamB, seed) => createRelay(teamA, teamB, seed).result();
+
+/** Gain d'un match PvP gagné (10 Flouze, 5 fois par jour maximum). Renvoie le Flouze gagné. */
+export function pvpReward(acc, matchId) {
+  const day = dayKey();
+  if (!acc.pvp || acc.pvp.day !== day) acc.pvp = { day, rewarded: 0, claimed: (acc.pvp && acc.pvp.claimed) || {} };
+  if (acc.pvp.claimed[matchId]) return 0;
+  acc.pvp.claimed[matchId] = true;
+  if (acc.pvp.rewarded >= PVP.rewardsPerDay) return 0;
+  acc.pvp.rewarded++;
+  acc.clat += PVP.reward;
+  return PVP.reward;
+}
+export const pvpRewardsLeft = (acc) => (acc.pvp && acc.pvp.day === dayKey() ? Math.max(0, PVP.rewardsPerDay - acc.pvp.rewarded) : PVP.rewardsPerDay);
 
 // ------------------------------ La Horde ------------------------------
 export { HORDE };

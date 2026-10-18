@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018192242';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018193915';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -763,6 +763,18 @@ const EMBLEMS = {
       rr(g, x - 0.5, 15, 2, 5, '#6b4226'); rr(g, x - 1, 14, 3, 1.5, '#3a2a1a');
       ellipse(g, x + 0.5, 11.5, 1.8, 2.6, '#ff8a2a'); ellipse(g, x + 0.5, 12.2, 0.9, 1.4, '#ffe08a');
     }
+    return g;
+  },
+  pvp() {   // deux casques face à face (bleu contre rouge) et un éclair au milieu
+    const g = grid(30, 26);
+    const helm = (cx, c, d, dir) => {
+      ellipse(g, cx, 11, 7, 7.5, c); rr(g, cx - 7, 11, 14, 8, c); ellipse(g, cx, 21, 9, 4, d);
+      rr(g, cx - 5, 11, 10, 2, '#1b1530'); rr(g, cx - 0.5, 4, 1, 7, d);
+      tri(g, [[cx + dir * 6, 3], [cx + dir * 9, 1], [cx + dir * 7, 7]], '#ffd84a');
+    };
+    helm(7.5, '#3d9bff', '#2a6fc4', -1); helm(22.5, '#e8364a', '#a8182c', 1);
+    tri(g, [[17, 1], [11, 13], [16, 13]], '#ffd84a'); tri(g, [[14, 11], [19, 11], [12, 25]], '#ffd84a');
+    tri(g, [[16, 3], [13, 11], [15, 11]], '#fff3b0');
     return g;
   },
   shop() {   // le sac du marchand, plein de Flouze

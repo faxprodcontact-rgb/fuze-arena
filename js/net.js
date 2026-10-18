@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018192242';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018193915';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;
@@ -207,6 +207,14 @@ export async function createChallenge(toId, fromName, toName) {
   const c = await client();
   const { error } = await c.from('challenges').insert({ from_id: userId, to_id: toId, from_name: fromName, to_name: toName });
   if (error) throw new Error(frError(error));
+}
+
+/** Défi PvP : comme un défi, mais avec l'équipe du lanceur (from_snap.pvp) */
+export async function createPvp(toId, fromName, toName, fromSnap, seed) {
+  const c = await client();
+  const { data, error } = await c.from('challenges').insert({ from_id: userId, to_id: toId, from_name: fromName, to_name: toName, from_snap: fromSnap, seed }).select().single();
+  if (error) throw new Error(frError(error));
+  return data;
 }
 
 export async function answerChallenge(id, patch) {

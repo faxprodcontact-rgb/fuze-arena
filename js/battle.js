@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018192242';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018192242';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018192242';
+import { CLASSES } from './data.js?v=20261018193915';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018193915';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018193915';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -569,23 +569,24 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     } else if (e.type === 'kill') {
       // La Horde : le monstre tombe… et le suivant arrive aussitôt
       sfx.boom();
-      const T = F[1], c = center(T);
+      const T = F[e.target ?? 1], c = center(T);
       T.dead = true;
       shake = Math.max(shake, 5);
       tween(T, { rot: -85, alpha: 0, offX: -24 }, 420, 'outQuad');
       burst(c.x, c.y, 22, ['#ffd84a', '#fff3b0', '#ff9f43'], { speed: 190, up: 60, glow: true });
       burst(c.x, GROUND - 6, 12, ['#c49a6c', '#e0c49a'], { speed: 110, up: 30 });
-      float(`K.O. ×${e.kills}`, c.x, c.y - 40, '#ffd84a', 11, { vy: -30, life: 1100 });
+      float(e.label || `K.O. ×${e.kills}`, c.x, c.y - 40, '#ffd84a', 11, { vy: -30, life: 1100 });
       await wait(360);
     } else if (e.type === 'nextFoe') {
-      const nf = mk(e.foe, 1);
-      nf.baseX = baseXOf(1, nf.sw);
-      nf.offX = -(W * 0.7);          // arrive depuis la droite de l'écran
-      F[1] = nf;
+      const side = e.side ?? 1;
+      const nf = mk(e.foe, side);
+      nf.baseX = baseXOf(side, nf.sw);
+      nf.offX = -(W * 0.7);          // arrive depuis son bord de l'écran
+      F[side] = nf;
       sfx.roar();
       await tween(nf, { offX: 0 }, 380, 'outQuad');
       const c = center(nf);
-      float(`Monstre ${e.n}`, c.x, GROUND - nf.sh * S - 22, '#ff8a94', 8, { vy: -12, life: 900 });
+      float(e.n ? `Monstre ${e.n}` : e.foe.name, c.x, GROUND - nf.sh * S - 22, side === 0 ? '#7fd6ff' : '#ff8a94', 8, { vy: -12, life: 900 });
     } else if (e.type === 'end' && e.winner < 0) {
       // fin d'un assaut de raid : personne ne tombe
       if (!training) { stopMusic(); setQuiet(false); }

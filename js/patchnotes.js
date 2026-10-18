@@ -5,6 +5,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1939', date: '18/10/2026', time: '19h39', title: 'Nouveau mode : PvP en direct',
+    sections: [
+      { title: 'PvP en direct', items: [
+        'Dans Combats › PvP : défie un pote connecté. Il reçoit une notification et a 3 minutes pour accepter.',
+        'Écran VS avec les persos des deux équipes côte à côte. Tous vos persos entrent l’un après l’autre, du plus faible au plus fort ; le gagnant d’un duel garde ses PV. L’équipe qui n’a plus personne perd.',
+        'Avec moins de 4 persos, tu peux jouer quand même (mais tu es désavantagé).',
+        'Le gagnant touche 10 Flouze (5 fois par jour maximum). Tout le monde peut regarder les matchs.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1922', date: '18/10/2026', time: '19h22', title: 'Réglage de l’XP',
     sections: [
       { title: 'XP', items: [

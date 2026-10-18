@@ -5,16 +5,16 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018192242';
-import * as E from './engine.js?v=20261018192242';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018192242';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018192242';
-import { hashStr, makeRng } from './rng.js?v=20261018192242';
-import { APP_VERSION } from './version.js?v=20261018192242';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018192242';
-import * as NET from './net.js?v=20261018192242';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018192242';
+  KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+} from './data.js?v=20261018193915';
+import * as E from './engine.js?v=20261018193915';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018193915';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018193915';
+import { hashStr, makeRng } from './rng.js?v=20261018193915';
+import { APP_VERSION } from './version.js?v=20261018193915';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018193915';
+import * as NET from './net.js?v=20261018193915';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018193915';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1204,7 +1204,7 @@ const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p 
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
+const PARENT = { pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 const PARENT_NAME = { combat: 'Combats', social: 'Social' };
 
 function setBadge(id, n) {
@@ -1304,6 +1304,7 @@ function viewCombat() {
   const duels = bets.challenges.filter(c => c.status === 'pending' && c.to_id === myId()).length;
   const tiles = [
     { id: 'fights', name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, tag: 'Affronte tes potes', emblem: 'arena', badge: fightsLeft, wide: true, c: '#ff5d6c' },
+    { id: 'pvp', name: 'PvP en direct', sub: NET.online ? `${players.filter(p => isOnline(p.id)).length} pote${players.filter(p => isOnline(p.id)).length > 1 ? 's' : ''} en ligne` : 'En ligne seulement', tag: 'Ton équipe contre celle d’un pote connecté', emblem: 'pvp', badge: pvpIncoming().length, wide: true, c: '#b05cff' },
     { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, emblem: 'dungeons', badge: runs, c: '#4cd964' },
     { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
     { id: 'raid', name: RAID.boss.name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft, c: '#ff8a3d' },
@@ -1620,7 +1621,9 @@ const duelOdds = (c) => E.betOdds(E.powerScore(c.from_snap), E.powerScore(c.to_s
 async function refreshBets() {
   if (!NET.online) return;
   try {
-    const ch = await NET.fetchChallenges();
+    const all = await NET.fetchChallenges();
+    const ch = all.filter(c => !isPvp(c));
+    pvpRows = all.filter(isPvp);
     const w = await NET.fetchWagers(ch.filter(c => c.status === 'accepted').map(c => c.id));
     bets = { challenges: ch, wagers: w };
   } catch (e) { toast(e.message); }
@@ -1714,6 +1717,172 @@ function viewBets() {
       return `<div class="opp"><div class="o-body"><div class="o-name">${ico('trophy')} ${esc(win === 0 ? c.from_name : c.to_name)} a gagné</div><div class="o-sub">${esc(c.from_name)} vs ${esc(c.to_name)}</div></div>
         <button class="btn small" data-act="replayDuel" data-id="${c.id}">${ico('play')} Revoir</button></div>`;
     }).join('')}</section>` : ''}`;
+}
+
+// ------------------------------ PvP en direct ------------------------------
+// Un défi PvP est une ligne de la table des défis marquée from_snap.pvp, avec l'équipe de chaque joueur.
+// Le combat est calculé de la même façon chez les deux joueurs et chez ceux qui regardent.
+let pvpRows = [];
+const pvpCache = {};
+const isPvp = (c) => !!(c && c.from_snap && c.from_snap.pvp);
+/** L'équipe d'un joueur : tous ses persos (4 max), du plus faible au plus fort */
+const teamOf = (data, pseudo) => data.heroes.map(h => snapOf(data, h, pseudo)).sort((a, b) => E.powerScore(a) - E.powerScore(b)).slice(0, 4);
+const dataOfId = (id) => (id === myId() ? acc : (players.find(p => p.id === id) || {}).data);
+function rowTeams(c) {
+  const t = (snap, id, name) => (snap && snap.team) || (dataOfId(id) ? teamOf(dataOfId(id), name) : []);
+  return [t(c.from_snap, c.from_id, c.from_name), t(c.to_snap, c.to_id, c.to_name)];
+}
+const pvpResult = (c) => (pvpCache[c.id] ||= E.simulateRelay(...rowTeams(c), Number(c.seed) || 1));
+const pvpExpired = (c) => c.status === 'pending' && Date.now() - new Date(c.created_at).getTime() > PVP.expireMs;
+const pvpIncoming = () => pvpRows.filter(c => c.status === 'pending' && c.to_id === myId() && !pvpExpired(c));
+/** Les 4 persos d'une équipe, côte à côte (case vide si le joueur en a moins) */
+const teamStrip = (team, cls = '') => `<div class="tm-strip ${cls}">${[0, 1, 2, 3].map(i => {
+  const s = team[i];
+  return s ? `<div class="tm-h cls-${s.classId}"><canvas class="px" data-portrait="${s.classId}" data-dye="${s.dye || ''}"></canvas><b>Nv.${s.level}</b></div>`
+    : '<div class="tm-h empty"><span>—</span></div>';
+}).join('')}</div>`;
+const teamPower = (team) => team.reduce((t, s) => t + E.powerScore(s), 0);
+
+function viewPvp() {
+  if (!NET.online) return offlineCard('PvP en direct', 'Le PvP marche seulement en ligne, contre tes potes connectés.');
+  const me = myId();
+  const myTeam = teamOf(acc, acc.pseudo);
+  const online = players.filter(p => isOnline(p.id));
+  const open = pvpRows.filter(c => c.status === 'pending' && !pvpExpired(c));
+  const incoming = open.filter(c => c.to_id === me), outgoing = open.filter(c => c.from_id === me);
+  const busy = new Set(open.flatMap(c => [c.from_id, c.to_id]));
+  const matches = pvpRows.filter(c => c.status === 'accepted').slice(0, 12);
+  const left = E.pvpRewardsLeft(acc);
+  return modeHead({
+    id: 'pvp', c: '#b05cff', art: '<canvas class="px" data-emblem="pvp"></canvas>',
+    title: 'PvP en direct', sub: 'Ton équipe contre celle d’un pote connecté',
+    chips: [
+      mchip('<i class="dot-on"></i>', 'Potes en ligne', online.length, online.length ? 'hot' : ''),
+      mchip('<canvas class="px" data-clat></canvas>', 'Gains du jour', `${PVP.rewardsPerDay - left} / ${PVP.rewardsPerDay}`),
+      mchip(ico('swords'), 'Ton équipe', `${myTeam.length} perso${myTeam.length > 1 ? 's' : ''}`),
+    ],
+    info: `Défie un pote <b>connecté</b> : il reçoit une notification et a 3 minutes pour accepter. Le match se lance aussitôt pour vous deux.<br><br>
+      Tous vos persos entrent l’un après l’autre, du plus faible au plus fort. Quand un perso tombe, le suivant de son équipe arrive ; le gagnant du duel garde ses PV. L’équipe qui n’a plus personne perd. Avec moins de 4 persos, tu peux jouer, mais tu es désavantagé.<br><br>
+      Le gagnant touche <b>${PVP.reward} Flouze</b> (${PVP.rewardsPerDay} fois par jour maximum). Tout le monde peut regarder les matchs.`,
+  }) + `
+    <section class="card hx" style="--hc:#b05cff">
+      ${secHead(ico('star'), 'Ton équipe', `Puissance totale ${fmtNum(teamPower(myTeam))}`)}
+      ${teamStrip(myTeam, 'big')}
+    </section>
+    ${incoming.length ? `<section class="card hx" style="--hc:#ff5d6c">${secHead(ico('swords'), 'On te défie', 'Réponds vite : 3 minutes')}${incoming.map(c => `
+      <div class="foe todo"><span class="foe-av big-ico">${ico('swords')}</span><div class="foe-body"><div class="foe-name">${esc(c.from_name)} te défie</div><div class="foe-sub">${timeOf(c.created_at)}</div></div>
+        <button class="foe-btn fight" data-act="pvpVs" data-id="${c.id}"><i>${ico('swords')}</i>Voir</button></div>`).join('')}</section>` : ''}
+    <section class="card hx" style="--hc:#b05cff">
+      ${secHead('<i class="dot-on"></i>', 'Défier un pote', online.length ? 'Choisis ton adversaire' : 'Personne en ligne pour l’instant')}
+      ${online.length ? online.map(p => {
+        const t = teamOf(p.data, p.pseudo);
+        const waiting = outgoing.find(c => c.to_id === p.id);
+        return `
+        <div class="pvp-row">
+          <div class="pr-top"><div class="foe-name">${dotHtml(p.id)}${nameHtml(p.pseudo, p.data)}</div><small>${ico('bolt')}${fmtNum(teamPower(t))}</small></div>
+          ${teamStrip(t)}
+          ${waiting ? `<div class="pr-wait">${ico('hourglass')} En attente de sa réponse… <button class="btn small" data-act="pvpCancel" data-id="${waiting.id}">Annuler</button></div>`
+            : `<button class="btn danger block" data-act="pvpChallenge" data-id="${p.id}" ${busy.has(p.id) || busy.has(me) ? 'disabled' : ''}>${ico('swords')} Défier ${esc(p.pseudo)}</button>`}
+        </div>`;
+      }).join('') : '<p class="empty">Dès qu’un pote ouvre l’appli, il apparaît ici.</p>'}
+    </section>
+    <section class="card hx" style="--hc:#ffd84a">
+      ${secHead(ico('play'), 'Matchs', 'Les derniers combats PvP : regarde-les tous')}
+      ${matches.length ? matches.map(c => {
+        const r = pvpResult(c);
+        const mine = c.from_id === me || c.to_id === me;
+        const won = mine && r.winner === (c.from_id === me ? 0 : 1);
+        return `
+        <div class="pvp-match ${mine ? (won ? 'win' : 'loss') : ''}">
+          <div class="pm-names"><b class="${r.winner === 0 ? 'w' : ''}">${esc(c.from_name)}</b><span>VS</span><b class="${r.winner === 1 ? 'w' : ''}">${esc(c.to_name)}</b></div>
+          <small>${timeOf(c.accepted_at || c.created_at)} · ${ico('trophy')} ${esc(r.winner === 0 ? c.from_name : c.to_name)}</small>
+          <button class="ibtn" data-act="pvpWatch" data-id="${c.id}" aria-label="Regarder">${ico('play')}</button>
+        </div>`;
+      }).join('') : '<p class="empty">Aucun match pour l’instant.</p>'}
+    </section>`;
+}
+
+/** Écran VS : les deux équipes côte à côte (et, pour un défi reçu, accepter / refuser) */
+function openPvpVs(c, invite = false) {
+  const [A, B0] = rowTeams(c);
+  const B = invite ? teamOf(acc, acc.pseudo) : B0;
+  openModal(`
+    <div class="pvp-vs">
+      <div class="vs-title">${invite ? `${esc(c.from_name)} te défie` : 'Match PvP'}</div>
+      <div class="vs-grid">
+        <div class="vs-side blue"><b>${esc(c.from_name)}</b>${teamStrip(A, 'col')}<small>${ico('bolt')}${fmtNum(teamPower(A))}</small></div>
+        <div class="vs-mid">VS</div>
+        <div class="vs-side red"><b>${esc(c.to_name)}</b>${teamStrip(B, 'col')}<small>${ico('bolt')}${fmtNum(teamPower(B))}</small></div>
+      </div>
+      ${invite
+        ? `<div class="row" style="gap:8px;margin-top:14px"><button class="btn block" data-act="pvpDecline" data-id="${c.id}">Refuser</button><button class="btn danger block" data-act="pvpAccept" data-id="${c.id}">${ico('swords')} Accepter</button></div>`
+        : `<button class="btn danger block big-go" data-act="pvpWatch" data-id="${c.id}">${ico('play')} Regarder le match</button>`}
+      <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>
+    </div>`, { center: true });
+}
+
+async function pvpChallenge(id) {
+  const p = players.find(x => x.id === id);
+  if (!p || !isOnline(p.id)) { toast('Ce pote n’est plus en ligne.'); return; }
+  try {
+    const row = await NET.createPvp(p.id, acc.pseudo, p.pseudo, { pvp: 1, team: teamOf(acc, acc.pseudo) }, (Math.random() * 2 ** 31) | 0);
+    if (row) pvpRows.unshift(row);
+    toast(`Défi envoyé à ${p.pseudo} : il a 3 minutes pour répondre.`);
+  } catch (e) { toast(e.message); }
+  softRender();
+}
+
+async function pvpAccept(id) {
+  const c = pvpRows.find(x => x.id === id);
+  if (!c || pvpExpired(c)) { closeModal(); toast('Ce défi a expiré.'); await refreshBets(); softRender(); return; }
+  const patch = { status: 'accepted', accepted_at: new Date().toISOString(), to_snap: { pvp: 1, team: teamOf(acc, acc.pseudo) } };
+  try { await NET.answerChallenge(c.id, patch); } catch (e) { toast(e.message); return; }
+  Object.assign(c, patch);
+  closeModal();
+  watchPvp(c);
+}
+
+function onPvpLive(row) {
+  const me = myId();
+  const i = pvpRows.findIndex(c => c.id === row.id);
+  if (i >= 0) pvpRows[i] = { ...pvpRows[i], ...row }; else pvpRows.unshift(row);
+  const free = !document.querySelector('.battle') && !modalRoot.innerHTML;
+  if (row.status === 'pending' && row.to_id === me) {
+    SFX.message();
+    if (free) openPvpVs(row, true); else toast(`${row.from_name} te défie en PvP ! Va dans Combats › PvP.`);
+  } else if (row.status === 'accepted' && row.from_id === me) {
+    SFX.message();
+    if (free) openPvpVs(pvpRows.find(c => c.id === row.id)); else toast(`${row.to_name} a accepté ton défi PvP !`);
+  } else if (row.status === 'declined' && row.from_id === me) toast(`${row.to_name} a refusé ton défi.`);
+  if (tab === 'pvp' || tab === 'combat') softRender();
+}
+
+/** Regarder un match (en direct ou en rediffusion). Le gagnant touche son Flouze. */
+function watchPvp(c) {
+  const [A, B] = rowTeams(c);
+  if (!A.length || !B.length) { toast('Match introuvable.'); return; }
+  const result = pvpResult(c);
+  const me = myId();
+  const mySide = c.from_id === me ? 0 : c.to_id === me ? 1 : -1;
+  const pips = (n, tot) => `<span class="pips-vs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(tot - n)}</span>`;
+  const head = (sc) => `${esc(c.from_name)} ${pips(sc[0], A.length)} <span style="color:var(--gold)">VS</span> ${pips(sc[1], B.length)} ${esc(c.to_name)}`;
+  runBattle({
+    me: A[0], foe: B[0], result, theme: 'arena', track: false, noBar: true, title: head([A.length, B.length]),
+    onEvent: (e) => { if (e.score) { const t = document.querySelector('.battle-vs'); if (t) t.innerHTML = head(e.score); } },
+    finish: (r) => {
+      const wName = r.winner === 0 ? c.from_name : c.to_name;
+      const iWon = mySide >= 0 && r.winner === mySide;
+      const got = iWon ? E.pvpReward(acc, c.id) : 0;
+      if (got) save();
+      return {
+        won: mySide < 0 || iWon,
+        headline: mySide < 0 ? `${wName} GAGNE` : iWon ? 'VICTOIRE' : 'DÉFAITE',
+        headClass: mySide < 0 || iWon ? 'win' : 'lose',
+        rewardsHtml: got ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${got} Flouze</span></div>`
+          : iWon ? '<p style="color:var(--muted);margin:0">Gain déjà touché, ou maximum du jour atteint.</p>' : '',
+      };
+    },
+  });
 }
 
 // ------------------------------ Raid ------------------------------
@@ -2103,6 +2272,7 @@ function viewShop() {
 
 // ------------------------------ En direct ------------------------------
 function onLive(kind, row) {
+  if (kind === 'challenge' && isPvp(row)) { onPvpLive(row); return; }
   if (kind === 'fight') {
     journal.unshift(row);
     journalUnseen++;
@@ -2134,7 +2304,7 @@ function updateXpBonus() {
 }
 
 const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
-  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, bets: viewBets, journal: viewJournal, players: viewPlayers };
+  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
@@ -2253,7 +2423,7 @@ const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch 
 /** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
 const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
-function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null }) {
+function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null, noBar = false }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
   let out = null;
@@ -2266,7 +2436,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
     if (track) trackBattle(result);
   }
   const fight = battleFight;
-  const spells = (me.spells || []).filter(id => SPELLS[id]);
+  const spells = noBar ? [] : (me.spells || []).filter(id => SPELLS[id]);
   const ov = document.createElement('div');
   ov.className = 'battle';
   ov.innerHTML = `
@@ -2500,9 +2670,9 @@ const ACTIONS = {
   tab: (d) => {
     SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
-    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
+    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'pvp', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
-    if (d.id === 'bets') refreshBets().then(() => { if (tab === 'bets') softRender(); });
+    if (d.id === 'bets' || d.id === 'pvp') refreshBets().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'raid') loadRaid().then(() => { if (tab === 'raid') softRender(); });
   },
   authMode: (d) => { authMode = d.mode; renderAuth(); },
@@ -2523,6 +2693,12 @@ const ACTIONS = {
     el.textContent = on ? '−' : '+';
   },
   skipDungeon: (d) => skipDungeonFlow(d.id),
+  pvpChallenge: (d) => pvpChallenge(d.id),
+  pvpAccept: (d) => pvpAccept(+d.id),
+  pvpDecline: async (d) => { closeModal(); try { await NET.answerChallenge(+d.id, { status: 'declined' }); } catch (e) { toast(e.message); } await refreshBets(); softRender(); },
+  pvpCancel: async (d) => { try { await NET.answerChallenge(+d.id, { status: 'cancelled' }); } catch (e) { toast(e.message); } await refreshBets(); softRender(); },
+  pvpWatch: (d) => { const c = pvpRows.find(x => String(x.id) === String(d.id)); closeModal(); if (c) watchPvp(c); },
+  pvpVs: (d) => { const c = pvpRows.find(x => String(x.id) === String(d.id)); if (c) openPvpVs(c, c.status === 'pending' && c.to_id === myId()); },
   claimGift: (d) => {
     const n = PATCH_NOTES.find(x => x.gift && x.gift.id === d.id);
     const got = n ? E.claimGift(acc, n.gift) : 0;
