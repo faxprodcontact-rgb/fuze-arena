@@ -7,8 +7,8 @@ import {
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018134333';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018134333';
+} from './data.js?v=20261018140424';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018140424';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -756,6 +756,14 @@ export const runsLeft = (hero, d) => Math.max(0, DUNGEON_RUNS - (dungeonRuns(her
 /** Combats encore possibles dans tous les donjons débloqués */
 export const totalRunsLeft = (hero) => DUNGEONS.filter(d => hero.level >= d.lvl).reduce((t, d) => t + runsLeft(hero, d), 0);
 
+/** Les boss possibles d'un donjon (le boss principal et sa variante) */
+export const dungeonFoes = (d) => (d.alt ? [d, { ...d, ...d.alt }] : [d]);
+/** Tire au hasard le boss qu'on va affronter */
+export function pickDungeonFoe(d, rng = Math.random) {
+  const list = dungeonFoes(d);
+  return list[Math.floor(rng() * list.length)];
+}
+
 /** Consomme un combat dans ce donjon. Renvoie false s'il n'y en a plus. */
 export function useDungeonRun(hero, d) {
   if (runsLeft(hero, d) <= 0) return false;
@@ -950,7 +958,8 @@ export function strongestHero(acc) {
 // ------------------------------ Tour infinie ---------------------------
 /** Monstre d'un étage : les boss des donjons reviennent, de plus en plus forts */
 export function towerMonster(floor) {
-  const d = DUNGEONS[(floor - 1) % DUNGEONS.length];
+  const pool = DUNGEONS.flatMap(dungeonFoes);   // tous les boss, et leurs variantes
+  const d = pool[(floor - 1) % pool.length];
   const lvl = Math.min(MAX_LEVEL, Math.max(1, Math.round(floor * 1.5)));
   const beyond = floor > 66 ? Math.pow(1.035, floor - 66) : 1;   // au-delà : ça ne s'arrête jamais
   const ramp = Math.min(1.1, 0.6 + 0.02 * floor);                // premiers étages plus doux

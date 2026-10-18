@@ -6,14 +6,14 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018134333';
-import * as E from './engine.js?v=20261018134333';
-import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018134333';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018134333';
-import { hashStr, makeRng } from './rng.js?v=20261018134333';
-import { APP_VERSION } from './version.js?v=20261018134333';
-import * as NET from './net.js?v=20261018134333';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018134333';
+} from './data.js?v=20261018140424';
+import * as E from './engine.js?v=20261018140424';
+import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018140424';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018140424';
+import { hashStr, makeRng } from './rng.js?v=20261018140424';
+import { APP_VERSION } from './version.js?v=20261018140424';
+import * as NET from './net.js?v=20261018140424';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018140424';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -37,6 +37,7 @@ let acc = null;        // le compte (pseudo, coffres, section…)
 let hero = null;       // le personnage actif du compte
 let players = [];      // les autres joueurs (en ligne)
 let tab = 'hero';
+let lastTab = null;
 let rankMode = 'level';
 let pickedClass = 'guerrier';
 let authMode = 'signup';
@@ -133,6 +134,8 @@ function render() {
     </nav>`;
   hydrate(app);
   paintTabIcons();
+  // petite animation d'entrée quand on change d'onglet
+  if (tab !== lastTab) { document.getElementById('view')?.classList.add('enter'); lastTab = tab; }
   if (tab === 'chat') { markChatSeen(); scrollChat(); }
   if (tab === 'journal') markJournalSeen();
   if (tab === 'hero') startTraining();
@@ -696,7 +699,7 @@ function viewDungeons() {
   return `
     <section class="card">
       <h2>Donjons</h2>
-      <p class="hint">Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (remise à zéro à minuit et à midi), pour chacun de tes personnages. Bats le boss pour gagner de l’XP et <b>1 clef</b> (1 clef = 1 coffre). Même en cas de défaite, tu gagnes un peu d’XP.</p>
+      <p class="hint">Chaque donjon a <b>2 boss possibles</b>, tirés au hasard à chaque entrée. Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (remise à zéro à minuit et à midi), pour chacun de tes personnages. Bats le boss pour gagner de l’XP et <b>1 clef</b> (1 clef = 1 coffre). Même en cas de défaite, tu gagnes un peu d’XP.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
         <span class="pill gold">${left} combat${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''}</span>
         <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys} clef${hero.keys > 1 ? 's' : ''}</span>
@@ -710,10 +713,10 @@ function viewDungeons() {
         const n = E.runsLeft(hero, d);
         return `
         <div class="opp dj ${locked ? 'locked' : ''}">
-          <div class="av"><canvas class="px" data-monster="${d.sprite}"></canvas></div>
+          <div class="av duo"><canvas class="px" data-monster="${d.sprite}"></canvas>${d.alt ? `<canvas class="px alt" data-monster="${d.alt.sprite}"></canvas>` : ''}</div>
           <div class="o-body">
             <div class="o-name">${d.name}</div>
-            <div class="o-sub">${d.boss} · Nv.${d.lvl}${clears ? ` · vaincu ${clears}×` : ''}</div>
+            <div class="o-sub">${d.boss}${d.alt ? ` ou ${d.alt.boss}` : ''} · Nv.${d.lvl}${clears ? ` · vaincu ${clears}×` : ''}</div>
             ${locked ? '' : `<div class="o-sub" style="color:var(--gold)">+${E.dungeonXp(d)} XP · 1 clef</div>`}
           </div>
           ${locked
@@ -1877,10 +1880,11 @@ function startDungeon(id) {
   save();
   const h = hero;
   const me = mySnap();
-  const boss = E.buildMonster(d);
+  const foe = E.pickDungeonFoe(d);      // l'un des 2 boss du donjon, au hasard
+  const boss = E.buildMonster(foe);
   runBattle({
     me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, theme: d.theme, manual: true, victory: myVictory(),
-    title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${esc(d.boss)}`,
+    title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${esc(foe.boss)}`,
     finish: (result) => {
       const won = result.winner === 0;
       const rw = E.dungeonRewards(h, d, won);

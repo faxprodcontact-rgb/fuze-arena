@@ -494,3 +494,98 @@ input { font: inherit; }
 .sb-mode.man { background: linear-gradient(#ffcf3f, #f0a325); color: #3a2208; }
 .sb-mode.lock { opacity: .7; }
 .logo-img { width: 112px; height: 112px; display: block; margin: 0 auto -6px; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+
+/* =====================================================================
+   REFONTE GRAPHIQUE — étape 1 : interface peaufinée (même style, plus soigné)
+   ===================================================================== */
+body {
+  background-color: #120f1c;
+  background-image:
+    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(123,92,255,.28), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 100% 100%, rgba(255,93,108,.08), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0% 80%, rgba(61,155,255,.07), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='1' height='1' fill='%23ffffff' fill-opacity='0.025'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+
+/* Cartes : relief, bord lumineux, ombre portée */
+.card {
+  background: linear-gradient(180deg, #2c2542 0%, #241e37 100%);
+  box-shadow: 0 0 0 2px #0e0b16, inset 0 1px 0 rgba(255,255,255,.08), inset 0 -2px 0 rgba(0,0,0,.25), 0 8px 18px rgba(0,0,0,.35);
+  position: relative;
+}
+.card h2 { text-shadow: 0 2px 0 #7a4a0a, 0 0 12px rgba(255,216,74,.25); display: flex; align-items: center; gap: 8px; }
+.card h2::before { content: ''; width: 8px; height: 8px; flex-shrink: 0; background: linear-gradient(135deg, #fff3b0, #e5a92a); transform: rotate(45deg); box-shadow: 0 0 6px rgba(255,216,74,.6); }
+.row > h2::before, .chest-card h2::before { display: none; }
+
+/* Boutons : reflet en haut, texte en relief */
+.btn { position: relative; overflow: hidden; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.btn::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%; background: linear-gradient(rgba(255,255,255,.22), rgba(255,255,255,0)); pointer-events: none; }
+.btn.primary { background: linear-gradient(#ffe36b, #ffc12e 45%, #e8901c); text-shadow: 0 1px 0 rgba(255,255,255,.4); box-shadow: inset 0 -4px 0 rgba(140,70,0,.45), 0 0 0 2px #0e0b16, 0 4px 12px rgba(255,180,40,.25); }
+.btn.green { background: linear-gradient(#7bf09a, #3ccf63 45%, #24a048); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+.btn.danger { background: linear-gradient(#ff8a8a, #ff5d6c 45%, #c8314a); }
+.btn:not(:disabled):active { filter: brightness(1.1); }
+
+/* Pastilles */
+.pill { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.pill.gold { box-shadow: inset 0 0 0 1px rgba(255,216,74,.3); }
+.pill.green { box-shadow: inset 0 0 0 1px rgba(76,217,100,.3); }
+.pill.red { box-shadow: inset 0 0 0 1px rgba(255,93,108,.3); }
+
+/* Barre du haut */
+.topbar { background: linear-gradient(180deg, rgba(30,24,48,.96), rgba(21,18,31,.92)); border-bottom: 2px solid #0e0b16; box-shadow: 0 1px 0 rgba(255,216,74,.18), 0 6px 16px rgba(0,0,0,.35); }
+.tb-portrait { background: radial-gradient(circle at 50% 30%, #3d3360, #241e37); box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 1px rgba(255,216,74,.35); }
+.xpbar { box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.xpbar > div { position: relative; overflow: hidden; background: linear-gradient(90deg, #6a4cff, #b98bff); }
+.xpbar > div::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); animation: shimmer 2.6s infinite; }
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* Onglets du bas */
+.tabs { background: linear-gradient(180deg, rgba(30,24,48,.97), rgba(18,15,28,.98)); box-shadow: 0 -1px 0 rgba(255,216,74,.15), 0 -8px 20px rgba(0,0,0,.35); }
+.tab { transition: color .15s, transform .15s; }
+.tab canvas { transition: transform .2s cubic-bezier(.2,.9,.3,1.5); filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); }
+.tab.on { background: linear-gradient(180deg, #3a3058, #2a2340); box-shadow: 0 0 0 2px var(--line), inset 0 1px 0 rgba(255,255,255,.08); }
+.tab.on::before { content: ''; position: absolute; top: -9px; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.tab.on canvas { transform: translateY(-2px) scale(1.12); }
+.badge { background: linear-gradient(#ff7a86, #e8364a); }
+
+/* Listes (adversaires, donjons, classement) */
+.opp { background: linear-gradient(180deg, #352c4f, #2c2542); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 0 rgba(0,0,0,.25); }
+.opp .av { background: radial-gradient(circle at 50% 35%, #3a3056, #1d1830); }
+.tile { background: linear-gradient(180deg, #392f56, #2b2442); box-shadow: 0 0 0 2px #0e0b16, inset 0 1px 0 rgba(255,255,255,.08), inset 0 -3px 0 rgba(0,0,0,.3); transition: transform .12s; }
+.tile:active { transform: scale(.97); }
+.tile canvas { filter: drop-shadow(0 3px 0 rgba(0,0,0,.35)); }
+
+/* Objets : halo de rareté, les Épiques et Légendaires brillent */
+.it, .slot.filled { transition: transform .12s; }
+.it:active { transform: scale(.94); }
+.it canvas, .slot canvas, .loot-card canvas { filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); }
+.it[style*="b05cff"], .it[style*="ff9f1a"] { overflow: hidden; }
+.it[style*="b05cff"]::after, .it[style*="ff9f1a"]::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.28) 50%, transparent 65%); animation: shimmer 3s infinite; pointer-events: none; }
+.it[style*="ff9f1a"] { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 14px rgba(255,159,26,.45); }
+
+/* Personnages, sorts, stats */
+.hero-card { background: radial-gradient(ellipse at 20% 30%, rgba(123,92,255,.25), transparent 60%), linear-gradient(160deg, #332a57, #221c33); }
+.hero-stage { background: radial-gradient(circle at 50% 75%, rgba(255,216,74,.18), transparent 65%); }
+.spell { background: linear-gradient(180deg, #352c4f, #2c2542); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+.spell .sp-ic canvas { border-radius: 8px; box-shadow: 0 0 0 2px #0e0b16, 0 3px 0 rgba(0,0,0,.35); }
+.plus { position: relative; overflow: hidden; }
+.chest-card canvas { filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)) drop-shadow(0 0 18px rgba(255,216,74,.18)); }
+.ts { background: linear-gradient(180deg, #221c33, #1a1528); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+
+/* Fenêtres et transitions */
+.modal-bg { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal { background: linear-gradient(180deg, #2a2340, #1f1a2e 40%); box-shadow: 0 -2px 0 rgba(255,216,74,.25), 0 -12px 30px rgba(0,0,0,.5); }
+#view.enter > * { animation: enter .28s cubic-bezier(.2,.8,.3,1) both; }
+#view.enter > *:nth-child(2) { animation-delay: .04s; }
+#view.enter > *:nth-child(3) { animation-delay: .08s; }
+#view.enter > *:nth-child(4) { animation-delay: .12s; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+.toast { box-shadow: 0 0 0 2px #0e0b16, 0 0 18px rgba(255,200,60,.35), 0 8px 24px rgba(0,0,0,.4); }
+.logo { background: linear-gradient(#fff3b0, #ffd84a 45%, #e5a92a); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 4px 0 #a2621a) drop-shadow(0 8px 0 #0e0b16); }
+.logo span { -webkit-text-fill-color: #fff; color: #fff; }
+/* Donjons : les 2 boss possibles */
+.opp.dj .av.duo { position: relative; }
+.opp.dj .av.duo canvas { width: 40px; margin: 0 8px 6px 0; }
+.opp.dj .av.duo canvas.alt { position: absolute; right: 1px; bottom: 2px; width: 26px; margin: 0; filter: drop-shadow(0 0 0 #0e0b16) drop-shadow(-1px -1px 0 #0e0b16); }
+.opp.locked .av.duo canvas.alt { filter: brightness(0); }

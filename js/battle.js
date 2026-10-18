@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018134333';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018134333';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018134333';
+import { CLASSES } from './data.js?v=20261018140424';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, lw, lh, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018140424';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018140424';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -197,7 +197,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       hp: snap.hp ?? snap.maxHp, max: snap.maxHp, hpShown: snap.hp ?? snap.maxHp, hpLag: snap.hp ?? snap.maxHp, shield: 0, shieldShown: 0,
       tags: [], dead: false, stars: 0, petHop: 0, glow: 0, glowColor: '#fff',
       // les boss sont dessinés plus gros (4 px au lieu de 3)
-      sprite, sw: snap.monster ? sprite.width * 4 / 3 : HERO_W, sh: snap.monster ? sprite.height * 4 / 3 : HERO_H,
+      sprite, sw: snap.monster ? lw(sprite) * 4 / 3 : HERO_W, sh: snap.monster ? lh(sprite) * 4 / 3 : HERO_H,
       wSprite: weapon ? weaponCanvas(weapon) : null, pivot: weapon ? weaponPivot(weapon) : [0, 0],
       pet: snap.pet ? petCanvas(snap.pet.itemId) : null,
     };
@@ -220,7 +220,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   const center = (f) => ({ x: fx(f), y: GROUND - f.sh * S * 0.55 + f.offY });
   // familier : flotte derrière son maître
   const petBox = (f) => {
-    const pw = f.pet.width * 2, ph = f.pet.height * 2;
+    const pw = lw(f.pet) * 2, ph = lh(f.pet) * 2;
     const x = fx(f) - (PORTRAIT ? 34 : 52) * f.dir - pw / 2 + f.petDX;
     const y = GROUND - 64 + Math.sin(time * 4 + f.phase) * 4 - f.petHop * 10 + f.petDY;
     return { x, y, pw, ph, cx: x + pw / 2, cy: y + ph / 2 };
@@ -624,8 +624,8 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     ctx.translate(hx, hy);
     ctx.rotate((f.wAng * Math.PI) / 180);
     const [px, py] = f.pivot;
-    ctx.drawImage(f.wSprite, -px * S, -py * S, f.wSprite.width * S, f.wSprite.height * S);
-    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(f.wSprite), -px * S, -py * S, f.wSprite.width * S, f.wSprite.height * S); }
+    ctx.drawImage(f.wSprite, -px * S, -py * S, lw(f.wSprite) * S, lh(f.wSprite) * S);
+    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(f.wSprite), -px * S, -py * S, lw(f.wSprite) * S, lh(f.wSprite) * S); }
     ctx.restore();
     ctx.restore();
     drawAfter(f);
@@ -947,12 +947,12 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.globalAlpha = 0.25; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(ox + HERO_W * sc / 2, (HERO_H + 2.5) * sc, 9 * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    if (pet) ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, pet.width * sc * 0.75, pet.height * sc * 0.75);
+    if (pet) ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75);
     ctx.drawImage(sprite, ox, oy, HERO_W * sc, HERO_H * sc);
     ctx.save();
     ctx.translate(ox + HAND.x * sc, oy + HAND.y * sc);
     ctx.rotate(((IDLE_ANGLE[weapon] + Math.sin(t * 3) * 3) * Math.PI) / 180);
-    ctx.drawImage(wS, -px * sc, -py * sc, wS.width * sc, wS.height * sc);
+    ctx.drawImage(wS, -px * sc, -py * sc, lw(wS) * sc, lh(wS) * sc);
     ctx.restore();
     requestAnimationFrame(loop);
   }
@@ -1124,7 +1124,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(f.sprite), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
     ctx.translate(-SW / 2 + HAND.x * SC, -SH + HAND.y * SC);
     ctx.rotate((f.wAng * Math.PI) / 180);
-    ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, f.wS.width * SC, f.wS.height * SC);
+    ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
     ctx.restore();
     // nom + barre de vie
     if (!f.dead) {

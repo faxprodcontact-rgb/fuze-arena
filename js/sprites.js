@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018134333';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018140424';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -24,13 +24,87 @@ function fromMap(rows, pal) {
   rows.forEach((r, y) => [...r].forEach((ch, x) => { if (pal[ch]) set(g, x + 1, y + 1, pal[ch]); }));
   return g;
 }
-function toCanvas(g) {
+function toCanvas(g, u = 1) {
   const c = document.createElement('canvas');
   c.width = g.w; c.height = g.h;
+  c.lw = g.w / u; c.lh = g.h / u;   // taille « logique » (en pixels du dessin d'origine)
   const ctx = c.getContext('2d');
   g.p.forEach((col, i) => { if (col) { ctx.fillStyle = col; ctx.fillRect(i % g.w, Math.floor(i / g.w), 1, 1); } });
   return c;
 }
+
+// =====================================================================
+//  RENDU HD — chaque dessin est affiné automatiquement :
+//  1. lissage des diagonales (×2, algorithme Scale2x)
+//  2. volume : reflets en haut à gauche, ombres en bas à droite, léger dégradé
+//  3. contour en 2 épaisseurs : une teinte sombre de la couleur voisine, puis le noir
+// =====================================================================
+export const U = 2;
+/** Taille logique d'un dessin (les dessins HD sont 2× plus fins mais gardent la même taille à l'écran) */
+export const lw = (c) => c.lw || c.width;
+export const lh = (c) => c.lh || c.height;
+
+function scale2x(g) {
+  const o = grid(g.w * 2, g.h * 2);
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const P = get(g, x, y), A = get(g, x, y - 1), B = get(g, x + 1, y), C = get(g, x - 1, y), D = get(g, x, y + 1);
+    let e0 = P, e1 = P, e2 = P, e3 = P;
+    if (C === A && C !== D && A !== B) e0 = A;
+    if (A === B && A !== C && B !== D) e1 = B;
+    if (D === C && D !== B && C !== A) e2 = C;
+    if (B === D && B !== A && D !== C) e3 = D;
+    set(o, x * 2, y * 2, e0); set(o, x * 2 + 1, y * 2, e1); set(o, x * 2, y * 2 + 1, e2); set(o, x * 2 + 1, y * 2 + 1, e3);
+  }
+  return o;
+}
+function upscale(g, k = 2) {
+  const o = grid(g.w * k, g.h * k);
+  for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) set(o, x, y, get(g, Math.floor(x / k), Math.floor(y / k)));
+  return o;
+}
+
+const shadeCache = new Map();
+function shadeC(hex, amt) {
+  const k = hex + amt.toFixed(2);
+  if (!shadeCache.has(k)) shadeCache.set(k, shade(hex, amt));
+  return shadeCache.get(k);
+}
+
+function lighting(g) {
+  const o = { w: g.w, h: g.h, p: g.p.slice() };
+  let top = g.h, bot = 0;
+  for (let i = 0; i < g.p.length; i++) if (g.p[i]) { const y = Math.floor(i / g.w); top = Math.min(top, y); bot = Math.max(bot, y); }
+  const span = Math.max(1, bot - top);
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const c = get(g, x, y);
+    if (!c) continue;
+    const up = get(g, x, y - 1), dn = get(g, x, y + 1), lf = get(g, x - 1, y), rt = get(g, x + 1, y);
+    let a = 0.12 * (1 - (2 * (y - top)) / span);             // dégradé : plus clair en haut
+    if (!up) a += 0.34; else if (!get(g, x, y - 2)) a += 0.16; else if (up !== c) a += 0.07;
+    if (!dn) a -= 0.32; else if (!get(g, x, y + 2)) a -= 0.15; else if (dn !== c) a -= 0.08;
+    if (!lf) a += 0.12; else if (!get(g, x - 2, y)) a += 0.05;
+    if (!rt) a -= 0.16; else if (!get(g, x + 2, y)) a -= 0.07;
+    if (Math.abs(a) > 0.015) o.p[y * g.w + x] = shadeC(c, Math.max(-0.5, Math.min(0.5, a)));
+  }
+  return o;
+}
+
+function outline2(g) {
+  const ring = (src, colorOf) => {
+    const o = { w: src.w, h: src.h, p: src.p.slice() };
+    for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
+      if (get(src, x, y)) continue;
+      const n = get(src, x, y + 1) || get(src, x, y - 1) || get(src, x - 1, y) || get(src, x + 1, y);
+      if (n) o.p[y * src.w + x] = colorOf(n);
+    }
+    return o;
+  };
+  const inner = ring(g, (n) => (n === OUT ? OUT : shadeC(n, -0.72)));
+  return ring(inner, () => OUT);
+}
+
+/** Dessin HD complet à partir d'une grille de pixels */
+function render(g) { return toCanvas(outline2(lighting(scale2x(g))), U); }
 function cached(key, fn) { if (!cache.has(key)) cache.set(key, fn()); return cache.get(key); }
 
 export function shade(hex, amt) {
@@ -50,6 +124,7 @@ export function whiteOf(src) {
     ctx.globalCompositeOperation = 'source-in';
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
+    c.lw = lw(src); c.lh = lh(src);
     return c;
   });
 }
@@ -120,7 +195,7 @@ export function heroCanvas(classId, dyeId = null) {
     set(g, 10, eyeY, eye); set(g, 12, eyeY, eye);
     // bras avant
     rect(g, 12, 13, 2, 4, L.sleeve); rect(g, 13, 17, 2, 1, L.skin); set(g, 14, 16, L.skin);
-    return toCanvas(outline(g));
+    return render(g);
   });
 }
 
@@ -148,7 +223,7 @@ const WEAPON_MAPS = {
 export function weaponCanvas(kind) {
   return cached('weapon:' + kind, () => {
     const w = WEAPON_MAPS[kind];
-    return toCanvas(outline(fromMap(w.rows, w.pal)));
+    return render((fromMap(w.rows, w.pal)));
   });
 }
 export function weaponPivot(kind) { return WEAPON_MAPS[kind].pivot; }
@@ -167,7 +242,7 @@ export function petCanvas(itemId) {
     const it = ITEMS[itemId];
     const [m, l] = it.colors;
     const pal = { m, l, d: shade(m, -0.35), e: it.eye || '#1b1530', o: '#ff9f43', w: '#fff', k: shade(m, -0.55), p: '#ff8fa3', n: '#1b1530' };
-    return toCanvas(outline(fromMap(PET_MAPS[it.icon], pal)));
+    return render((fromMap(PET_MAPS[it.icon], pal)));
   });
 }
 
@@ -268,6 +343,62 @@ const MONSTERS = {
   },
 };
 
+// ---------- Monstres supplémentaires (un 2e boss possible par donjon) ----------
+Object.assign(MONSTERS, {
+  rat: {
+    pal: { m: '#8d7f74', l: '#b3a497', d: '#5e534b', p: '#ff9fb0', e: '#ff3b3b', w: '#ffffff', k: '#1b1530' },
+    rows: ['..........pp......', '.........pmmp.....', '........mmmmm.....', '.......mmmmemm....', '......mmmmmmmmmp..', '.....mmmmmmmmmwkp.',
+      '..mmmmmmmmmmmmw...', '.mmmmlllmmmmmm....', 'mmmlllllmmmmmm....', 'mmmmmmmmmmmmm.....', 'pmmdmmmmmmdmm.....', 'p.mdd....mdd......', '.p................'],
+  },
+  wolf: {
+    pal: { m: '#7d8796', l: '#c9d1da', d: '#4a5260', e: '#ffd84a', k: '#1b1530', w: '#ffffff' },
+    rows: ['...........m..m...', '..........mm.mm...', '..........mmmmm...', '.........mmmemmmk.', '.........mmmmmmmm.', '....mmmmmmmmmlwl..',
+      '..mmmmmmmmmmmll...', '.mmmmmmmmmmmmm....', 'mmllllllmmmmmm....', 'm.mllllmmmmmm.....', 'm..mmm...mmm......', '...mm.....mm......', '...dd.....dd......'],
+  },
+  zombie: {
+    pal: { s: '#8fbf6a', S: '#6a9a4a', c: '#5a6b8c', C: '#3d4a66', p: '#4a3a2e', e: '#ff3b3b', k: '#1b1530', r: '#a83232' },
+    rows: ['.....ssss.......', '....sssssS......', '....sesesS......', '....ssssSS......', '.....sksS.......', '......ss........', '....ccccccc.....',
+      '...ccrccccc.ssss', '...cccccccsssss.', '..ss.ccccc......', '..s..CCCCC......', '.....pp.pp......', '.....pp.pp......', '....ppp.ppp.....'],
+  },
+  frog: {
+    pal: { m: '#4f9a3a', l: '#9ad46a', d: '#2f6a24', k: '#1b1530', p: '#c0392b', w: '#ffffff' },
+    rows: ['......mm...mm.....', '.....mwkm.mwkm....', '....mmmmmmmmmmm...', '...mmmmmmmmmmmmm..', '..mmmmmmmmmmmmmmm.', '..mmmmmmmmmmmkkkk.',
+      '.mmmllllmmmmmmppp.', '.mmllllllmmmmmm...', 'mmmllllllllmmmmm..', 'mmmmllllllmmmmmm..', 'dmmmmmmmmmmmmmmd..', '.ddd.dd....dd.ddd.'],
+  },
+  spider: {
+    pal: { m: '#3a2f4a', l: '#6b5a8a', d: '#241c30', e: '#ff3b3b', r: '#c0392b' },
+    rows: ['.......mmmmm.......', '..d...mmlmmmm...d..', '...d.mmmmmmmmm.d...', '....dmmmmmmmmmd....', '.dddmmmmrmmmmmmddd.', 'd...mmmmmmmmeemm..d',
+      '...dmmmmmmmmeemd...', '..d.dmmmmmmmmmd.d..', '.d...d.mmmmm.d...d.', 'd...d.........d...d'],
+  },
+  mummy: {
+    pal: { w: '#e8dcc0', s: '#c9b994', d: '#9a8a6a', e: '#ffd84a', k: '#1b1530' },
+    rows: ['....wwwww......', '...wsswwws.....', '...wkekkew.....', '...wwssww......', '....swwws......', '...wwswwwssww..', '..wswwswwwwws..',
+      '..ws.wwsww.....', '..ws.swwws.....', '.....wwsww.....', '.....ws.sw.....', '.....ws.ws.....', '....wwd.wwd....'],
+  },
+  salamander: {
+    pal: { m: '#d9481e', l: '#ff9f43', y: '#ffd84a', d: '#8a2a10', k: '#1b1530' },
+    rows: ['.................mmm..', '...............mmmmmm.', '..............mmmkmmmm', '.......mmmmmmmmmmmmmmy', '.....mmmmmmmmmmmmmmm..', '...mmmmlylmmlylmmmm...', '..mmmmllllllllllmm....', '.mmm.mmm.....mmm......', 'mm...dd......dd.......', 'myy...................', '.yy...................'],
+  },
+  polarBear: {
+    pal: { w: '#f4f8ff', s: '#c9d6ea', k: '#1b1530', d: '#9aaac0' },
+    rows: ['.............ww....', '............wwww...', '...........wwwwkw..', '...........wwwwwwkk', '......wwwwwwwwwwss.', '....wwwwwwwwwwww...', '...wwwwwwwwwwwwww..', '..wwwwwwwwwwwwwww..', '..wwwswwwwwwwwsww..', '..wwwswwwwwwwwsww..', '..wwww.......wwww..', '..wwss.......wwss..', '..dddd.......dddd..'],
+  },
+  blackKnight: {
+    pal: { a: '#3a3448', l: '#6b6480', d: '#1f1a2a', r: '#c0392b', s: '#c9d1da', y: '#e5b33a' },
+    rows: ['......rr.........', '.....rrr.........', '....aaaaa........', '...aallaaa.......', '...aarrara.......', '...aaaaaaa.......', '....adada........',
+      '..aaaaaaaaa....s.', '.alaaayaaala..s..', '.aa.aayaa.aa.s...', '.aa.aaaaa.aysy...', '.ll.aaaaa..yy....', '....aa.aa........', '....aa.aa........', '...daa.daa.......'],
+  },
+  abyssEye: {
+    pal: { p: '#6c2a85', l: '#a64dff', d: '#3d1366', w: '#ffffff', r: '#ff3b3b', k: '#1b1530', t: '#8a3bd1' },
+    rows: ['..t....t....t.....', '..t....t...t......', '...t...t..t.......', '....ppppppp.......', '..ppplllpppp......', '.ppllwwwwwppp.....', '.plwwwrrwwwpp.....',
+      'pplwwrkkrwwppp....', 'pplwwrkkrwwppp....', '.plwwwrrwwwpp.....', '.ppplwwwwlppp.....', '..pppppppppp......', '...d.d.d.d.d......', '....d.d.d.d.......'],
+  },
+  hydra: {
+    pal: { m: '#2f8a5a', l: '#7bd49a', d: '#1c5a3a', y: '#ffd84a', k: '#1b1530' },
+    rows: ['...........mmm..........', '.....mmm...mmym...mmm...', '....mmymm..mmmm..mmymm..', '....mmmm....mm....mmmm..', '.....mm.....mm.....mm...', '.....mmm....mm....mmm...', '......mmm...mm...mmm....', '.......mmmmmmmmmmmm.....', '......mmmmmmmmmmmmmm....', '....mmmmmllllllmmmmmm...', '...mmmmmllllllllmmmmmm..', '..mmmmmmmmmmmmmmmmmmm...', '..dmmm.mmm....mmm.mmmd..', '...ddd..dd.....dd..ddd..'],
+  },
+});
+
 MONSTERS.scarecrow = {
   pal: { h: '#d9a441', H: '#b8862f', s: '#c9a26b', k: '#3b2a20', y: '#f1d27a', r: '#b5452f', b: '#3d6fd1', p: '#7a4e2a' },
   rows: [
@@ -294,7 +425,7 @@ MONSTERS.melenchon = {
 export function monsterCanvas(id) {
   return cached('monster:' + id, () => {
     const M = MONSTERS[id];
-    return toCanvas(outline(fromMap(M.rows, M.pal)));
+    return render((fromMap(M.rows, M.pal)));
   });
 }
 
@@ -400,7 +531,7 @@ export function itemIcon(itemId) {
       m, l: shade(m, 0.4), d: shade(m, -0.35), w: '#ffffff', a, A: shade(a, 0.4), c: a,
       s: skin, S: shade(skin, -0.18), k: '#2a2238', g: '#bfe6ff', y: '#ffe08a', G: '#4cd964', b: '#6b4423', e: '#1b1530',
     };
-    return toCanvas(outline(fromMap(ICON_MAPS[it.icon], pal)));
+    return render((fromMap(ICON_MAPS[it.icon], pal)));
   });
 }
 
@@ -420,7 +551,7 @@ export function chestCanvas(kind = 'normal', open = false) {
       '.bwwwwwwwwwwwwb.', 'bddddddddddddddb', '.bbbbbbbbbbbbbb.', '..gggggggggggg..', 'bgggggggBggggggb',
       'bwwwwwwbkbwwwwwb', 'bwwwwwwbbbwwwwwb', 'bwwwwwwwwwwwwwwb', 'bwwwwwwwwwwwwwwb', 'bdddddddddddddb', 'bbbbbbbbbbbbbbbb',
     ];
-    return toCanvas(outline(fromMap(open ? opened : closed, pal)));
+    return render((fromMap(open ? opened : closed, pal)));
   });
 }
 
@@ -428,12 +559,15 @@ export function chestCanvas(kind = 'normal', open = false) {
 //  Aide : dessiner un sprite dans un <canvas> de l'interface
 // =====================================================================
 export function paint(canvas, sprite, { scale = 4, pad = 0, bg = null } = {}) {
-  canvas.width = sprite.width * scale + pad * 2;
-  canvas.height = sprite.height * scale + pad * 2;
+  // échelle entière par rapport au dessin HD, pour des pixels bien nets
+  const u = sprite.width / lw(sprite);
+  const k = Math.max(u, Math.round(scale / u) * u);
+  canvas.width = lw(sprite) * k + pad * 2;
+  canvas.height = lh(sprite) * k + pad * 2;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-  ctx.drawImage(sprite, pad, pad, sprite.width * scale, sprite.height * scale);
+  ctx.drawImage(sprite, pad, pad, lw(sprite) * k, lh(sprite) * k);
 }
 
 /** Portrait : héros + son arme */
@@ -443,10 +577,11 @@ export function heroPortrait(classId, weaponKind, dyeId = null) {
     const w = weaponCanvas(weaponKind);
     const [px, py] = weaponPivot(weaponKind);
     const c = document.createElement('canvas');
-    c.width = HERO_W + 6; c.height = HERO_H;
+    c.width = (HERO_W + 6) * U; c.height = HERO_H * U;
+    c.lw = HERO_W + 6; c.lh = HERO_H;
     const ctx = c.getContext('2d');
     ctx.drawImage(h, 0, 0);
-    ctx.drawImage(w, HAND.x - px + (weaponKind === 'bow' ? 0 : 0), HAND.y - py);
+    ctx.drawImage(w, (HAND.x - px) * U, (HAND.y - py) * U);
     return c;
   });
 }
@@ -457,13 +592,13 @@ export function rarityColor(r) { return RARITIES[r].color; }
 //  FLOUZE (monnaie : une liasse de billets verts) et CLEF
 // =====================================================================
 export function clatCanvas() {
-  return cached('flouze', () => toCanvas(outline(fromMap(
+  return cached('flouze', () => render((fromMap(
     ['..dddddddddd', '..dGGGGGGGGd', 'dddddddddddd', 'dGGGGGGGGGGd', 'dGlGGwwGGlGd', 'dGGGwGGwGGGd', 'dGGGwGGwGGGd', 'dGlGGwwGGlGd', 'dGGGGGGGGGGd', 'dddddddddddd'],
     { G: '#2ecc71', d: '#1e8449', l: '#a8f0c0', w: '#e8fff0' },
   ))));
 }
 export function keyCanvas() {
-  return cached('key', () => toCanvas(outline(fromMap(
+  return cached('key', () => render((fromMap(
     ['.yyy........', 'yYYYy.......', 'yY.Yyyyyyyyy', 'yYYYy...y.y.', '.yyy....y.y.'],
     { y: '#e5b33a', Y: '#ffe08a' },
   ))));
@@ -547,14 +682,16 @@ export function spellIcon(id) {
     const ox = Math.floor((S - gw) / 2), oy = Math.floor((S - gh) / 2);
     const art = grid(S, S);
     rows.forEach((r, y) => [...r].forEach((ch, x) => { if (pal[ch]) set(art, ox + x, oy + y, pal[ch]); }));
-    const lined = outline(art);
-    lined.p.forEach((c, i) => { if (c) g.p[i] = c; });
+    const hd = upscale(g);
+    outline2(lighting(scale2x(art))).p.forEach((c, i) => { if (c) hd.p[i] = c; });
     const b = spellBadge(sp);
     if (b) {
       const [map, col] = BADGES[b];
-      rect(g, S - 6, S - 6, 5, 5, OUT);
-      map.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') set(g, S - 5 + x, S - 5 + y, col); }));
+      const bd = grid(S, S);
+      rect(bd, S - 6, S - 6, 5, 5, OUT);
+      map.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') set(bd, S - 5 + x, S - 5 + y, col); }));
+      upscale(bd).p.forEach((c, i) => { if (c) hd.p[i] = c; });
     }
-    return toCanvas(g);
+    return toCanvas(hd, U);
   });
 }
