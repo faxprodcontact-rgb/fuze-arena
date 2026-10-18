@@ -5,6 +5,16 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2023', date: '18/10/2026', time: '20h23', title: 'Nouvelle courbe d’XP',
+    sections: [
+      { title: 'XP', items: [
+        'Chaque niveau demande maintenant 2 % d’XP de plus que la formule d’avant, et ça s’additionne niveau après niveau : la montée ralentit petit à petit jusqu’au niveau 100.',
+        'Les premiers niveaux changent peu (244 XP au niveau 10 au lieu de 200). Ensuite ça se corse : 906 XP au niveau 30, 2 153 au niveau 50, plus de 10 000 au niveau 99.',
+        'Tu gardes ton niveau et ton XP actuels.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2010', date: '18/10/2026', time: '20h10', title: 'Donjons plus difficiles',
     sections: [
       { title: 'Donjons', items: [
