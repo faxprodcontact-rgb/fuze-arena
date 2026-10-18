@@ -5,6 +5,14 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2057', date: '18/10/2026', time: '20h57', title: 'Persos rangés par niveau',
+    sections: [
+      { title: 'Persos', items: [
+        'Tes persos sont maintenant toujours rangés par niveau : le plus haut à gauche, le plus bas à droite (fiche Héros, Combats et cartes des joueurs).',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2054', date: '18/10/2026', time: '20h54', title: 'Tour infinie : moins d’XP',
     sections: [
       { title: 'Tour infinie', items: [

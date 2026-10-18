@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018205436';
-import * as E from './engine.js?v=20261018205436';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018205436';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018205436';
-import { hashStr, makeRng } from './rng.js?v=20261018205436';
-import { APP_VERSION } from './version.js?v=20261018205436';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018205436';
-import * as NET from './net.js?v=20261018205436';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018205436';
+} from './data.js?v=20261018205725';
+import * as E from './engine.js?v=20261018205725';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018205725';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018205725';
+import { hashStr, makeRng } from './rng.js?v=20261018205725';
+import { APP_VERSION } from './version.js?v=20261018205725';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018205725';
+import * as NET from './net.js?v=20261018205725';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018205725';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -86,6 +86,8 @@ async function refreshPlayers() {
 
 // ------------------------------ Rendu ------------------------------
 /** Petite icône en pixel art (à la place d'un emoji) */
+/** Les persos rangés du plus haut niveau (à gauche) au plus bas, avec leur place d'origine dans le compte */
+const byLevel = (heroes) => heroes.map((h, i) => [h, i]).sort(([a, i], [b, j]) => b.level - a.level || b.xp - a.xp || i - j);
 const ico = (name, cls = '') => `<canvas class="px ico ${cls}" data-ico="${name}"></canvas>`;
 function hydrate(root = document) {
   root.querySelectorAll('canvas[data-icon]').forEach(c => paint(c, itemIcon(c.dataset.icon), { scale: 4 }));
@@ -400,7 +402,7 @@ function viewHero() {
       <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Entraînement</h2><small>Tes stats en action contre l’épouvantail</small></div></div>
       <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
       <div class="hero-switch">
-        ${acc.heroes.map((h, i) => `
+        ${byLevel(acc.heroes).map(([h, i]) => `
           <button class="hs ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}" aria-label="${CLASSES[h.classId].name} niveau ${h.level}">
             <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas><small>Nv.${h.level}</small>
           </button>`).join('')}
@@ -1283,7 +1285,7 @@ function charsCard() {
     <section class="card hx hx-gold cbt-chars ${infoCls('chars')}" data-info="chars">
       <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Ton combattant</h2><small>${CLASSES[hero.classId].name} Nv.${hero.level} part au combat</small></div><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
       <div class="fighters">
-        ${acc.heroes.map((h, i) => `
+        ${byLevel(acc.heroes).map(([h, i]) => `
           <button class="fighter cls-${h.classId} ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
             ${E.openableChests(h) ? '<span class="badge pip" title="Des coffres à ouvrir"></span>' : ''}
             <span class="f-stage"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
@@ -1470,7 +1472,7 @@ function openPlayerCard(id, heroIdx = null) {
         <span>${ico('skull')} Horde <b>${(data.horde && data.horde.best) || 0}</b></span>
         ${sec ? `<span style="color:${WAR.sections[sec].color}">${ico('shield')} ${WAR.sections[sec].name}</span>` : ''}
       </div>
-      ${data.heroes.length > 1 ? `<div class="idc-heroes">${data.heroes.map((x, i) => `<button class="${x === h ? 'on' : ''}" data-act="playerCard" data-id="${id}" data-h="${i}"><canvas class="px" data-portrait="${x.classId}" data-dye="${x.dye || ''}"></canvas><small>Nv.${x.level}</small></button>`).join('')}</div>` : ''}
+      ${data.heroes.length > 1 ? `<div class="idc-heroes">${byLevel(data.heroes).map(([x, i]) => `<button class="${x === h ? 'on' : ''}" data-act="playerCard" data-id="${id}" data-h="${i}"><canvas class="px" data-portrait="${x.classId}" data-dye="${x.dye || ''}"></canvas><small>Nv.${x.level}</small></button>`).join('')}</div>` : ''}
     </div>
     <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>`, { center: true });
 }
