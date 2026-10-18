@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018174023';
-import * as E from './engine.js?v=20261018174023';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174023';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174023';
-import { hashStr, makeRng } from './rng.js?v=20261018174023';
-import { APP_VERSION } from './version.js?v=20261018174023';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018174023';
-import * as NET from './net.js?v=20261018174023';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174023';
+} from './data.js?v=20261018174230';
+import * as E from './engine.js?v=20261018174230';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174230';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174230';
+import { hashStr, makeRng } from './rng.js?v=20261018174230';
+import { APP_VERSION } from './version.js?v=20261018174230';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018174230';
+import * as NET from './net.js?v=20261018174230';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174230';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -120,11 +120,12 @@ function render() {
   const fusable = countFusable();
 
   app.innerHTML = `
-    <header class="topbar">
-      <div class="tb-portrait"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas></div>
+    <header class="topbar cls-${hero.classId}">
+      <button class="tb-portrait" data-act="tab" data-id="hero" aria-label="Héros"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas><span class="tb-lvl">${hero.level}</span></button>
       <div class="tb-info">
-        <div class="tb-name">${esc(acc.pseudo)}<span>${CLASSES[hero.classId].name} Nv.${hero.level}</span></div>
-        <div class="xpbar"><div style="width:${xpPct}%"></div></div>
+        <div class="tb-name">${nameHtml(acc.pseudo, acc)}</div>
+        <div class="tb-sub"><span class="tb-cls">${CLASSES[hero.classId].name}</span><span class="tb-flouze"><canvas class="px" data-clat></canvas>${fmtNum(acc.clat)}</span></div>
+        <div class="xpbar"><div style="width:${xpPct}%"></div><span>${hero.level >= MAX_LEVEL ? 'NIVEAU MAX' : `XP ${fmtNum(hero.xp)} / ${fmtNum(need)}`}</span></div>
       </div>
       <button class="tb-gear" data-act="patchNotes" aria-label="Notes de mise à jour">${ico('scroll')}<span class="badge dot" id="patch-badge" ${patchUnseen() ? '' : 'hidden'}>!</span></button>
       <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">${ico('chat')}<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
@@ -636,15 +637,17 @@ function viewBag() {
         <div class="doll-col">${['weapon', 'amulet', 'pet'].map(slotHtml).join('')}</div>
       </div>
     </section>
-    <section class="card bag-card">
-      <h2>Sac <span style="color:var(--muted)">(${hero.inventory.length})</span></h2>
-      <p class="hint">2 objets identiques = 1 objet de rareté supérieure. Touche un objet pour l’équiper, le fusionner ou le vendre.</p>
+    <section class="card hx bag-card ${infoCls('bag')}" data-info="bag" style="--hc:#c9a24a">
+      ${secHead(ico('bag'), 'Sac', `${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}${countFusable() ? ` · <b class="fuse-hint">${countFusable()} fusion${countFusable() > 1 ? 's' : ''} possible${countFusable() > 1 ? 's' : ''}</b>` : ''}`)}
+      <div class="rar-strip">${RARITIES.map(R => { const n = hero.inventory.filter(i => i.rarity === R.id).length; return `<div class="${n ? '' : 'none'}" style="--rc:${R.color}"><i></i><b>${n}</b><small>${R.name}</small></div>`; }).join('')}</div>
       <div class="seg" style="margin-bottom:12px">
         <button class="${bagMode === 'rarity' ? 'on' : ''}" data-act="bagMode" data-mode="rarity">Par rareté</button>
         <button class="${bagMode === 'set' ? 'on' : ''}" data-act="bagMode" data-mode="set">Par panoplie</button>
       </div>
       ${body}
-      ${commons ? `<button class="btn small block" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
+      ${commons ? `<button class="btn small block sell-all" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
+      <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
+      ${moreBtn('bag')}
     </section>`;
 }
 

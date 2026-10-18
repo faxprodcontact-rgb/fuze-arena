@@ -4,6 +4,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1742', date: '18/10/2026', time: '17h42', title: 'Nouveau bandeau et encadré Sac',
+    sections: [
+      { title: 'Interface', items: [
+        'Bandeau du haut refait : portrait encadré aux couleurs de ta classe, niveau en pastille dorée, ton Flouze, et la barre d’XP chiffrée. Touche ton portrait pour aller à l’onglet Héros.',
+        'Encadré Sac refait : le nombre d’objets de chaque rareté, les fusions possibles, et les explications derrière le « + » jaune.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1740', date: '18/10/2026', time: '17h40', title: 'Nouvelle Boutique et skins',
     sections: [
       { title: 'Le marchand', items: [
