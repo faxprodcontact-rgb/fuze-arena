@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018174230';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018174230';
+} from './data.js?v=20261018174428';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018174428';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -1270,6 +1270,17 @@ export function equipCosmetic(acc, hero, id) {
     hero.dye = hero.dye === id ? null : id;
   }
   else acc.cosmetics[c.kind] = acc.cosmetics[c.kind] === id ? null : id;
+}
+
+// ------------------------------ Cadeaux (notes de mise à jour) ------------------------------
+/** Récupère un cadeau une seule fois par compte. Renvoie le Flouze gagné (0 si déjà pris). */
+export function claimGift(acc, gift) {
+  if (!gift) return 0;
+  acc.gifts ||= {};
+  if (acc.gifts[gift.id]) return 0;
+  acc.gifts[gift.id] = true;
+  acc.clat += gift.amount;
+  return gift.amount;
 }
 
 // ------------------------------ Marchand du jour ------------------------------
