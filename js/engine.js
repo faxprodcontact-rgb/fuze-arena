@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, PVP, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018210335';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018210335';
+} from './data.js?v=20261018212536';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018212536';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -1425,6 +1425,35 @@ export function applySpecialReset(acc, now = Date.now()) {
     h.runs = { half: '', used: {}, keys: 0 };
   });
   return true;
+}
+
+/** Corrections de niveau : ramène au niveau prévu les persos de ce compte qui le dépassent (une seule fois). Renvoie les persos corrigés. */
+export function applyLevelFixes(acc) {
+  const fixed = [];
+  const me = (acc.pseudo || '').trim().toLowerCase();
+  for (const F of LEVEL_FIXES) {
+    if (F.pseudo.toLowerCase() !== me || (acc.levelFixes || []).includes(F.id)) continue;
+    acc.levelFixes = [...(acc.levelFixes || []), F.id];
+    for (const h of acc.heroes) {
+      if (h.level <= F.maxLevel) continue;
+      h.level = F.maxLevel;
+      h.xp = 0;
+      // points de stats en trop : on les retire des stats les plus montées (le reste du build est gardé)
+      let extra = spentPoints(h) - totalPoints(h.level);
+      while (extra-- > 0) {
+        const k = STAT_KEYS.reduce((a, b) => ((h.alloc[b] || 0) > (h.alloc[a] || 0) ? b : a));
+        h.alloc[k]--;
+      }
+      // sorts pas encore débloqués à ce niveau : retirés de la barre
+      h.spells = h.spells.filter(id => !SPELLS[id] || SPELLS[id].lvl <= h.level);
+      for (const sp of classSpells(h.classId).filter(x => x.lvl <= h.level).reverse()) {   // trous comblés avec les meilleurs sorts débloqués
+        if (h.spells.length >= MAX_ACTIVE_SPELLS) break;
+        if (!h.spells.includes(sp.id)) h.spells.push(sp.id);
+      }
+      fixed.push(h);
+    }
+  }
+  return fixed;
 }
 
 // ------------------------------ Marchand du jour ------------------------------

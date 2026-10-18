@@ -499,6 +499,11 @@ export const ALT_XP_MULT = 2;      // persos secondaires : XP ×2 tant qu'ils so
 export const LEVEL_KEYS = { each: 1, tiers: [[90, 5], [70, 4], [50, 3], [30, 2]], every10: 5 };
 // Remise à zéro exceptionnelle de tous les compteurs (une seule fois, à cette heure-là)
 export const SPECIAL_RESET = { id: '2026-10-18-20h', at: [2026, 9, 18, 20, 0] };
+// Corrections de niveau (une seule fois par compte) : persos montés trop vite pendant les changements d'XP
+export const LEVEL_FIXES = [
+  { id: 'fix-2026-10-18-alexdcr', pseudo: 'AlexDcr', maxLevel: 33 },
+  { id: 'fix-2026-10-18-didztasoeur', pseudo: 'Didztasoeur', maxLevel: 33 },
+];
 
 // =====================================================================
 //  TOUR INFINIE
