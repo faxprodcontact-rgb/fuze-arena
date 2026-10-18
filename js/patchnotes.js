@@ -4,6 +4,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1454', date: '18/10/2026', time: '14h54', title: 'Choisis ton combattant',
+    sections: [
+      { title: 'Interface', items: [
+        'Le choix du personnage a déménagé en haut de l’onglet Combats : « Choisis ton combattant », puis tu pars te battre.',
+        'Sur chaque personnage, un petit point rouge discret (sans chiffre) indique qu’il a des coffres à ouvrir.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1450', date: '18/10/2026', time: '14h50', title: 'Détail des caractéristiques',
     sections: [
       { title: 'Héros', items: [

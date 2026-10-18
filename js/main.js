@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018145050';
-import * as E from './engine.js?v=20261018145050';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018145050';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018145050';
-import { hashStr, makeRng } from './rng.js?v=20261018145050';
-import { APP_VERSION } from './version.js?v=20261018145050';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018145050';
-import * as NET from './net.js?v=20261018145050';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018145050';
+} from './data.js?v=20261018145448';
+import * as E from './engine.js?v=20261018145448';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018145448';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018145448';
+import { hashStr, makeRng } from './rng.js?v=20261018145448';
+import { APP_VERSION } from './version.js?v=20261018145448';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018145448';
+import * as NET from './net.js?v=20261018145448';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018145448';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -363,19 +363,7 @@ function viewHero() {
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
-    <section class="card chars">
-      <div class="row"><h2 style="margin:0">Mes personnages</h2><span class="spacer"></span><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
-      <div class="char-row">
-        ${acc.heroes.map((h, i) => `
-          <button class="char ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
-            ${E.openableChests(h) ? `<span class="badge" title="Coffres à ouvrir">${E.openableChests(h)}</span>` : ''}
-            <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
-            <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
-          </button>`).join('')}
-        ${acc.heroes.length < E.MAX_HEROES ? '<button class="char add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
-      </div>
-      <p class="hint" style="margin:10px 0 0">Chaque personnage a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand tu attaques, c’est ton perso <b>actif</b> qui combat. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
-    </section>
+
 
     <section class="card hero-card">
       <div class="hero-stage"><canvas class="px" data-hero="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas></div>
@@ -1111,6 +1099,23 @@ function missionsCard() {
     </section>`;
 }
 
+function charsCard() {
+  return `
+    <section class="card chars">
+      <div class="row"><h2 style="margin:0">Choisis ton combattant</h2><span class="spacer"></span><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
+      <div class="char-row">
+        ${acc.heroes.map((h, i) => `
+          <button class="char ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
+            ${E.openableChests(h) ? '<span class="badge pip" title="Des coffres à ouvrir"></span>' : ''}
+            <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
+            <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
+          </button>`).join('')}
+        ${acc.heroes.length < E.MAX_HEROES ? '<button class="char add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
+      </div>
+      <p class="hint" style="margin:10px 0 0">C’est ton perso <b>actif</b> qui part se battre (arène, donjons, tour, raid, guerre). Chaque perso a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
+    </section>`;
+}
+
 // ------------------------------ Hub Combats ------------------------------
 function viewCombat() {
   const fightsLeft = opponents().filter(o => !o.done).length;
@@ -1126,7 +1131,7 @@ function viewCombat() {
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', icon: 'guillaume_weapon', badge: warLeft },
     { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', clat: true, badge: duels },
   ];
-  return missionsCard() + `
+  return charsCard() + missionsCard() + `
     <section class="card">
       <div class="tiles">
         ${tiles.map(t => `

@@ -647,3 +647,5 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .stat-split .sl-base { color: #d8d2e8; background: rgba(166,156,191,.18); }
 .stat-split .sl-pts { color: var(--green); background: rgba(76,217,100,.15); }
 .stat-split .sl-eq { color: #6fb6ff; background: rgba(61,155,255,.15); }
+/* Point rouge discret (sans chiffre) sur les personnages */
+.char .badge.pip { min-width: 0; width: 11px; height: 11px; padding: 0; top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(255,93,108,.6); }
