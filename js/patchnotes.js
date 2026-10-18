@@ -4,6 +4,22 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1540', date: '18/10/2026', time: '15h40', title: 'Héros redessinés à la main',
+    sections: [
+      { title: 'Héros', items: [
+        'Les 4 classes sont redessinées à la main, pixel par pixel, en vue de trois-quarts, avec de vraies ombres et de nouveaux détails : casque à rivets et plumet, robe étoilée, capuche et carquois, cape et cotte de mailles…',
+        'Nouvelle pose d’attaque : le héros se fend, jambe avant pliée et jambe arrière tendue.',
+        'Le héros court vraiment quand il fonce sur l’ennemi ; la robe du mage flotte dans le mouvement.',
+        'Les teintures de la boutique marchent toujours.',
+      ] },
+      { title: 'Armes, familiers et équipement', items: [
+        'Les 4 armes sont redessinées plus finement (épée à gemme, bâton à cristal, arc à poignée dorée, marteau à rivets).',
+        'Tous les familiers sont redessinés, plus grands et plus détaillés.',
+        'Dans l’écran d’équipement, l’arme du héros passe derrière les cases au lieu d’être coupée.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1521', date: '18/10/2026', time: '15h21', title: 'Nouvelle salle des coffres',
     sections: [
       { title: 'Coffres', items: [

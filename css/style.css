@@ -759,3 +759,10 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .odds-legend { position: relative; display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; margin-top: 6px; font-size: 10.5px; color: var(--muted); font-weight: 700; }
 .odds-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .odds-legend b { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+/* Équipement : le héros dépasse derrière les cases au lieu d'être coupé net */
+.doll { position: relative; }
+.doll-col { position: relative; z-index: 2; }
+.doll .slot { background: color-mix(in srgb, var(--bg2) 88%, transparent); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.doll-stage { position: relative; z-index: 1; overflow: visible; min-height: 220px; }
+.doll-stage canvas { position: absolute; width: 230%; left: -65%; bottom: 22px; height: auto; pointer-events: none; }
+.doll-name { position: relative; z-index: 3; }

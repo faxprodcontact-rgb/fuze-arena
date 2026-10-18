@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018152100';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018152100';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018152100';
+import { CLASSES } from './data.js?v=20261018154004';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018154004';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018154004';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -228,6 +228,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     const k = snap.monster ? 1 : HERO_K;     // les héros sont dessinés un peu plus grands
     return {
       k, pose: 'idle', spriteAtk: snap.monster ? null : heroCanvas(snap.classId, snap.dye, 'atk'),
+      spriteRun: snap.monster ? null : [heroCanvas(snap.classId, snap.dye, 'run1'), heroCanvas(snap.classId, snap.dye, 'run2')],
       i, snap, weapon, idle, dir: i === 0 ? 1 : -1, baseX: 0,
       offX: 0, offY: 0, rot: 0, flash: 0, alpha: 1, squash: 0,
       wAng: idle, wOff: 0, run: false, spin: 0, phase: i * 1.7, petDX: 0, petDY: 0,
@@ -660,12 +661,15 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(tint(wsp, f.glowColor), sx + dx, sy + dy, SW, SH);
       ctx.globalAlpha = f.alpha;
     }
-    const body = f.pose === 'atk' && f.spriteAtk ? f.spriteAtk : f.sprite;
+    // en course : 2 images de foulée qui alternent ; au moment du coup : la fente d'attaque
+    const runF = f.run && f.spriteRun ? Math.floor(time * 9) % 2 : -1;
+    const bodyPose = runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose;
+    const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' && f.spriteAtk ? f.spriteAtk : f.sprite;
     ctx.drawImage(body, sx, sy, SW, SH);
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), sx, sy, SW, SH); ctx.globalAlpha = f.alpha; }
     if (!f.wSprite) { ctx.restore(); drawAfter(f); return; }
     // arme (dans la main, qui bouge en pose d'attaque)
-    const H = handOf(f.pose), WS = S * f.k;
+    const H = handOf(bodyPose), WS = S * f.k;
     const hx = sx + H.x * WS + (f.weapon === 'bow' ? f.wOff : 0), hy = sy + H.y * WS;
     ctx.save();
     ctx.translate(hx, hy);
@@ -1216,6 +1220,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     return {
       ...m, side, dir: side === 0 ? 1 : -1, slotX: side === 0 ? px : 1 - px, dy,
       sprite: heroCanvas(m.classId, m.dye || null), spriteAtk: heroCanvas(m.classId, m.dye || null, 'atk'), pose: 'idle',
+      spriteRun: [heroCanvas(m.classId, m.dye || null, 'run1'), heroCanvas(m.classId, m.dye || null, 'run2')], running: false,
       weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon),
       idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon], offX: 0, offY: 0, rot: 0, alpha: 1, flash: 0,
       hp: 1, shown: 1, dead: false, busy: false, cd: 0.6 + Math.random() * 1.8, phase: Math.random() * 6,
@@ -1266,14 +1271,18 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
       await tween(f, { wAng: f.idle, offY: 0 }, 200);
     } else {
       const dist = Math.abs(baseX(T) - baseX(f)) - HERO_W * SC * 0.9;
+      f.running = true;
       await tween(f, { offX: dist }, 340, 'inOutQuad');
+      f.running = false;
       await tween(f, { wAng: -80 }, 110);
       await tween(f, { wAng: 130 }, 80, 'inQuad');
       const c = mid(T);
       effects.push({ kind: 'slash', x: c.x - 4 * f.dir, y: c.y, dir: f.dir, life: 200, max: 200 });
       hurt(T, f);
       await wait(150);
+      f.running = true; f.pose = 'idle';
       await tween(f, { offX: 0, wAng: f.idle }, 320, 'inOutQuad');
+      f.running = false;
     }
     f.busy = false;
     f.pose = 'idle';
@@ -1316,10 +1325,11 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     ctx.save();
     ctx.translate(x, y); ctx.scale(f.dir, 1);
     ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
-    const body = f.pose === 'atk' ? f.spriteAtk : f.sprite;
+    const runF = f.running ? Math.floor(time * 9) % 2 : -1;
+    const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
     ctx.drawImage(body, -SW / 2, -SH, SW, SH);
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
-    const H = handOf(f.pose);
+    const H = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose);
     ctx.translate(-SW / 2 + H.x * SC, -SH + H.y * SC);
     ctx.rotate((f.wAng * Math.PI) / 180);
     ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
@@ -1398,7 +1408,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
  */
 export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
-  const sc = 6, LW = 44, LH = 60, K = 1.85;
+  const sc = 6, LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
   canvas.width = LW * sc; canvas.height = LH * sc;
   const idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
   const weapon = CLASSES[classId].weapon;
@@ -1416,7 +1426,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     const cyc = t % 4, inAtk = cyc > 3.2 && cyc < 3.85;
     const pose = inAtk ? 'atk' : 'idle';
     const W = HERO_W * K, H = HERO_H * K;
-    const ox = (LW - W) / 2 + 1, feet = LH - 4;
+    const ox = (LW - W) / 2 - 2, feet = LH - 5;
     const bob = inAtk ? 0 : Math.sin(t * 2.6) * 0.35;
     // socle lumineux
     const g = ctx.createRadialGradient(LW / 2, feet, 0, LW / 2, feet, 16);
@@ -1428,7 +1438,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     // familier
     if (pet) {
       const pw = lw(pet) * 0.9, ph = lh(pet) * 0.9;
-      ctx.drawImage(pet, 1, feet - ph - 1 + Math.sin(t * 3.2) * 0.8, pw, ph);
+      ctx.drawImage(pet, ox + 2 - pw * 0.3, feet - ph + Math.sin(t * 3.2) * 0.8, pw, ph);
     }
     // héros + arme
     const oy = feet - H + bob;
