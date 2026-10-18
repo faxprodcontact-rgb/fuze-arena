@@ -12,7 +12,7 @@ export const PATCH_NOTES = [
         'Après Mélenchon, un nouveau boss politique arrive à chaque raid de 7 jours, de plus en plus fort : François Hollande, Nicolas Sarkozy, Marine Le Pen, puis Emmanuel Macron.',
         'Chacun a ses attaques : Fuite en scooter, Coup de Kärcher, Flamme tricolore, En même temps, 49.3…',
         'Après Macron, la rotation recommence, et chaque boss revient plus fort qu’au tour d’avant.',
-        'Mélenchon reste en place jusqu’à la fin de son raid.',
+        'Dès qu’un boss tombe, le suivant arrive tout de suite (plus besoin d’attendre la fin des 7 jours). Ta récompense du boss battu t’attend en haut de l’écran du raid.',
       ] },
     ],
   },

@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018215830';
-import * as E from './engine.js?v=20261018215830';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018215830';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018215830';
-import { hashStr, makeRng } from './rng.js?v=20261018215830';
-import { APP_VERSION } from './version.js?v=20261018215830';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018215830';
-import * as NET from './net.js?v=20261018215830';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018215830';
+} from './data.js?v=20261019000317';
+import * as E from './engine.js?v=20261019000317';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261019000317';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019000317';
+import { hashStr, makeRng } from './rng.js?v=20261019000317';
+import { APP_VERSION } from './version.js?v=20261019000317';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019000317';
+import * as NET from './net.js?v=20261019000317';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019000317';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1911,16 +1911,6 @@ const raidEndOf = (startMs) => startMs + RAID_DAYS * 86400000;
 /** Raid hors ligne (bots) : dure 7 jours à partir de son ouverture */
 function localRaid() {
   const L = acc.raid.local;
-  const keys = Object.keys(L).filter(k => L[k].start).sort((a, b) => L[b].start - L[a].start);
-  let curKey = keys.find(k => E.isRaidTag(L[k].tag) && Date.now() < raidEndOf(L[k].start));
-  if (!curKey) {
-    const tag = keys.length ? E.nextRaidTag(L[keys[0]].tag) : RAID.tag;   // boss suivant de la rotation
-    curKey = tag + E.dayKey();
-    const lv = groupLevels();
-    L[curKey] = { start: Date.now(), tag, hp: E.raidHp(lv, tag), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
-  }
-  const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start).sort((a, b) => L[b].start - L[a].start)[0] || '';
-  for (const k of Object.keys(L)) if (k !== curKey && k !== prevKey) delete L[k];
   const botHits = (key, days, level) => FRIENDS.flatMap(f => {
     const out = [];
     for (let d = 0; d < days; d++) {
@@ -1930,10 +1920,21 @@ function localRaid() {
     }
     return out;
   });
+  const hitsOf = (k) => { const R = L[k]; return [...R.hits, ...botHits(k, Math.min(RAID_DAYS, Math.floor((Date.now() - R.start) / 86400000) + 1), R.level)]; };
+  const keys = Object.keys(L).filter(k => L[k].start).sort((a, b) => L[b].start - L[a].start);
+  // raid en cours : pas fini et boss encore debout (s'il est battu, le suivant arrive tout de suite)
+  let curKey = keys.find(k => E.isRaidTag(L[k].tag) && Date.now() < raidEndOf(L[k].start) && !raidSummary(L[k], hitsOf(k)).killed);
+  if (!curKey) {
+    const tag = keys.length ? E.nextRaidTag(L[keys[0]].tag) : RAID.tag;   // boss suivant de la rotation
+    curKey = tag + E.dayKey();
+    const lv = groupLevels();
+    L[curKey] = { start: Date.now(), tag, hp: E.raidHp(lv, tag), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
+  }
+  const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start).sort((a, b) => L[b].start - L[a].start)[0] || '';
+  for (const k of Object.keys(L)) if (k !== curKey && k !== prevKey) delete L[k];
   const cur = L[curKey];
-  const days = Math.min(RAID_DAYS, Math.floor((Date.now() - cur.start) / 86400000) + 1);
-  const res = { week: curKey, prevWeek: prevKey, endsAt: raidEndOf(cur.start), raid: { hp: cur.hp, level: cur.level, boss: cur.tag }, hits: [...cur.hits, ...botHits(curKey, days, cur.level)], prev: null, prevHits: [] };
-  if (prevKey) { const P = L[prevKey]; res.prev = { hp: P.hp, level: P.level, boss: P.tag }; res.prevHits = [...P.hits, ...botHits(prevKey, RAID_DAYS, P.level)]; }
+  const res = { week: curKey, prevWeek: prevKey, endsAt: raidEndOf(cur.start), raid: { hp: cur.hp, level: cur.level, boss: cur.tag }, hits: hitsOf(curKey), prev: null, prevHits: [] };
+  if (prevKey) { const P = L[prevKey]; res.prev = { hp: P.hp, level: P.level, boss: P.tag }; res.prevHits = hitsOf(prevKey); }
   return res;
 }
 
@@ -1950,6 +1951,8 @@ function loadRaid() {
       const list = (await NET.fetchLatestRaids()).map(fixRaid);
       const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
       let raid = list.find(r => E.isRaidTag(r.boss) && Date.now() < endOf(r)) || null;
+      // boss déjà battu : pas besoin d'attendre la fin des 7 jours, le suivant arrive tout de suite
+      if (raid && raidSummary(raid, await NET.fetchRaidHits(raid.week)).killed) raid = null;
       const prev = list.find(r => r !== raid) || null;
       if (!raid) {
         // raid fini : on ouvre le boss suivant de la rotation (le même pour tout le monde, donc le même nom de semaine)
@@ -1960,6 +1963,7 @@ function loadRaid() {
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
       const [hits, prevHits] = await Promise.all([NET.fetchRaidHits(raid.week), prev ? NET.fetchRaidHits(prev.week) : []]);
+      if (raidSummary(raid, hits).killed) throw new Error('Le boss suivant n’a pas pu être ouvert.');   // évite de recharger en boucle
       raidInfo = { week: raid.week, raid, hits, prev, prevHits, prevWeek: prev ? prev.week : '', endsAt: endOf(raid) };
       acc.raid.lastTag = raid.boss;
     } catch (e) {
@@ -1981,7 +1985,8 @@ function raidSummary(raid, hits) {
 }
 
 function viewRaid() {
-  if (!raidInfo.raid || Date.now() >= raidInfo.endsAt) {
+  // raid fini, ou boss battu : on charge le suivant
+  if (!raidInfo.raid || Date.now() >= raidInfo.endsAt || raidSummary(raidInfo.raid, raidInfo.hits).killed) {
     // Important : ne lancer le chargement qu'une fois (sinon l'écran se redessine en boucle et l'appli se fige)
     if (raidError) {
       return `<section class="card"><h2>Raid : ${curRaid().name}</h2>
