@@ -530,23 +530,62 @@ SPELL_LIST.push(...S('monster', [
   { id: 'r_republique', lvl: 0, name: 'La République, c’est moi !', cd: 5, scale: 'atk', mult: 2, melee: true, fx: 'bash' },
   { id: 'r_insoumis', lvl: 0, name: 'Insoumission', cd: 6, fx: 'shield', effects: [{ k: 'shield', scale: 'def', mult: 2 }] },
   { id: 'r_gueule', lvl: 0, name: 'Coup de gueule', cd: 5, fx: 'roar', effects: [{ k: 'buff', stat: 'atk', pct: 0.3, turns: 3 }] },
+  // François Hollande
+  { id: 'r_scooter', lvl: 0, name: 'Fuite en scooter', cd: 4, scale: 'atk', mult: 1.7, crit: 0.2, melee: true, fx: 'bash' },
+  { id: 'r_pluie', lvl: 0, name: 'Pluie de Brest', cd: 5, scale: 'mag', mult: 0.7, fx: 'rain', effects: [{ k: 'debuff', stat: 'spd', pct: 0.3, turns: 3 }] },
+  { id: 'r_moipresident', lvl: 0, name: 'Moi président', cd: 6, fx: 'shield', effects: [{ k: 'shield', scale: 'def', mult: 2 }] },
+  { id: 'r_changement', lvl: 0, name: 'Le changement, c’est maintenant', cd: 5, fx: 'buff', effects: [{ k: 'buff', stat: 'atk', pct: 0.3, turns: 3 }] },
+  // Nicolas Sarkozy
+  { id: 'r_karcher', lvl: 0, name: 'Coup de Kärcher', cd: 5, scale: 'mag', mult: 1.7, fx: 'ice' },
+  { id: 'r_cassetoi', lvl: 0, name: 'Casse-toi !', cd: 6, scale: 'atk', mult: 0.8, melee: true, fx: 'bash', effects: [{ k: 'stun', chance: 0.4 }] },
+  { id: 'r_travailler', lvl: 0, name: 'Travailler plus', cd: 6, fx: 'buff', effects: [{ k: 'buff', stat: 'spd', pct: 0.25, turns: 3 }] },
+  { id: 'r_talonnettes', lvl: 0, name: 'Talonnettes', cd: 6, fx: 'shield', effects: [{ k: 'shield', scale: 'def', mult: 2.2 }] },
+  // Marine Le Pen
+  { id: 'r_flamme', lvl: 0, name: 'Flamme tricolore', cd: 4, scale: 'mag', mult: 1.3, fx: 'fireball', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.4, turns: 3 }] },
+  { id: 'r_debat', lvl: 0, name: 'Débat d’entre-deux-tours', cd: 5, scale: 'mag', mult: 0.8, fx: 'bolt', effects: [{ k: 'debuff', stat: 'atk', pct: 0.3, turns: 3 }] },
+  { id: 'r_dediab', lvl: 0, name: 'Dédiabolisation', cd: 6, fx: 'heal', effects: [{ k: 'heal', pctMax: 0.12 }] },
+  { id: 'r_rassemblement', lvl: 0, name: 'Rassemblement', cd: 5, fx: 'roar', effects: [{ k: 'buff', stat: 'atk', pct: 0.35, turns: 3 }] },
+  // Emmanuel Macron
+  { id: 'r_enmemetemps', lvl: 0, name: 'En même temps', cd: 4, scale: 'atk', mult: 1, hits: 2, melee: true, fx: 'slash' },
+  { id: 'r_jupiter', lvl: 0, name: 'Foudre de Jupiter', cd: 5, scale: 'mag', mult: 2.2, fx: 'lightning' },
+  { id: 'r_493', lvl: 0, name: '49.3', cd: 6, scale: 'mag', mult: 0.6, fx: 'bolt', effects: [{ k: 'stun', chance: 0.6 }] },
+  { id: 'r_traverser', lvl: 0, name: 'Traverser la rue', cd: 6, fx: 'heal', effects: [{ k: 'heal', pctMax: 0.12 }] },
 ]));
 SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
 
 export const RAID = {
-  tag: 'melenchon:v3',            // version du raid (changer ce nom relance un Mélenchon tout neuf)
+  tag: 'melenchon:v3',            // nom du raid Mélenchon en cours (les suivants s'appellent « hollande:c0 », « sarkozy:c0 »…)
   attemptsPerHalf: 3,             // 3 assauts par compte toutes les 12 h (remise à zéro à minuit et à midi)
   maxActions: 40,                 // un assaut dure au plus 40 actions (on ne peut pas le tuer d'un coup)
-  minHp: 20000,                   // Mélenchon a toujours au moins 20 000 PV
+  minHp: 20000,                   // le boss a toujours au moins 20 000 PV
   participation: 0.5,             // PV calculés pour qu'il tombe si chacun fait ~3 assauts par jour
   rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
-  boss: {
-    id: 'melenchon', name: 'Mélenchon', sprite: 'melenchon', theme: 'meeting',
+  cycleBoost: { power: 1.08, hp: 1.3 },   // après Macron, la rotation recommence : à chaque tour, stats ×1,08 et PV ×1,3
+};
+// Les boss du raid, un par raid de 7 jours, dans cet ordre et de plus en plus forts
+// power : stats du boss, hp : PV du raid (par rapport à Mélenchon)
+export const RAID_BOSSES = [
+  { id: 'melenchon', name: 'Mélenchon', sprite: 'melenchon', theme: 'meeting', power: 1, hp: 1,
     profile: { vit: 1, atk: 1.1, mag: 1, def: 0.9, spd: 0.8, lck: 0.6 },
     basic: { name: 'Coup de micro', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
-    spells: ['r_insoumis', 'r_republique', 'r_discours', 'r_gueule'],
-  },
-};
+    spells: ['r_insoumis', 'r_republique', 'r_discours', 'r_gueule'] },
+  { id: 'hollande', name: 'François Hollande', sprite: 'hollande', theme: 'meeting', power: 1.04, hp: 1.15,
+    profile: { vit: 1.1, atk: 1, mag: 0.9, def: 1, spd: 0.7, lck: 0.7 },
+    basic: { name: 'Coup de parapluie', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
+    spells: ['r_moipresident', 'r_scooter', 'r_pluie', 'r_changement'] },
+  { id: 'sarkozy', name: 'Nicolas Sarkozy', sprite: 'sarkozy', theme: 'meeting', power: 1.08, hp: 1.25,
+    profile: { vit: 0.95, atk: 1.1, mag: 0.9, def: 0.85, spd: 0.9, lck: 0.7 },
+    basic: { name: 'Coup de talonnette', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
+    spells: ['r_talonnettes', 'r_karcher', 'r_cassetoi', 'r_travailler'] },
+  { id: 'lepen', name: 'Marine Le Pen', f: true, sprite: 'lepen', theme: 'meeting', power: 1.12, hp: 2.2,
+    profile: { vit: 1.05, atk: 0.9, mag: 1.15, def: 0.95, spd: 0.8, lck: 0.6 },
+    basic: { name: 'Coup de sac à main', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
+    spells: ['r_dediab', 'r_flamme', 'r_debat', 'r_rassemblement'] },
+  { id: 'macron', name: 'Emmanuel Macron', sprite: 'macron', theme: 'meeting', power: 1.16, hp: 2.3,
+    profile: { vit: 1.05, atk: 1.05, mag: 1.1, def: 0.95, spd: 0.85, lck: 0.7 },
+    basic: { name: 'Poignée de main', scale: 'atk', mult: 1, melee: true, fx: 'bash' },
+    spells: ['r_traverser', 'r_enmemetemps', 'r_jupiter', 'r_493'] },
+];
 
 // =====================================================================
 //  MISSIONS — 3 missions toutes les 12 h (minuit et midi), tirées au hasard, les mêmes pour tout le monde
@@ -565,8 +604,8 @@ export const MISSION_POOL = [
   M('dungeon_diff', 'dungeon_kinds', 'Bats {n} donjons différents', [2, 3], 3),
   M('tower', 'tower', 'Monte {n} étage(s) de la Tour', [1, 3], 3),
   M('tower_try', 'tower_try', 'Tente {n} fois la Tour infinie', [2, 4], 2),
-  M('raid', 'raid', 'Attaque Mélenchon {n} fois', [1, 3], 3),
-  M('raid_dmg', 'raid_dmg', 'Inflige {n} dégâts à Mélenchon', [300, 900], 3),
+  M('raid', 'raid', 'Attaque le boss du raid {n} fois', [1, 3], 3),
+  M('raid_dmg', 'raid_dmg', 'Inflige {n} dégâts au boss du raid', [300, 900], 3),
   M('war', 'war', 'Fais {n} attaques de guerre', [1, 3], 3),
   M('war_win', 'war_win', 'Gagne {n} attaque(s) de guerre', [1, 2], 3),
   M('fuse', 'fuse', 'Fusionne {n} objet(s)', [1, 2], 3),

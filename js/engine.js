@@ -7,9 +7,9 @@ import {
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
-  XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018212843';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018212843';
+  XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
+} from './data.js?v=20261018215830';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018215830';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -1270,12 +1270,35 @@ export function towerResult(acc, hero, won, foeLevel = hero.level) {
 }
 
 // ------------------------------ Raid -----------------------------------
+/**
+ * Le boss d'un raid d'après son nom : « melenchon:v3 » (le premier raid), puis « hollande:c0 », « sarkozy:c0 »…
+ * c0, c1… = le tour de rotation (à chaque tour complet, les boss reviennent plus forts).
+ */
+export function raidDef(tag = RAID.tag) {
+  const [id, c] = String(tag || '').split(':');
+  const i = Math.max(0, RAID_BOSSES.findIndex(b => b.id === id));
+  const cycle = /^c\d+$/.test(c || '') ? +c.slice(1) : 0;
+  const boss = RAID_BOSSES[i];
+  const C = RAID.cycleBoost;
+  return { ...boss, index: i, cycle, tag: tag || RAID.tag, power: boss.power * Math.pow(C.power, cycle), hpMult: boss.hp * Math.pow(C.hp, cycle) };
+}
+/** Est-ce un raid connu (de la rotation) ? */
+export const isRaidTag = (tag) => tag === RAID.tag || RAID_BOSSES.some(b => String(tag || '').startsWith(b.id + ':c'));
+/** Le raid qui suit celui-là dans la rotation (après Macron : retour à Mélenchon, un tour plus fort) */
+export function nextRaidTag(prevTag) {
+  if (!isRaidTag(prevTag)) return RAID.tag;
+  const d = raidDef(prevTag);
+  const i = (d.index + 1) % RAID_BOSSES.length;
+  return `${RAID_BOSSES[i].id}:c${d.cycle + (i === 0 ? 1 : 0)}`;
+}
+
 /** Le boss de raid au niveau du groupe ; hp = PV restants au début de l'assaut */
-export function raidBoss(level, totalHp, remaining) {
-  const b = RAID.boss;
+export function raidBoss(level, totalHp, remaining, tag = RAID.tag) {
+  const b = raidDef(tag);
   const m = buildMonster({ ...b, lvl: Math.max(1, Math.round(level)), boss: b.name });
   // Gros sac à PV qui tape modérément : on tient tout l'assaut et on lui inflige un max de dégâts
-  for (const k in m.stats) m.stats[k] = Math.round(m.stats[k] * (k === 'atk' || k === 'mag' ? 0.6 : 1.15));
+  // (chaque boss de la rotation est un peu plus costaud que le précédent)
+  for (const k in m.stats) m.stats[k] = Math.round(m.stats[k] * (k === 'atk' || k === 'mag' ? 0.6 : 1.15) * b.power);
   m.maxHp = totalHp;
   m.hp = Math.max(1, remaining);
   return m;
@@ -1291,10 +1314,10 @@ export function raidExpectedDamage(lvl) {
   return RAID_DMG[RAID_DMG.length - 1][1];
 }
 
-/** PV du boss pour la semaine, selon les niveaux de tout le groupe */
-export function raidHp(levels) {
+/** PV du boss pour la semaine, selon les niveaux de tout le groupe (et le boss : les suivants en ont plus) */
+export function raidHp(levels, tag = RAID.tag) {
   const total = levels.reduce((t, l) => t + raidExpectedDamage(l), 0);
-  return Math.max(RAID.minHp, Math.round(total * RAID.attemptsPerHalf * 2 * 7 * RAID.participation));
+  return Math.max(RAID.minHp, Math.round(total * RAID.attemptsPerHalf * 2 * 7 * RAID.participation * raidDef(tag).hpMult));
 }
 
 /** Dégâts infligés pendant un assaut (d'après le journal du combat) */

@@ -6,6 +6,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2158', date: '18/10/2026', time: '21h58', title: 'Raid : de nouveaux boss arrivent',
+    sections: [
+      { title: 'Raid', items: [
+        'Après Mélenchon, un nouveau boss politique arrive à chaque raid de 7 jours, de plus en plus fort : François Hollande, Nicolas Sarkozy, Marine Le Pen, puis Emmanuel Macron.',
+        'Chacun a ses attaques : Fuite en scooter, Coup de Kärcher, Flamme tricolore, En même temps, 49.3…',
+        'Après Macron, la rotation recommence, et chaque boss revient plus fort qu’au tour d’avant.',
+        'Mélenchon reste en place jusqu’à la fin de son raid.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2128', date: '18/10/2026', time: '21h28', title: 'Compensation : correction de niveau',
     for: ['AlexDcr', 'Didztasoeur'],
     gift: { id: 'compensation-niveau-2026-10-18', amount: 200, text: 'Pendant les changements d’XP, ton perso est monté plus vite que prévu à cause d’un bug, et il a été ramené au niveau 33. Désolé pour la gêne ! Voici 200 Flouze en compensation. Merci de ta compréhension et bon jeu !' },

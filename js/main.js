@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018212843';
-import * as E from './engine.js?v=20261018212843';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018212843';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018212843';
-import { hashStr, makeRng } from './rng.js?v=20261018212843';
-import { APP_VERSION } from './version.js?v=20261018212843';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018212843';
-import * as NET from './net.js?v=20261018212843';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018212843';
+} from './data.js?v=20261018215830';
+import * as E from './engine.js?v=20261018215830';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018215830';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018215830';
+import { hashStr, makeRng } from './rng.js?v=20261018215830';
+import { APP_VERSION } from './version.js?v=20261018215830';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018215830';
+import * as NET from './net.js?v=20261018215830';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018215830';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -544,7 +544,7 @@ function viewChests() {
     })}
     ${card({
       kind: 'war', title: 'Coffre de guerre', count: acc.warChests, cls: 'v-war', odds: CHEST_ODDS.war,
-      sub: `Gagné à la guerre des sections et contre Mélenchon. <b>${WAR.warChestItems} objets</b>, jamais de Commun !`,
+      sub: `Gagné à la guerre des sections et au raid. <b>${WAR.warChestItems} objets</b>, jamais de Commun !`,
       buttons: `<button class="btn" style="background:linear-gradient(#d9a8ff,#8c3fe0)" data-act="openChest" data-kind="war" ${acc.warChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
     })}`;
 }
@@ -1239,7 +1239,7 @@ const MISSION_ICO = {
   fuse: 'i:sparkle', equip: 'i:shield', stat: 'i:plus', level: 'i:up', spell: 'i:magic', crit: 'i:boom', dodge: 'i:wind', pet: 'i:paw', chat: 'i:chat', share: 'i:chat', train_rec: 'i:trophy',
 };
 function missionIco(ev) {
-  const k = MISSION_ICO[ev] || 'i:star';
+  const k = ev === 'raid' || ev === 'raid_dmg' ? `m:${curRaid().sprite}` : MISSION_ICO[ev] || 'i:star';
   if (k.startsWith('e:')) return `<canvas class="px" data-emblem="${k.slice(2)}"></canvas>`;
   if (k.startsWith('i:')) return ico(k.slice(2));
   if (k.startsWith('m:')) return `<canvas class="px" data-monster="${k.slice(2)}"></canvas>`;
@@ -1312,7 +1312,7 @@ function viewCombat() {
     { id: 'pvp', name: 'PvP en direct', sub: NET.online ? `${players.filter(p => isOnline(p.id)).length} pote${players.filter(p => isOnline(p.id)).length > 1 ? 's' : ''} en ligne` : 'En ligne seulement', tag: 'Ton équipe contre celle d’un pote connecté', emblem: 'pvp', badge: pvpIncoming().length, wide: true, c: '#b05cff' },
     { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, emblem: 'dungeons', badge: runs, c: '#4cd964' },
     { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
-    { id: 'raid', name: RAID.boss.name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft, c: '#ff8a3d' },
+    { id: 'raid', name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
     { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
     { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd84a' },
@@ -1894,6 +1894,8 @@ function watchPvp(c) {
 
 // ------------------------------ Raid ------------------------------
 let raidInfo = { week: '', raid: null, hits: [], prev: null, prevHits: [], prevWeek: '' };
+/** Le boss du raid en cours (avant le chargement : le dernier connu) */
+const curRaid = () => E.raidDef((raidInfo.raid && raidInfo.raid.boss) || acc.raid.lastTag || RAID.tag);
 let raidLoading = null;   // chargement en cours (une seule requête à la fois)
 let raidError = '';
 
@@ -1910,11 +1912,12 @@ const raidEndOf = (startMs) => startMs + RAID_DAYS * 86400000;
 function localRaid() {
   const L = acc.raid.local;
   const keys = Object.keys(L).filter(k => L[k].start).sort((a, b) => L[b].start - L[a].start);
-  let curKey = keys.find(k => L[k].tag === RAID_TAG && Date.now() < raidEndOf(L[k].start));
+  let curKey = keys.find(k => E.isRaidTag(L[k].tag) && Date.now() < raidEndOf(L[k].start));
   if (!curKey) {
-    curKey = RAID_TAG + E.dayKey();
+    const tag = keys.length ? E.nextRaidTag(L[keys[0]].tag) : RAID.tag;   // boss suivant de la rotation
+    curKey = tag + E.dayKey();
     const lv = groupLevels();
-    L[curKey] = { start: Date.now(), tag: RAID_TAG, hp: E.raidHp(lv), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
+    L[curKey] = { start: Date.now(), tag, hp: E.raidHp(lv, tag), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
   }
   const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start).sort((a, b) => L[b].start - L[a].start)[0] || '';
   for (const k of Object.keys(L)) if (k !== curKey && k !== prevKey) delete L[k];
@@ -1929,33 +1932,36 @@ function localRaid() {
   });
   const cur = L[curKey];
   const days = Math.min(RAID_DAYS, Math.floor((Date.now() - cur.start) / 86400000) + 1);
-  const res = { week: curKey, prevWeek: prevKey, endsAt: raidEndOf(cur.start), raid: { hp: cur.hp, level: cur.level }, hits: [...cur.hits, ...botHits(curKey, days, cur.level)], prev: null, prevHits: [] };
-  if (prevKey) { const P = L[prevKey]; res.prev = { hp: P.hp, level: P.level }; res.prevHits = [...P.hits, ...botHits(prevKey, RAID_DAYS, P.level)]; }
+  const res = { week: curKey, prevWeek: prevKey, endsAt: raidEndOf(cur.start), raid: { hp: cur.hp, level: cur.level, boss: cur.tag }, hits: [...cur.hits, ...botHits(curKey, days, cur.level)], prev: null, prevHits: [] };
+  if (prevKey) { const P = L[prevKey]; res.prev = { hp: P.hp, level: P.level, boss: P.tag }; res.prevHits = [...P.hits, ...botHits(prevKey, RAID_DAYS, P.level)]; }
   return res;
 }
 
-// Seuls les raids de la version actuelle comptent (les anciens sont terminés) ; Mélenchon a toujours au moins RAID.minHp PV
-const RAID_TAG = RAID.tag;
+// Le boss a toujours au moins RAID.minHp PV
 const fixRaid = (r) => (r ? { ...r, hp: Math.max(RAID.minHp, r.hp) } : r);
 
 /** Raid en ligne : le plus récent encore actif (7 jours après son ouverture), sinon on en ouvre un nouveau */
 function loadRaid() {
-  if (!NET.online) { raidInfo = localRaid(); return Promise.resolve(); }
+  if (!NET.online) { raidInfo = localRaid(); acc.raid.lastTag = raidInfo.raid.boss; save(); return Promise.resolve(); }
   if (raidLoading) return raidLoading;   // déjà en route : on attend la même réponse
   raidError = '';
   raidLoading = (async () => {
     try {
       const list = (await NET.fetchLatestRaids()).map(fixRaid);
       const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
-      let raid = list.find(r => r.boss === RAID_TAG && Date.now() < endOf(r)) || null;
+      let raid = list.find(r => E.isRaidTag(r.boss) && Date.now() < endOf(r)) || null;
       const prev = list.find(r => r !== raid) || null;
       if (!raid) {
+        // raid fini : on ouvre le boss suivant de la rotation (le même pour tout le monde, donc le même nom de semaine)
+        const tag = E.nextRaidTag(list[0] && list[0].boss);
         const lv = groupLevels();
-        raid = fixRaid(await NET.openRaid(RAID_TAG.split(':')[1] + '-' + E.dayKey(), RAID_TAG, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
+        const week = (tag === RAID.tag ? 'v3' : tag.replace(':', '-')) + '-' + E.dayKey();
+        raid = fixRaid(await NET.openRaid(week, tag, E.raidHp(lv, tag), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
       const [hits, prevHits] = await Promise.all([NET.fetchRaidHits(raid.week), prev ? NET.fetchRaidHits(prev.week) : []]);
       raidInfo = { week: raid.week, raid, hits, prev, prevHits, prevWeek: prev ? prev.week : '', endsAt: endOf(raid) };
+      acc.raid.lastTag = raid.boss;
     } catch (e) {
       raidError = e.message || 'Erreur inconnue';
     } finally {
@@ -1978,12 +1984,12 @@ function viewRaid() {
   if (!raidInfo.raid || Date.now() >= raidInfo.endsAt) {
     // Important : ne lancer le chargement qu'une fois (sinon l'écran se redessine en boucle et l'appli se fige)
     if (raidError) {
-      return `<section class="card"><h2>Raid : ${RAID.boss.name}</h2>
+      return `<section class="card"><h2>Raid : ${curRaid().name}</h2>
         <p class="auth-msg">Impossible de charger le raid : ${esc(raidError)}</p>
         <button class="btn primary block" style="margin-top:12px" data-act="retryRaid">Réessayer</button></section>`;
     }
     if (!raidLoading) loadRaid().then(() => { if (tab === 'raid') softRender(); });
-    return offlineCard(`Raid : ${RAID.boss.name}`, 'Chargement du raid…');
+    return offlineCard(`Raid : ${curRaid().name}`, 'Chargement du raid…');
   }
   const me = myId();
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
@@ -1994,20 +2000,22 @@ function viewRaid() {
   let prevCard = '';
   if (raidInfo.prev && !acc.raid.claimed[raidInfo.prevWeek]) {
     const P = raidSummary(raidInfo.prev, raidInfo.prevHits);
+    const PB = E.raidDef(raidInfo.prev.boss);
     const pm = P.board.find(b => b.id === me);
     if (pm) prevCard = `
       <section class="card war-reward">
         <h2>Raid précédent</h2>
-        <div class="big-res">${P.killed ? `${RAID.boss.name} est tombé !` : `${RAID.boss.name} a résisté…`}</div>
+        <div class="big-res">${P.killed ? `${PB.name} est tombé${PB.f ? 'e' : ''} !` : `${PB.name} a résisté…`}</div>
         <p class="hint">Tu lui as infligé ${fmtNum(pm.dmg)} dégâts.</p>
         <button class="btn primary block" data-act="claimRaid" data-week="${raidInfo.prevWeek}">Récupérer ma récompense</button>
       </section>`;
   }
   const R = RAID.rewards;
   const hp = raidInfo.raid.hp;
+  const B = curRaid();
   return prevCard + modeHead({
     id: 'raid', c: '#ff8a3d', art: `<span class="mh-fire">${ico('fire')}</span>`,
-    title: `Raid : ${RAID.boss.name}`, sub: 'Tout le groupe tape le même boss',
+    title: `Raid : ${B.name}`, sub: B.cycle ? `Tour ${B.cycle + 1} : il revient plus fort !` : 'Tout le groupe tape le même boss',
     chips: [
       mchip(ico('swords'), 'Tes assauts', `${left} / ${RAID.attemptsPerHalf}`, left && !S.killed ? 'hot' : ''),
       mchip(ico('clock'), 'Nouveaux assauts', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
@@ -2017,8 +2025,8 @@ function viewRaid() {
   }) + `
     <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
       <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
-      <div class="bs-art"><canvas class="px" data-monster="${RAID.boss.sprite}"></canvas></div>
-      <div class="bs-name">${RAID.boss.name}</div>
+      <div class="bs-art"><canvas class="px" data-monster="${B.sprite}"></canvas></div>
+      <div class="bs-name">${B.name}</div>
       <div class="hp-bar"><i style="width:${(S.remaining / hp) * 100}%"></i><span>${S.killed ? 'VAINCU !' : `${fmtNum(S.remaining)} / ${fmtNum(hp)} PV`}</span></div>
       ${canClaim
         ? `<button class="btn primary block big-go" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
@@ -2039,7 +2047,8 @@ function attackRaid() {
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
   if (S.killed) return;
   const me = mySnap();
-  const boss = E.raidBoss(raidInfo.raid.level, raidInfo.raid.hp, S.remaining);
+  const B = curRaid();
+  const boss = E.raidBoss(raidInfo.raid.level, raidInfo.raid.hp, S.remaining, B.tag);
   st.used++;
   E.missionEvent(acc, 'raid');
   save();
@@ -2047,7 +2056,7 @@ function attackRaid() {
   const h = hero;
   runBattle({
     me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, sim: { maxActions: RAID.maxActions, timeoutWinner: false },
-    theme: RAID.boss.theme, manual: true, victory: myVictory(), title: `Raid · ${RAID.boss.name}`,
+    theme: B.theme, manual: true, victory: myVictory(), title: `Raid · ${B.name}`,
     finish: (result) => {
       const dmg = E.damageDealt(result, S.remaining);
       const hit = { user_id: myId(), pseudo: acc.pseudo, damage: dmg };
@@ -2060,7 +2069,7 @@ function attackRaid() {
       const killed = dmg >= S.remaining;
       return {
         rewards: lv,
-        headline: killed ? `${RAID.boss.name.toUpperCase()} EST TOMBÉ !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
+        headline: killed ? `${B.name.toUpperCase()} EST TOMBÉ${B.f ? 'E' : ''} !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
         rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span>${xpPills(lv)}</div>`,
       };
     },
