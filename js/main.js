@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018154534';
-import * as E from './engine.js?v=20261018154534';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018154534';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018154534';
-import { hashStr, makeRng } from './rng.js?v=20261018154534';
-import { APP_VERSION } from './version.js?v=20261018154534';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018154534';
-import * as NET from './net.js?v=20261018154534';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018154534';
+} from './data.js?v=20261018155216';
+import * as E from './engine.js?v=20261018155216';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018155216';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018155216';
+import { hashStr, makeRng } from './rng.js?v=20261018155216';
+import { APP_VERSION } from './version.js?v=20261018155216';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018155216';
+import * as NET from './net.js?v=20261018155216';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018155216';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -164,7 +164,7 @@ function trainingStatsHtml() {
   const st = E.computeStats(hero);
   const gx = E.gearExtras(hero);
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-  const box = (ico, label, val, sub) => `<div class="ts"><span>${ico} ${label}</span><b>${val}</b><small>${sub}</small></div>`;
+  const box = (ico, label, val, sub) => `<div class="ts"><span><i class="ts-ico">${ico}</i>${label}</span><b>${val}</b><small>${sub}</small></div>`;
   const speedRatio = T.foeActs ? (T.acts / T.foeActs).toFixed(1) : '—';
   return [
     box('⚔', 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
@@ -388,10 +388,9 @@ function viewHero() {
       </div>
     </section>
 
-    <section class="card train">
-      <h2 style="margin:0">Entraînement</h2>
-      <p class="hint" style="margin:6px 0 0">Ton perso tape l’épouvantail en boucle : regarde tes stats en action. Touche un perso en dessous pour le voir à l’entraînement.</p>
-      <div class="train-wrap"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div></div>
+    <section class="card train hx hx-gold">
+      <div class="hx-head"><span class="hx-ico">⚔</span><div><h2>Entraînement</h2><small>Tes stats en action contre l’épouvantail</small></div></div>
+      <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
       <div class="hero-switch">
         ${acc.heroes.map((h, i) => `
           <button class="hs ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}" aria-label="${CLASSES[h.classId].name} niveau ${h.level}">
@@ -401,9 +400,9 @@ function viewHero() {
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
-    <section class="card">
-      <h2 style="margin:0">Caractéristiques</h2>
-      <p class="hint" style="margin:6px 0 0">${pts > 0 ? `<span class="pill green pts-pill">${pts} point${pts > 1 ? 's' : ''} à placer</span> Touche les + pour les placer.` : 'Tu gagnes 3 points à placer à chaque niveau.'}</p>
+    <section class="card hx hx-blue">
+      <div class="hx-head"><span class="hx-ico">✦</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche les + pour placer tes points' : 'Tu gagnes 3 points à chaque niveau'}</small></div>
+        ${pts > 0 ? `<span class="pts-badge">${pts}<small>point${pts > 1 ? 's' : ''}</small></span>` : ''}</div>
       <div class="stat-sum">
         <div><small>❤ Vie</small><b>${fmtNum(hp)}</b></div>
         <div><small>💥 Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} équip.` : 'max 40 %'}</i></div>
@@ -415,11 +414,12 @@ function viewHero() {
         <span><i class="sl-eq"></i>Équipement</span>
       </div>
       ${STAT_KEYS.map(k => `
-        <div class="stat-row">
-          <span class="stat-dot" style="background:${STATS[k].color}"></span>
+        <div class="stat-row" style="--sc:${STATS[k].color}">
+          <span class="st-ico">${STAT_ICO[k]}</span>
           <div style="flex:1;min-width:0">
             <div class="stat-name">${STATS[k].name}</div>
             <div class="stat-desc">${STATS[k].desc}</div>
+            <div class="st-bar"><i style="width:${Math.round(100 * st[k] / Math.max(...STAT_KEYS.map(x => st[x])))}%"></i></div>
           </div>
           <div class="stat-val">${st[k]}
             <div class="stat-split">
@@ -439,9 +439,8 @@ function viewHero() {
       ${E.spentPoints(hero) > 0 ? `<div class="derived"><span class="spacer"></span><button class="btn small" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button></div>` : ''}
     </section>
 
-    <section class="card spells-card">
-      <h2>Sorts</h2>
-      <p class="hint" style="margin:6px 0 10px">Choisis jusqu’à <b>${MAX_ACTIVE_SPELLS} sorts</b> pour combattre : ton héros les lance dès qu’ils sont prêts. Touche un sort pour l’équiper ou le retirer.</p>
+    <section class="card spells-card hx cls-${hero.classId}">
+      <div class="hx-head"><span class="hx-ico">✧</span><div><h2>Sorts</h2><small>${MAX_ACTIVE_SPELLS} sorts en combat · touche un sort pour l’équiper ou le retirer</small></div></div>
       <div class="spell-slots">
         ${Array.from({ length: MAX_ACTIVE_SPELLS }, (_, i) => {
           const sp = active[i];
@@ -557,6 +556,7 @@ function stacks() {
 }
 
 const groupOf = (itemId) => ITEMS[itemId].set || 'pet';
+const STAT_ICO = { vit: 'VIE', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT', lck: 'CHA' };
 const SLOT_GLYPH = { hat: '⛑', weapon: '⚔', armor: '🛡', boots: '👢', amulet: '📿', pet: '🐾' };
 const groupName = (g) => (g === 'pet' ? 'Familiers' : SETS[g].name.replace(/^Panoplie (de |d’|du )?/, ''));
 

@@ -813,3 +813,58 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .bag-head.set { padding-left: 10px; }
 .bag-head span { text-shadow: 0 0 10px color-mix(in srgb, var(--rc, var(--gold)) 60%, transparent); }
 .bag-card .seg { background: #120e1c; }
+
+/* ---------- Onglet Héros : entraînement, caractéristiques, sorts ---------- */
+.hx { --hc: #ff5d6c; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 70% 40% at 50% 0%, color-mix(in srgb, var(--hc) 16%, transparent), transparent 70%), linear-gradient(180deg, #241d36, #17131f);
+  box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 2px color-mix(in srgb, var(--hc) 28%, transparent), 0 10px 22px rgba(0,0,0,.4); }
+.hx::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--hc), transparent); }
+.hx.cls-mage { --hc: #a77bff; } .hx.cls-archer { --hc: #4cd964; } .hx.cls-paladin { --hc: #ffd84a; }
+.hx-head { position: relative; display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.hx-head h2 { margin: 0 !important; font-size: 13px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px color-mix(in srgb, var(--hc) 70%, transparent); }
+.hx-head h2::before { display: none; }
+.hx-head small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 700; margin-top: 3px; }
+.hx-head > div { flex: 1; min-width: 0; }
+.hx-ico { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; font-size: 17px; color: #fff; border-radius: 10px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--hc) 75%, #fff 10%), color-mix(in srgb, var(--hc) 45%, #000)); box-shadow: 0 0 0 2px #0e0b16, 0 0 14px color-mix(in srgb, var(--hc) 50%, transparent), inset 0 2px 0 rgba(255,255,255,.3); }
+/* cadre de l'entraînement : coins dorés */
+.train-wrap.framed { box-shadow: 0 0 0 2px #0e0b16, 0 0 0 4px color-mix(in srgb, var(--hc) 45%, #2a2340), 0 8px 18px rgba(0,0,0,.45); }
+.train-wrap .cn { position: absolute; width: 14px; height: 14px; border: 3px solid var(--gold); pointer-events: none; filter: drop-shadow(0 0 4px rgba(255,216,74,.6)); }
+.cn.tl { left: 4px; top: 4px; border-right: 0; border-bottom: 0; } .cn.tr { right: 4px; top: 4px; border-left: 0; border-bottom: 0; }
+.cn.bl { left: 4px; bottom: 4px; border-right: 0; border-top: 0; } .cn.br { right: 4px; bottom: 4px; border-left: 0; border-top: 0; }
+.ts { background: linear-gradient(180deg, #221b33, #15111e); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 2px 0 rgba(0,0,0,.35); }
+.ts span { display: flex; align-items: center; gap: 4px; justify-content: center; }
+.ts-ico { font-style: normal; font-size: 11px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 6px; background: rgba(255,255,255,.07); }
+.ts b { text-shadow: 0 0 10px rgba(255,216,74,.4); }
+.hs { background: linear-gradient(180deg, #221b33, #15111e); }
+.hs.on { background: linear-gradient(180deg, color-mix(in srgb, var(--hc) 35%, #2a2340), #1a1528); box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px color-mix(in srgb, var(--hc) 50%, transparent); }
+/* caractéristiques : icône, barre de stat */
+.pts-badge { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding: 5px 9px; border-radius: 10px; font-family: var(--pixel); font-size: 15px; color: #06220e;
+  background: linear-gradient(#7bf09a, #2fae4f); box-shadow: 0 0 0 2px #0e0b16, 0 0 14px rgba(76,217,100,.55); animation: pulse 1.4s infinite; }
+.pts-badge small { font-family: var(--body); font-size: 9px; font-weight: 800; margin-top: 2px; color: #06220e; }
+.hx .stat-row { border-bottom: 1px solid rgba(255,255,255,.06); }
+.st-ico { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; font-family: var(--pixel); font-size: 7.5px; color: #fff; text-shadow: 0 1px 0 #000;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--sc) 85%, #fff 5%), color-mix(in srgb, var(--sc) 45%, #000)); box-shadow: 0 0 0 2px #0e0b16, 0 0 10px color-mix(in srgb, var(--sc) 40%, transparent), inset 0 2px 0 rgba(255,255,255,.3); }
+.st-bar { height: 5px; margin-top: 5px; border-radius: 3px; background: rgba(0,0,0,.45); overflow: hidden; }
+.st-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--sc) 60%, #000), var(--sc)); box-shadow: 0 0 6px var(--sc); }
+.hx .stat-val { font-size: 14px; text-shadow: 0 0 10px color-mix(in srgb, var(--sc) 50%, transparent); }
+.hx .plus { background: linear-gradient(#7bf09a, #2fae4f); box-shadow: inset 0 -3px 0 rgba(0,0,0,.3), 0 0 0 2px #0e0b16, 0 0 10px rgba(76,217,100,.5); }
+.hx .stat-sum > div { background: linear-gradient(180deg, #221b33, #15111e); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.hx .bonus-box { background: rgba(76,217,100,.08); }
+/* sorts : emplacements façon runes */
+.spells-card .spell-slots .sslot { background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--hc) 18%, transparent), #15111e 75%); border: 2px dashed color-mix(in srgb, var(--hc) 35%, #3d3456); box-shadow: none; }
+.spells-card .spell-slots .sslot.filled { border: 0; background: radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--hc) 40%, transparent), #15111e 72%);
+  box-shadow: inset 0 0 0 2px var(--gold), 0 0 16px color-mix(in srgb, var(--hc) 45%, transparent); }
+.spells-card .spell-slots .sslot.filled canvas { animation: rune 2.6s ease-in-out infinite; }
+@keyframes rune { 50% { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--hc) 80%, transparent)); transform: translateY(-2px); } }
+.spells-card .sgrid { background: linear-gradient(180deg, #221b33, #15111e); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 2px 0 rgba(0,0,0,.35); }
+.spells-card .sgrid.on { box-shadow: inset 0 0 0 2px var(--gold), 0 0 10px rgba(255,216,74,.25); }
+.spells-card .sgrid.locked { background: repeating-linear-gradient(135deg, #1a1526 0 6px, #15111e 6px 12px); }
+.hx.hx-blue { --hc: #3d9bff; }
+/* Entraînement : or doux, pas trop flashy */
+.hx.hx-gold { --hc: #c9a24a; background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(201,162,74,.14), transparent 70%), linear-gradient(180deg, #262033, #17131f); }
+.hx.hx-gold::after { background: linear-gradient(90deg, transparent, #8a6a2a, #e0c070, #8a6a2a, transparent); }
+.hx.hx-gold .hx-ico { background: linear-gradient(160deg, #e6c878, #9a7428); box-shadow: 0 0 0 2px #0e0b16, 0 0 10px rgba(201,162,74,.35), inset 0 2px 0 rgba(255,255,255,.3); }
+.hx.hx-gold .hx-head h2 { text-shadow: 0 2px 0 #000, 0 0 10px rgba(201,162,74,.45); }
+.hx.hx-gold .train-wrap.framed { box-shadow: 0 0 0 2px #0e0b16, 0 0 0 4px #5a4a2a, 0 8px 18px rgba(0,0,0,.45); }
+.hx.hx-gold .hs.on { background: linear-gradient(180deg, #3a3020, #1a1528); box-shadow: inset 0 0 0 2px #d4b060, 0 0 10px rgba(201,162,74,.3); }

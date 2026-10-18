@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1552', date: '18/10/2026', time: '15h52', title: 'Nouvel onglet Héros',
+    sections: [
+      { title: 'Héros', items: [
+        'Bandeau en haut avec le nom, le titre, le niveau et la puissance de ton héros.',
+        'Entraînement en or : le combat contre l’épouvantail est dans un cadre doré, et 4 boutons en dessous pour changer de perso.',
+        'Caractéristiques en bleu : une icône et une barre par stat, avec le détail base / points placés / équipement.',
+        'Sorts présentés comme l’équipement : des emplacements à remplir, et ta collection de sorts en dessous.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1545', date: '18/10/2026', time: '15h45', title: 'Le Sac devient une armurerie',
     sections: [
       { title: 'Sac', items: [
