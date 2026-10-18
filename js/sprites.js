@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018151547';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018152100';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -675,19 +675,18 @@ export function itemIcon(itemId) {
 //  COFFRES
 // =====================================================================
 export function chestCanvas(kind = 'normal', open = false) {
-  return cached(`chest:${kind}:${open}`, () => {
+  return cached(`chest2:${kind}:${open}`, () => {
     const wood = { combat: '#8e2b2b', war: '#3d2a6b' }[kind] || '#8a5a2b';
     const band = { combat: '#c9ccd6', war: '#ffd84a' }[kind] || '#e5b33a';
-    const pal = { w: wood, W: shade(wood, 0.25), d: shade(wood, -0.35), b: band, B: shade(band, 0.4), k: '#2a1d10', g: '#fff3b0' };
-    const closed = [
-      '.bwwwwwwwwwwwwb.', 'bWWWWWWWWWWWWWWb', 'bwwwwwwwwwwwwwwb', 'bwwwwwwwwwwwwwwb', 'bbbbbbbBBbbbbbbb',
-      'bwwwwwwbkbwwwwwb', 'bwwwwwwbbbwwwwwb', 'bwwwwwwwwwwwwwwb', 'bwwwwwwwwwwwwwwb', 'bdddddddddddddb', 'bbbbbbbbbbbbbbbb',
-    ];
-    const opened = [
-      '.bwwwwwwwwwwwwb.', 'bddddddddddddddb', '.bbbbbbbbbbbbbb.', '..gggggggggggg..', 'bgggggggBggggggb',
-      'bwwwwwwbkbwwwwwb', 'bwwwwwwbbbwwwwwb', 'bwwwwwwwwwwwwwwb', 'bwwwwwwwwwwwwwwb', 'bdddddddddddddb', 'bbbbbbbbbbbbbbbb',
-    ];
-    return renderHi(fromMap(open ? opened : closed, pal));
+    const gem = { combat: '#ff5d6c', war: '#b05cff' }[kind] || '#4cd964';
+    const pal = { w: wood, W: shade(wood, 0.25), d: shade(wood, -0.35), b: band, B: shade(band, 0.35), r: '#fff3b0', k: '#2a1d10',
+      g: '#fff3b0', Y: '#ffffff', y: '#ffd84a', G: gem };
+    const closed = ['..bbbbbbbbbbbbbbbbbbbb..', '.bBWWWWWWWWWWWWWWWWWWBb.', 'bBWWwwwwwwwwwwwwwwwwWWBb', 'bbWwwwwwwwwwwwwwwwwwwWbb', 'bbwwdwwwwwwwwwwwwwwdwwbb', 'bbwwwwwwwwwwwwwwwwwwwwbb', 'bBBBBBBBBBBBBBBBBBBBBBBb', 'brbbbbbbbbBBBBbbbbbbbbrb', 'bbwwwwwwwwBkkBwwwwwwwwbb', 'bbwwdwwwwwBkkBwwwwwdwwbb', 'bbwwwwwwwwBBBBwwwwwwwwbb', 'bbwwwwwwwwwBBwwwwwwwwwbb', 'bbwwwwwwwwwwwwwwwwwwwwbb', 'bbddwwwwwwwwwwwwwwwwddbb', 'brddddddddddddddddddddrb', 'bbbbbbbbbbbbbbbbbbbbbbbb', '.BB..................BB.'];
+    const opened = ['..bbbbbbbbbbbbbbbbbbbb..', '.bddddddddddddddddddddb.', 'bddddddddddddddddddddddb', 'bBBBBBBBBBBBBBBBBBBBBBBb', '.ggggYggggggggggggYgggg.', 'bggYyyggGggyyggGggyyYggb', 'bBBBBBBBBBBBBBBBBBBBBBBb', 'brbbbbbbbbBBBBbbbbbbbbrb', 'bbwwwwwwwwBkkBwwwwwwwwbb', 'bbwwdwwwwwBkkBwwwwwdwwbb', 'bbwwwwwwwwBBBBwwwwwwwwbb', 'bbwwwwwwwwwBBwwwwwwwwwbb', 'bbwwwwwwwwwwwwwwwwwwwwbb', 'bbddwwwwwwwwwwwwwwwwddbb', 'brddddddddddddddddddddrb', 'bbbbbbbbbbbbbbbbbbbbbbbb', '.BB..................BB.'];
+    // coffre parfaitement symétrique, dessiné 1,5 fois plus finement
+    const c = renderHi(fromMap(open ? opened : closed, pal));
+    c.lw /= 1.5; c.lh /= 1.5;
+    return c;
   });
 }
 

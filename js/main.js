@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018151547';
-import * as E from './engine.js?v=20261018151547';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018151547';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018151547';
-import { hashStr, makeRng } from './rng.js?v=20261018151547';
-import { APP_VERSION } from './version.js?v=20261018151547';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018151547';
-import * as NET from './net.js?v=20261018151547';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018151547';
+} from './data.js?v=20261018152100';
+import * as E from './engine.js?v=20261018152100';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018152100';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018152100';
+import { hashStr, makeRng } from './rng.js?v=20261018152100';
+import { APP_VERSION } from './version.js?v=20261018152100';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018152100';
+import * as NET from './net.js?v=20261018152100';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018152100';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -500,39 +500,43 @@ function viewChests() {
   const keys = hero.keys || 0;
   const all = n + keys;
   const wait = E.nextChestIn(hero);
-  const odds = (kind) => CHEST_ODDS[kind].map((p, r) => p > 0 ? `<span class="pill" style="color:${RARITIES[r].color}">${RARITIES[r].name} ${p}%</span>` : '').join('');
-  return `
-    <section class="card chest-card ${n > 0 ? 'has' : ''}">
-      <h2 style="margin:0">Coffre</h2>
-      <canvas class="px" data-chest="normal"></canvas>
-      <div class="count">${n} / ${CHEST_MAX} <span class="keys"><canvas class="px" data-key></canvas>× ${keys}</span></div>
-      <div class="timer" data-timer="chest">${n >= CHEST_MAX ? 'Stock plein ! Ouvre-les vite.' : `Prochain coffre dans <b>${fmt(wait)}</b>`}</div>
-      <div class="timer">1 clef = 1 coffre en plus. Gagne des clefs en battant les boss de donjon, ou achète-les à la boutique.</div>
-      <div class="row" style="width:100%">
-        <button class="btn primary" style="flex:1" data-act="openChest" data-kind="normal" ${all > 0 ? '' : 'disabled'}>Ouvrir${n <= 0 && keys > 0 ? ' (clef)' : ''}</button>
-        <button class="btn green" style="flex:1" data-act="openAll" ${all > 1 ? '' : 'disabled'}>Tout ouvrir (${all})</button>
-      </div>
-      <div class="odds">${odds('normal')}</div>
-    </section>
-
-    <section class="card chest-card combat ${acc.combatChests > 0 ? 'has' : ''}">
-      <h2 style="margin:0">Coffre de combat</h2>
-      <canvas class="px" data-chest="combat"></canvas>
-      <div class="count">${acc.combatChests}</div>
-      <div class="timer">Gagne ${WINS_PER_COMBAT_CHEST} combats pour en obtenir un. Il contient 2 objets !</div>
-      <div class="pips">${Array.from({ length: WINS_PER_COMBAT_CHEST }, (_, i) => `<div class="pip ${i < acc.winProgress ? 'on' : ''}"></div>`).join('')}</div>
-      <button class="btn danger block" data-act="openChest" data-kind="combat" ${acc.combatChests > 0 ? '' : 'disabled'}>Ouvrir</button>
-      <div class="odds">${odds('combat')}</div>
-    </section>
-
-    <section class="card chest-card war ${acc.warChests > 0 ? 'has' : ''}">
-      <h2 style="margin:0">Coffre de guerre</h2>
-      <canvas class="px" data-chest="war"></canvas>
-      <div class="count">${acc.warChests}</div>
-      <div class="timer">Gagné par la section victorieuse chaque semaine. Il contient ${WAR.warChestItems} objets, jamais de Commun !</div>
-      <button class="btn block" style="background:linear-gradient(#c58bff,#7a3fd0)" data-act="openChest" data-kind="war" ${acc.warChests > 0 ? '' : 'disabled'}>Ouvrir</button>
-      <div class="odds">${odds('war')}</div>
+  const total = all + acc.combatChests + acc.warChests;
+  // barre des chances de rareté
+  const oddsBar = (odds) => `
+    <div class="odds-bar">${odds.map((p, r) => p > 0 ? `<i style="flex:${p};background:${RARITIES[r].color}"></i>` : '').join('')}</div>
+    <div class="odds-legend">${odds.map((p, r) => p > 0 ? `<span><b style="background:${RARITIES[r].color}"></b>${RARITIES[r].name} ${p} %</span>` : '').join('')}</div>`;
+  const card = ({ kind, title, sub, count, cls, body, buttons, odds }) => `
+    <section class="vault ${cls} ${count > 0 ? 'has' : ''}">
+      <div class="v-head"><h2>${title}</h2><span class="v-count">×${count}</span></div>
+      <div class="v-stage"><div class="v-rays"></div><canvas class="px" data-chest="${kind}"></canvas></div>
+      <div class="v-sub">${sub}</div>
+      ${body || ''}
+      <div class="v-btns">${buttons}</div>
+      ${oddsBar(odds)}
     </section>`;
+  return `
+    <section class="vault-top">
+      <div><h1>Salle des coffres</h1><p>${total ? `<b>${total}</b> coffre${total > 1 ? 's' : ''} à ouvrir pour ton ${CLASSES[hero.classId].name}` : 'Aucun coffre à ouvrir pour l’instant'}</p></div>
+      <span class="pill gold"><canvas class="px" data-key></canvas>${keys} clef${keys > 1 ? 's' : ''}</span>
+    </section>
+    ${card({
+      kind: 'normal', title: 'Coffre', count: all, cls: 'v-normal', odds: CHEST_ODDS.normal,
+      sub: n >= CHEST_MAX ? 'Stock plein ! Ouvre-les vite.' : `<span data-timer="chest">Prochain coffre dans <b>${fmt(wait)}</b></span>`,
+      body: `<div class="v-stock">${Array.from({ length: CHEST_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}<span>${n}/${CHEST_MAX} en stock${keys ? ` + ${keys} clef${keys > 1 ? 's' : ''}` : ''}</span></div>`,
+      buttons: `<button class="btn primary" data-act="openChest" data-kind="normal" ${all > 0 ? '' : 'disabled'}>Ouvrir${n <= 0 && keys > 0 ? ' (clef)' : ''}</button>
+        <button class="btn green" data-act="openAll" ${all > 1 ? '' : 'disabled'}>Tout ouvrir (${all})</button>`,
+    })}
+    ${card({
+      kind: 'combat', title: 'Coffre de combat', count: acc.combatChests, cls: 'v-combat', odds: CHEST_ODDS.combat,
+      sub: `Gagne ${WINS_PER_COMBAT_CHEST} combats d’arène pour en obtenir un. Il contient <b>2 objets</b> !`,
+      body: `<div class="pips">${Array.from({ length: WINS_PER_COMBAT_CHEST }, (_, i) => `<div class="pip ${i < acc.winProgress ? 'on' : ''}"></div>`).join('')}</div>`,
+      buttons: `<button class="btn danger" data-act="openChest" data-kind="combat" ${acc.combatChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
+    })}
+    ${card({
+      kind: 'war', title: 'Coffre de guerre', count: acc.warChests, cls: 'v-war', odds: CHEST_ODDS.war,
+      sub: `Gagné à la guerre des sections et contre Mélenchon. <b>${WAR.warChestItems} objets</b>, jamais de Commun !`,
+      buttons: `<button class="btn" style="background:linear-gradient(#d9a8ff,#8c3fe0)" data-act="openChest" data-kind="war" ${acc.warChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
+    })}`;
 }
 
 // ------------------------------ Vue Sac ------------------------------

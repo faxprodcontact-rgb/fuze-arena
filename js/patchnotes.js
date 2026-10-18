@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1521', date: '18/10/2026', time: '15h21', title: 'Nouvelle salle des coffres',
+    sections: [
+      { title: 'Coffres', items: [
+        'Les 3 coffres sont redessinés, plus détaillés et parfaitement symétriques : bois, cerclages, rivets, serrure.',
+        'Un coffre ouvert montre maintenant son trésor : pièces d’or et gemmes.',
+        'Nouvelle « Salle des coffres » : grandes cartes aux couleurs de chaque coffre, compteur, rayons de lumière quand il y a quelque chose à ouvrir.',
+        'Les chances de rareté s’affichent en barre colorée, et ton stock de coffres en cases dorées.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1515', date: '18/10/2026', time: '15h15', title: 'Critique et esquive sur les objets',
     sections: [
       { title: 'Objets', items: [

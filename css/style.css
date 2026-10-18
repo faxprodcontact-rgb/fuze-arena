@@ -719,3 +719,43 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .slock { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-family: var(--pixel); font-size: 7px; background: rgba(14,11,22,.9); color: var(--muted); padding: 3px 4px; border-radius: 5px; white-space: nowrap; }
 .big-ic.spell-ic { --rc: var(--gold); }
 .stat-sum i { display: block; font-style: normal; font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- Salle des coffres ---------- */
+.vault-top { display: flex; align-items: center; gap: 10px; padding: 4px 4px 0; }
+.vault-top > div { flex: 1; min-width: 0; }
+.vault-top h1 { font-family: var(--pixel); font-size: 15px; margin: 0; color: var(--gold); text-shadow: 0 3px 0 #7a4a0a, 0 0 18px rgba(255,216,74,.35); }
+.vault-top p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.vault-top p b { color: var(--gold); }
+.vault { --vc: #e5b33a; --vbg: #2a1f14; position: relative; overflow: hidden; border-radius: 18px; padding: 14px 14px 12px; text-align: center;
+  background: radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--vc) 30%, transparent), transparent 62%), linear-gradient(180deg, var(--vbg), #140f1c);
+  box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 2px color-mix(in srgb, var(--vc) 45%, transparent), 0 10px 22px rgba(0,0,0,.4); }
+.vault::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--vc), transparent); }
+.vault.v-normal { --vc: #ffc83a; --vbg: #2d2012; }
+.vault.v-combat { --vc: #ff5d6c; --vbg: #2e1218; }
+.vault.v-war { --vc: #b05cff; --vbg: #21143a; }
+.v-head { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.v-head h2 { font-family: var(--pixel); font-size: 12px; margin: 0; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px var(--vc); }
+.v-count { font-family: var(--pixel); font-size: 14px; color: #fff; background: color-mix(in srgb, var(--vc) 55%, #000); padding: 6px 10px; border-radius: 10px; box-shadow: 0 0 0 2px #0e0b16, inset 0 -3px 0 rgba(0,0,0,.3); }
+.vault:not(.has) .v-count { background: #2a2338; color: var(--muted); }
+.v-stage { position: relative; height: 150px; display: grid; place-items: center; margin: 4px 0; }
+.v-stage canvas { position: relative; width: 150px; height: auto; filter: drop-shadow(0 8px 0 rgba(0,0,0,.45)) drop-shadow(0 0 22px color-mix(in srgb, var(--vc) 55%, transparent)); }
+.vault.has .v-stage canvas { animation: vfloat 2.2s ease-in-out infinite; }
+@keyframes vfloat { 50% { transform: translateY(-7px) rotate(-1deg); } }
+.v-rays { position: absolute; width: 260px; height: 260px; left: 50%; top: 50%; margin: -130px 0 0 -130px; border-radius: 50%; opacity: 0;
+  background: conic-gradient(from 0deg, transparent 0 8deg, color-mix(in srgb, var(--vc) 35%, transparent) 8deg 16deg, transparent 16deg 38deg, color-mix(in srgb, var(--vc) 35%, transparent) 38deg 46deg, transparent 46deg 68deg, color-mix(in srgb, var(--vc) 35%, transparent) 68deg 76deg, transparent 76deg 98deg, color-mix(in srgb, var(--vc) 35%, transparent) 98deg 106deg, transparent 106deg 128deg, color-mix(in srgb, var(--vc) 35%, transparent) 128deg 136deg, transparent 136deg 158deg, color-mix(in srgb, var(--vc) 35%, transparent) 158deg 166deg, transparent 166deg 188deg, color-mix(in srgb, var(--vc) 35%, transparent) 188deg 196deg, transparent 196deg 218deg, color-mix(in srgb, var(--vc) 35%, transparent) 218deg 226deg, transparent 226deg 248deg, color-mix(in srgb, var(--vc) 35%, transparent) 248deg 256deg, transparent 256deg 278deg, color-mix(in srgb, var(--vc) 35%, transparent) 278deg 286deg, transparent 286deg 308deg, color-mix(in srgb, var(--vc) 35%, transparent) 308deg 316deg, transparent 316deg 338deg, color-mix(in srgb, var(--vc) 35%, transparent) 338deg 346deg, transparent 346deg);
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); mask: radial-gradient(circle, #000 20%, transparent 70%); }
+.vault.has .v-rays { opacity: 1; animation: spin 14s linear infinite; }
+.v-sub { position: relative; font-size: 13px; color: #d8d2e8; line-height: 1.4; }
+.v-sub b { color: #fff; }
+.v-stock { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 10px; }
+.v-stock i { width: 16px; height: 16px; border-radius: 5px; background: #0e0b16; box-shadow: inset 0 0 0 2px var(--line); }
+.v-stock i.on { background: linear-gradient(#ffe36b, #e5a92a); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 0 8px rgba(255,216,74,.5); }
+.v-stock span { font-size: 12px; color: var(--muted); font-weight: 800; margin-left: 6px; }
+.vault .pips { justify-content: center; margin-top: 10px; position: relative; }
+.v-btns { position: relative; display: flex; gap: 8px; margin-top: 12px; }
+.v-btns .btn { flex: 1; }
+.odds-bar { position: relative; display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; box-shadow: 0 0 0 2px #0e0b16; }
+.odds-bar i { height: 100%; }
+.odds-legend { position: relative; display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; margin-top: 6px; font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.odds-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.odds-legend b { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
