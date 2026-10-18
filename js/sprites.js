@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC } from './data.js?v=20261018010512';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018134333';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -367,6 +367,13 @@ Object.assign(ICON_MAPS, {
   hardhat: ['.....mmmm.....', '...mmlmmmmm...', '..mlmmaammmm..', '..mlmmaammmm..', '.mmmmmmmmmmmm.', 'mmmmmmmmmmmmmm', 'dddddddddddddd'],
   trowel: ['.....mm.....', '....mlmm....', '...mlmmmm...', '..mlmmmmmm..', '.mmmmmmmmmm.', '..mmmmmmmm..', '...mmmmmm...', '....mmmm....', '.....kk.....', '.....kk.....', '.....aa.....', '....aaaa....', '....aaaa....', '.....aa.....'],
   gaiter: ['..mmmmmmmm..', '.mlmmmmmmmm.', '.mmaammaamm.', '.mmmmmmmmmm.', '.mmaammaamm.', '.mmmmmmmmmm.', '..dddddddd..'],
+  fries: ['..a.a..a.a..', '..aAa.aAa...', '.a.aAaAa.a..', '.aAaAaAaAa..', '..aAaAaAa...', '.mmmmmmmmmm.', '.mlmmyymmmd.', '..mlmyymmd..', '..mlmmmmmd..', '...mmmmmd...', '...mmmmmd...', '....dddd....'],
+  mcshirt: ['.mmm....mmm.', 'mmmmm..mmmmm', 'mmmmmmmmmmmm', '.mmmmmmmmmm.', '..maamaamm..', '..mamaamam..', '..mammmmam..', '..mammmmam..', '..mmmmmmmm..', '..dddddddd..'],
+  headband: ['....kkkk....', '..kkkkkkkk..', '.mmmmmmmmmm.', 'mmaaammmmmmm', 'mmmmmmmmmmmm', '.dddddddddd.', '.kk......kk.', '..........mm', '.........mm.', '.........m..'],
+  ball: ['....mmmm....', '..mmlmmmmm..', '.mlmmkkmmmd.', '.mlmkkkkmmd.', 'mmmmkkkkmmmd', 'mmkmmkkmmkmd', 'mkkkmmmmkkkd', '.mkmmmmmmkd.', '.mmmkkkkmmd.', '..mmkkkkmd..', '....dddd....'],
+  jersey: ['.mm......mm.', 'mmmmwmmwmmmm', 'mmmmmwwmmmmm', '.mmmmmmmmmm.', '..mamaaamm..', '..mamamamm..', '..mamamamm..', '..mamaaamm..', '..mmmmmmmm..', '..dddddddd..'],
+  cleats: ['...mmmm.......', '..mmmmmmm.....', '..mlmmmmmmmm..', '.mmmmaammmmmm.', '.mmmmmmmmmmmmm', 'wwwwwwwwwwwwww', '.k.k..k..k.k..'],
+  medal: ['.aa......aa.', '..aa....aa..', '...aa..aa...', '....aaaa....', '....mmmm....', '...mmllmm...', '..mmlmmmmd..', '..mmmyymmd..', '..mmmyymmd..', '...mmmmdd...', '....dddd....'],
   burger: ['a..........a', '.a........a.', '..a......a..', '...a....a...', '....mmmm....', '...mmwmmm...', '..GGGGGGGG..', '..bbbbbbbb..', '..yyyyyyyy..', '...mmmmmm...'],
 });
 
@@ -447,11 +454,107 @@ export function heroPortrait(classId, weaponKind, dyeId = null) {
 export function rarityColor(r) { return RARITIES[r].color; }
 
 // =====================================================================
-//  PIERRE CLAT (monnaie verte)
+//  FLOUZE (monnaie : une liasse de billets verts) et CLEF
 // =====================================================================
 export function clatCanvas() {
-  return cached('clat', () => toCanvas(outline(fromMap(
-    ['...ll...', '..lwml..', '.lmmmmd.', 'lmmmmmmd', 'dmmmmmdd', '.dmmmdd.', '..dmdd..', '...dd...'],
-    { m: '#2ecc71', l: '#a8f0c0', d: '#1e8449', w: '#ffffff' },
+  return cached('flouze', () => toCanvas(outline(fromMap(
+    ['..dddddddddd', '..dGGGGGGGGd', 'dddddddddddd', 'dGGGGGGGGGGd', 'dGlGGwwGGlGd', 'dGGGwGGwGGGd', 'dGGGwGGwGGGd', 'dGlGGwwGGlGd', 'dGGGGGGGGGGd', 'dddddddddddd'],
+    { G: '#2ecc71', d: '#1e8449', l: '#a8f0c0', w: '#e8fff0' },
   ))));
+}
+export function keyCanvas() {
+  return cached('key', () => toCanvas(outline(fromMap(
+    ['.yyy........', 'yYYYy.......', 'yY.Yyyyyyyyy', 'yYYYy...y.y.', '.yyy....y.y.'],
+    { y: '#e5b33a', Y: '#ffe08a' },
+  ))));
+}
+
+// =====================================================================
+//  ICÔNES DE SORTS — une petite illustration par sort
+// =====================================================================
+const GLYPHS = {
+  sword: ['..........ww', '.........wlw', '........wlw.', '.......wlw..', '......wlw...', '.....wlw....', '..y.wlw.....', '...ywl......', '...nyy......', '..n...y.....', '.n..........', 'n...........'],
+  roar: ['..mmmm...w..', '.mmmmmm...w.', 'mmkmmkmm.w.w', 'mmmmmmmm..w.', 'mmkkkkmm.w.w', 'mmkrrkmm..w.', '.mkkkkm..w..', '..mmmm......'],
+  hammer: ['..ssssssss..', '..swwwwwws..', '..ssssssss..', '..dddddddd..', '.....nn.....', '.....nn.....', '.....nn.....', '.....nn.....', '.....nn.....', '.....yy.....'],
+  shield: ['.mmmmmmmmmm.', '.mllllllllm.', '.mlmmmmmmdm.', '.mlmmyymmdm.', '.mlmyyyymdm.', '.mlmmyymmdm.', '..mlmmmmdm..', '..mlmmmmdm..', '...mlmmdm...', '....mmmm....', '.....mm.....'],
+  whirl: ['....wwww....', '..ww....w...', '.w.......w..', '.w..ll....w.', 'w..l..l...w.', 'w..l...l..w.', 'w...l..l..w.', '.w...ll...w.', '.w.......w..', '..w....ww...', '...wwww..ww.', '.........w..'],
+  bash: ['.....yy.....', '.y...yy...y.', '..y..ww..y..', '...wwwwww...', '...wwoowww..', 'yywwoorrowwy', '...wwoowww..', '...wwwwww...', '..y..ww..y..', '.y...yy...y.', '.....yy.....'],
+  heart: ['.rr...rr.', 'rwrr.rrrr', 'rwrrrrrrr', 'rrrrrrrrr', '.rrrrrrr.', '..rrrrr..', '...rrr...', '....r....'],
+  charge: ['w.....mmm...', '.w....mmm...', 'w.....mmm...', '.ww...mmmm..', 'w....mmmmmm.', '.w..mmmmmmmm', '....dddddddd'],
+  skull: ['..wwwwwww..', '.wwwwwwwww.', 'wwwwwwwwwww', 'wwkkwwwkkww', 'wwkkwwwkkww', 'wwwwwkwwwww', '.wwwwwwwww.', '..wkwkwkw..', '..wwwwwww..'],
+  flame: ['.....o......', '....oo......', '...ooo..o...', '...oyoo.oo..', '..ooyyooooo.', '..oyyyyyoo..', '.ooywwyyoo..', '.oyywwwyyo..', '.oyyyyyyyo..', '..ooyyyoo...', '...ooooo....'],
+  bolt: ['......yyyy..', '.....yyyy...', '....yyyy....', '...yyyy.....', '..yyyyyyyy..', '......yyy...', '.....yyy....', '....yyy.....', '...yy.......', '..y.........'],
+  snow: ['.....c.....', '...c.c.c...', '....ccc....', '.c..ccc..c.', '..c.cwc.c..', 'cccccwccccc', '..c.cwc.c..', '.c..ccc..c.', '....ccc....', '...c.c.c...', '.....c.....'],
+  cube: ['...cccccc...', '..cwwwwwcc..', '.cccccccccc.', '.cwllllldcc.', '.cwlkkkldcc.', '.cwlkkkldcc.', '.cwllllldc..', '.ccccccccc..'],
+  firerain: ['oo..........', '.oyo...oo...', '..oyo...oyo.', '...yy....oyo', '..........yy', '.....oo.....', '......oyo...', '.......oyo..', '........yy..'],
+  drop: ['.....p.....', '.....p.....', '....ppp....', '...ppppp...', '..pplpppp..', '..plppppp..', '.pplpppppp.', '.pplpppppp.', '.ppppppppd.', '..ppppppd..', '...ppddd...'],
+  star: ['.....y.....', '.....y.....', '....yyy....', 'yyyyywyyyyy', '.yyywwwyyy.', '..yyywyyy..', '...yyyyy...', '..yyy.yyy..', '..yy...yy..', '.yy.....yy.'],
+  meteor: ['...........w', '.........ww.', '.......ww...', '......ow....', '...ooyyoo...', '..oyywyyo...', '.ooywwyyo...', '.oyyyyyoo...', '..ooyyoo....', '...oooo.....'],
+  arrow: ['.......ssss.', '........sss.', '.......s.ss.', '......n...s.', '.....n......', '....n.......', '...n........', '.wn.........', 'ww..........', '.w..........'],
+  arrow2: ['......sss...', '.......ss.ss', '......n.s.ss', '.....n..n..s', '....n..n....', '...n..n.....', '.wn..n......', 'ww..n.......', '.wwn........', 'ww..........'],
+  wind: ['..wwwww.....', '.......w....', '.wwwwwww....', '............', '...wwwwwwww.', '...........w', '.wwwwwwwwww.', '............', '..wwww......', '......w.....'],
+  trap: ['s.s.s.s.s.s', 'sssssssssss', '.s.......s.', '.s...k...s.', '.s.......s.', 'sssssssssss', 's.s.s.s.s.s'],
+  eye: ['....mmmm....', '..mmwwwwmm..', '.mwwwbbwwwm.', 'mwwwbkkbwwwm', '.mwwwbbwwwm.', '..mmwwwwmm..', '....mmmm....'],
+  rain: ['.n...n...n.', '.n...n...n.', '.n...n...n.', '.n...n...n.', '.n...n...n.', 'sss.sss.sss', '.s...s...s.'],
+  target: ['...rrrrr...', '..rwwwwwr..', '.rwrrrrrwr.', '.rwrwwwrwr.', '.rwrwrwrwr.', '.rwrwwwrwr.', '.rwrrrrrwr.', '..rwwwwwr..', '...rrrrr...'],
+  cross: ['....ggg....', '....gwg....', '....gwg....', 'gggggwggggg', 'gwwwwwwwwwg', 'gggggwggggg', '....gwg....', '....gwg....', '....ggg....'],
+  sun: ['.....y.....', '..y..y..y..', '...yyyyy...', '..yywwwyy..', 'yyywwwwwyyy', '..yywwwyy..', '...yyyyy...', '..y..y..y..', '.....y.....'],
+  pillar: ['...wwwww...', '...wyyyw...', '...wyyyw...', '...wyyyw...', '...wyyyw...', '...wyyyw...', '...wyyyw...', '.yyyyyyyyy.', 'yy.......yy'],
+  wings: ['ww.......ww', 'www.....www', 'wwww.y.wwww', 'wwwwwyywwww', '.wwwyyyyww.', '..wwwyyyw..', '...wwyyw...', '....wyyw...', '.....yy....'],
+};
+const GLYPH_PAL = { w: '#ffffff', l: '#aab4c0', y: '#ffd84a', n: '#8a5a2b', m: '#f1c08f', k: '#2a2238', r: '#ff5d6c', s: '#c9d1da', d: '#5c6670',
+  o: '#ff9f43', c: '#7fe7ff', p: '#a64dff', g: '#4cd964', b: '#3d9bff' };
+const SPELL_ART = {
+  g1: ['sword'], g10: ['roar'], g20: ['hammer'], g30: ['shield', { m: '#9aa3ad', l: '#e8eef5', d: '#5c6670' }], g40: ['whirl'], g50: ['bash'],
+  g60: ['heart'], g70: ['charge', { m: '#8a5a2b', d: '#5a3a22' }], g80: ['sword', { w: '#ff9a9a', l: '#d63031' }], g90: ['skull'],
+  g100: ['hammer', { s: '#ffd84a', w: '#fff3b0', d: '#b8860b' }],
+  m1: ['flame'], m10: ['bolt'], m20: ['shield', { m: '#2ab0e0', l: '#e0f7ff', d: '#1a6f99', y: '#ffffff' }], m30: ['snow'], m40: ['firerain'],
+  m50: ['drop'], m60: ['star', { y: '#c38bff' }], m70: ['cube'], m80: ['flame', { o: '#ff3a1a', y: '#ff9f43' }], m90: ['meteor'],
+  m100: ['meteor', { o: '#c0392b', y: '#ff5e3a' }],
+  a1: ['arrow'], a10: ['arrow', { s: '#7bed6f' }], a20: ['arrow2'], a30: ['wind'], a40: ['arrow', { s: '#48dbfb', n: '#2a2238' }], a50: ['trap'],
+  a60: ['eye'], a70: ['rain'], a80: ['arrow', { s: '#ff5d6c' }], a90: ['target'], a100: ['rain', { s: '#ffd84a' }],
+  p1: ['hammer', { s: '#e8e1cf' }], p10: ['cross'], p20: ['shield', { m: '#e5b33a', l: '#fff3b0', d: '#b8860b', y: '#2e5aa8' }], p30: ['sun'],
+  p40: ['hammer', { s: '#c3cad3', w: '#ffffff' }], p50: ['shield', { m: '#2e5aa8', l: '#8fb3ff', d: '#1c3566' }], p60: ['sun', { y: '#ffe08a' }],
+  p70: ['sword', { w: '#fff3b0', l: '#ffd84a', y: '#ffffff' }], p80: ['heart', { r: '#7bed6f' }], p90: ['pillar'], p100: ['wings'],
+};
+const CLASS_TILE = { guerrier: '#7a2e2e', mage: '#3d2a7a', archer: '#2f5a2a', paladin: '#6b5a2a', monster: '#3a3344' };
+const BADGES = {
+  stun: [['.y.', 'yyy', '.y.'], '#ffd84a'], burn: [['.o.', 'ooo', 'ooo'], '#ff9f43'], poison: [['.g.', 'ggg', 'ggg'], '#7bed6f'],
+  steal: [['r.r', 'rrr', '.r.'], '#ff5d6c'], debuff: [['ppp', 'ppp', '.p.'], '#c38bff'], buff: [['.y.', 'yyy', 'yyy'], '#ffd84a'], heal: [['.g.', 'ggg', '.g.'], '#4cd964'],
+};
+function spellBadge(sp) {
+  if (sp.lifesteal) return 'steal';
+  for (const e of sp.effects || []) {
+    if (e.k === 'stun') return 'stun';
+    if (e.k === 'dot') return e.kind === 'poison' ? 'poison' : 'burn';
+    if (e.k === 'debuff') return 'debuff';
+    if (e.k === 'heal' && sp.mult) return 'heal';
+  }
+  return null;
+}
+/** Icône carrée d'un sort (16×16 pixels) */
+export function spellIcon(id) {
+  return cached('spell:' + id, () => {
+    const sp = SPELLS[id] || {};
+    const [gname, over] = SPELL_ART[id] || ['star'];
+    const rows = GLYPHS[gname];
+    const S = 18, g = grid(S, S);
+    const bg = CLASS_TILE[sp.cls] || CLASS_TILE.monster;
+    rect(g, 1, 0, S - 2, S, bg); rect(g, 0, 1, S, S - 2, bg);
+    rect(g, 1, 1, S - 2, 1, shade(bg, 0.3)); rect(g, 1, S - 2, S - 2, 1, shade(bg, -0.35));
+    const pal = { ...GLYPH_PAL, ...(over || {}) };
+    const gw = Math.max(...rows.map(r => r.length)), gh = rows.length;
+    const ox = Math.floor((S - gw) / 2), oy = Math.floor((S - gh) / 2);
+    const art = grid(S, S);
+    rows.forEach((r, y) => [...r].forEach((ch, x) => { if (pal[ch]) set(art, ox + x, oy + y, pal[ch]); }));
+    const lined = outline(art);
+    lined.p.forEach((c, i) => { if (c) g.p[i] = c; });
+    const b = spellBadge(sp);
+    if (b) {
+      const [map, col] = BADGES[b];
+      rect(g, S - 6, S - 6, 5, 5, OUT);
+      map.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') set(g, S - 5 + x, S - 5 + y, col); }));
+    }
+    return toCanvas(g);
+  });
 }

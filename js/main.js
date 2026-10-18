@@ -4,15 +4,16 @@
 import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
-  DUNGEONS, DUNGEON_MAX, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-} from './data.js?v=20261018010512';
-import * as E from './engine.js?v=20261018010512';
-import { playBattle, playTraining, idlePreview } from './battle.js?v=20261018010512';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas } from './sprites.js?v=20261018010512';
-import { hashStr, makeRng } from './rng.js?v=20261018010512';
-import { APP_VERSION } from './version.js?v=20261018010512';
-import * as NET from './net.js?v=20261018010512';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018010512';
+  DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
+  KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+} from './data.js?v=20261018134333';
+import * as E from './engine.js?v=20261018134333';
+import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018134333';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018134333';
+import { hashStr, makeRng } from './rng.js?v=20261018134333';
+import { APP_VERSION } from './version.js?v=20261018134333';
+import * as NET from './net.js?v=20261018134333';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018134333';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -87,6 +88,8 @@ function hydrate(root = document) {
   root.querySelectorAll('canvas[data-portrait]').forEach(c => paint(c, heroPortrait(c.dataset.portrait, CLASSES[c.dataset.portrait].weapon, c.dataset.dye || null), { scale: 4 }));
   root.querySelectorAll('canvas[data-monster]').forEach(c => paint(c, monsterCanvas(c.dataset.monster), { scale: 3 }));
   root.querySelectorAll('canvas[data-clat]').forEach(c => paint(c, clatCanvas(), { scale: 3 }));
+  root.querySelectorAll('canvas[data-key]').forEach(c => paint(c, keyCanvas(), { scale: 3 }));
+  root.querySelectorAll('canvas[data-spell]').forEach(c => paint(c, spellIcon(c.dataset.spell), { scale: 3 }));
   root.querySelectorAll('canvas[data-chest]').forEach(c => paint(c, chestCanvas(c.dataset.chest, c.dataset.open === '1'), { scale: 6 }));
   root.querySelectorAll('canvas[data-hero]').forEach(c => stopPreviews.push(idlePreview(c, c.dataset.hero, c.dataset.pet || null, c.dataset.dye || null)));
 }
@@ -98,12 +101,12 @@ function render() {
   hero = E.activeHero(acc);
   ensureDay();
   E.ensureWar(acc, others());
-  acc.heroes.forEach(h => { E.refreshChests(h); E.refreshDungeon(h); });
+  acc.heroes.forEach(h => { E.refreshChests(h); E.dungeonRuns(h); });
   updateXpBonus();
   const need = E.xpForLevel(hero.level);
   const xpPct = hero.level >= MAX_LEVEL ? 100 : Math.round((hero.xp / need) * 100);
   const fightsLeft = opponents().filter(o => !o.done).length;
-  const chests = hero.chest.stored + acc.combatChests + acc.warChests;
+  const chests = E.openableChests(hero) + acc.combatChests + acc.warChests;
   const pts = E.freePoints(hero);
   const combatBadge = fightsLeft + claimableMissions();
   const socialBadge = chatUnread + journalUnseen;
@@ -133,6 +136,7 @@ function render() {
   if (tab === 'chat') { markChatSeen(); scrollChat(); }
   if (tab === 'journal') markJournalSeen();
   if (tab === 'hero') startTraining();
+  if (tab === 'war') startSkirmish();
 }
 
 // ------------------------------ Entraînement (onglet Héros) ------------------------------
@@ -165,8 +169,16 @@ function trainingStatsHtml() {
   ].join('');
 }
 
+/** Record d'entraînement (plus gros coup) de tous les joueurs, tous persos confondus */
+function trainingBest() {
+  let best = { dmg: (acc.trainRecord && acc.trainRecord.dmg) || 0, name: acc.pseudo, data: acc };
+  if (NET.online) for (const p of players) { const r = p.data.trainRecord; if (r && r.dmg > best.dmg) best = { dmg: r.dmg, name: p.pseudo, data: p.data }; }
+  return best;
+}
+const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `🏆 <b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : '🏆 Pas encore de record'; };
+
 function onTrainingEntry(e) {
-  if (!T || e.type !== 'action') return;
+  if (!T || e.type !== 'action' || e.pet) return;
   if (e.actor === 0) {
     T.acts++;
     for (const r of e.results) {
@@ -182,6 +194,15 @@ function onTrainingEntry(e) {
   }
   const el = document.getElementById('train-stats');
   if (el) el.innerHTML = trainingStatsHtml();
+  // nouveau record personnel ?
+  if (T.maxHit > ((acc.trainRecord && acc.trainRecord.dmg) || 0)) {
+    const isTop = T.maxHit > trainingBest().dmg;
+    acc.trainRecord = { dmg: T.maxHit, classId: hero.classId };
+    E.missionEvent(acc, 'train_rec');
+    save();
+    const r = document.getElementById('train-rec');
+    if (r) { r.innerHTML = trainRecHtml(); if (isTop) { r.classList.remove('pop'); void r.offsetWidth; r.classList.add('pop'); } }
+  }
 }
 
 function startTraining() {
@@ -240,7 +261,7 @@ const classGrid = () => `
 function renderCreate() {
   app.innerHTML = `
     <div class="create">
-      <h1 class="logo">FUZE<span>ARENA</span></h1>
+      <img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1>
       <p class="lead">Choisis ta classe. Tu pourras la faire évoluer jusqu’au niveau 100.</p>
       ${classGrid()}
       <label class="field">Ton pseudo
@@ -255,7 +276,7 @@ function renderAuth(msg = '') {
   const signup = authMode === 'signup';
   app.innerHTML = `
     <div class="create">
-      <h1 class="logo">FUZE<span>ARENA</span></h1>
+      <img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1>
       <div class="seg">
         <button class="${signup ? 'on' : ''}" data-act="authMode" data-mode="signup">Créer mon compte</button>
         <button class="${!signup ? 'on' : ''}" data-act="authMode" data-mode="login">Me connecter</button>
@@ -330,7 +351,7 @@ function viewHero() {
   return `
     <section class="card train">
       <div class="row"><h2 style="margin:0">Entraînement</h2><span class="spacer"></span><span class="pill">Tes stats en action</span></div>
-      <div class="train-wrap"><canvas id="train-cv"></canvas></div>
+      <div class="train-wrap"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div></div>
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
@@ -339,13 +360,13 @@ function viewHero() {
       <div class="char-row">
         ${acc.heroes.map((h, i) => `
           <button class="char ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
-            ${h.chest.stored + h.dungeon.stored ? `<span class="badge" title="Coffres + donjons dispo">${h.chest.stored + h.dungeon.stored}</span>` : ''}
+            ${E.openableChests(h) ? `<span class="badge" title="Coffres à ouvrir">${E.openableChests(h)}</span>` : ''}
             <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
             <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
           </button>`).join('')}
         ${acc.heroes.length < E.MAX_HEROES ? '<button class="char add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
       </div>
-      <p class="hint" style="margin:10px 0 0">Chaque personnage a son niveau, ses objets, ses coffres et ses donjons. Quand tu attaques, c’est ton perso <b>actif</b> qui combat. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
+      <p class="hint" style="margin:10px 0 0">Chaque personnage a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand tu attaques, c’est ton perso <b>actif</b> qui combat. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
     </section>
 
     <section class="card hero-card">
@@ -360,6 +381,7 @@ function viewHero() {
           <span class="pill gold">Puissance ${E.powerScore(snap)}</span>
           <span class="pill">${hero.stats.wins} V · ${hero.stats.losses} D</span>
           <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
+          <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys} clef${hero.keys > 1 ? 's' : ''}</span>
           ${E.getXpBonus() > 1 ? `<span class="pill green">Rattrapage +${Math.round((E.getXpBonus() - 1) * 100)} % XP</span>` : ''}
           ${acc.war.section ? `<span class="pill" style="color:${WAR.sections[acc.war.section].color}">${WAR.sections[acc.war.section].name}</span>` : ''}
           ${acc.titles.warHero ? `<span class="pill gold">⚔ Héros de guerre ×${acc.titles.warHero}</span>` : ''}
@@ -389,16 +411,16 @@ function viewHero() {
         <span class="pill">Critique ${Math.round(E.critChance(st.lck) * 100)} %</span>
         <span class="pill">Esquive ${Math.round(E.dodgeChance(st.lck) * 100)} %</span>
         <span class="spacer"></span>
-        ${E.spentPoints(hero) > 0 ? `<button class="btn small" data-act="resetStats">Replacer mes points</button>` : ''}
+        ${E.spentPoints(hero) > 0 ? `<button class="btn small" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button>` : ''}
       </div>
     </section>
 
     <section class="card">
       <h2>Sorts</h2>
-      <p class="hint">Ton héros se bat tout seul. Il lance ses sorts actifs <b>dans cet ordre</b> dès qu’ils sont prêts (max ${MAX_ACTIVE_SPELLS}). Sinon, il fait une attaque de base.</p>
+      <p class="hint">En mode <b>auto</b>, ton héros lance ses sorts actifs <b>dans cet ordre</b> dès qu’ils sont prêts (max ${MAX_ACTIVE_SPELLS}). Sinon, il fait une attaque de base. En donjon, à la tour et contre Mélenchon, tu peux passer en <b>manuel</b> pendant le combat et les lancer toi-même.</p>
       ${active.map((s, i) => `
         <div class="spell">
-          <div class="num">${i + 1}</div>
+          <div class="sp-ic"><canvas class="px" data-spell="${s.id}"></canvas><span class="num">${i + 1}</span></div>
           <div class="sp-body">
             <div class="sp-name">${s.name} <span class="pill">⟳ ${s.cd} tours</span></div>
             <div class="sp-desc">${s.desc}</div>
@@ -414,7 +436,7 @@ function viewHero() {
         const locked = s.lvl > hero.level;
         return `
         <div class="spell ${locked ? 'locked' : ''}">
-          <div class="num">${locked ? '🔒' : '+'}</div>
+          <div class="sp-ic"><canvas class="px" data-spell="${s.id}"></canvas>${locked ? '<span class="num">🔒</span>' : ''}</div>
           <div class="sp-body">
             <div class="sp-name">${s.name} ${locked ? `<span class="pill">Niveau ${s.lvl}</span>` : `<span class="pill">⟳ ${s.cd} tours</span>`}</div>
             <div class="sp-desc">${s.desc}</div>
@@ -428,15 +450,21 @@ function viewHero() {
 // ------------------------------ Vue Coffres ------------------------------
 function viewChests() {
   const n = hero.chest.stored;
+  const keys = hero.keys || 0;
+  const all = n + keys;
   const wait = E.nextChestIn(hero);
   const odds = (kind) => CHEST_ODDS[kind].map((p, r) => p > 0 ? `<span class="pill" style="color:${RARITIES[r].color}">${RARITIES[r].name} ${p}%</span>` : '').join('');
   return `
     <section class="card chest-card ${n > 0 ? 'has' : ''}">
       <h2 style="margin:0">Coffre</h2>
       <canvas class="px" data-chest="normal"></canvas>
-      <div class="count">${n} / ${CHEST_MAX}</div>
+      <div class="count">${n} / ${CHEST_MAX} <span class="keys"><canvas class="px" data-key></canvas>× ${keys}</span></div>
       <div class="timer" data-timer="chest">${n >= CHEST_MAX ? 'Stock plein ! Ouvre-les vite.' : `Prochain coffre dans <b>${fmt(wait)}</b>`}</div>
-      <button class="btn primary block" data-act="openChest" data-kind="normal" ${n > 0 ? '' : 'disabled'}>Ouvrir</button>
+      <div class="timer">1 clef = 1 coffre en plus. Gagne des clefs en battant les boss de donjon, ou achète-les à la boutique.</div>
+      <div class="row" style="width:100%">
+        <button class="btn primary" style="flex:1" data-act="openChest" data-kind="normal" ${all > 0 ? '' : 'disabled'}>Ouvrir${n <= 0 && keys > 0 ? ' (clef)' : ''}</button>
+        <button class="btn green" style="flex:1" data-act="openAll" ${all > 1 ? '' : 'disabled'}>Tout ouvrir (${all})</button>
+      </div>
       <div class="odds">${odds('normal')}</div>
     </section>
 
@@ -461,6 +489,9 @@ function viewChests() {
 }
 
 // ------------------------------ Vue Sac ------------------------------
+let bagMode = 'rarity';   // 'rarity' = classé par rareté, 'set' = par panoplie
+let bagSet = 'all';       // panoplie affichée ('all', un id de panoplie ou 'pet')
+
 function stacks() {
   const map = new Map();
   const eqUids = new Set(Object.values(hero.equipped));
@@ -474,9 +505,52 @@ function stacks() {
   return [...map.values()].sort((a, b) => b.rarity - a.rarity || SLOT_ORDER.indexOf(ITEMS[a.itemId].slot) - SLOT_ORDER.indexOf(ITEMS[b.itemId].slot) || a.itemId.localeCompare(b.itemId));
 }
 
+const groupOf = (itemId) => ITEMS[itemId].set || 'pet';
+const groupName = (g) => (g === 'pet' ? 'Familiers' : SETS[g].name.replace(/^Panoplie (de |d’|du )?/, ''));
+
+function invGrid(list) {
+  return `<div class="inv">${list.map(s => `
+    <button class="it" style="--rc:${RARITIES[s.rarity].color}" data-act="item" data-id="${s.itemId}" data-r="${s.rarity}">
+      <canvas class="px" data-icon="${s.itemId}"></canvas>
+      ${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}
+      ${s.equipped ? '<span class="eq">ÉQUIPÉ</span>' : ''}
+      ${s.items.length >= 2 && s.rarity < RARITIES.length - 1 ? '<span class="fu">✦</span>' : ''}
+    </button>`).join('')}</div>`;
+}
+
 function viewBag() {
   const eq = E.equippedItems(hero);
   const st = stacks();
+  const eqUids = new Set(Object.values(hero.equipped));
+  const commons = hero.inventory.filter(i => i.rarity === 0 && !eqUids.has(i.uid)).length;
+  let body = '';
+  if (!st.length) body = '<p class="empty">Ton sac est vide. Va ouvrir des coffres !</p>';
+  else if (bagMode === 'rarity') {
+    body = [...RARITIES].reverse().map(R => {
+      const list = st.filter(s => s.rarity === R.id);
+      if (!list.length) return '';
+      const n = list.reduce((t, s) => t + s.items.length, 0);
+      return `<div class="bag-head" style="--rc:${R.color}"><span>${R.name}</span><small>${n} objet${n > 1 ? 's' : ''} · revente ${SELL_PRICE[R.id]} Flouze</small></div>${invGrid(list)}`;
+    }).join('');
+  } else {
+    const groups = [...Object.keys(SETS), 'pet'];
+    const owned = (g) => st.filter(s => groupOf(s.itemId) === g);
+    const chips = `<div class="chips">
+      <button class="chip ${bagSet === 'all' ? 'on' : ''}" data-act="bagSet" data-id="all">Toutes</button>
+      ${groups.filter(g => owned(g).length).map(g => `<button class="chip ${bagSet === g ? 'on' : ''}" data-act="bagSet" data-id="${g}">${groupName(g)} <small>${owned(g).length}</small></button>`).join('')}
+    </div>`;
+    const show = bagSet === 'all' ? groups : [bagSet];
+    body = chips + show.map(g => {
+      const list = owned(g);
+      if (!list.length) return bagSet === 'all' ? '' : '<p class="empty">Aucun objet de cette panoplie.</p>';
+      if (g === 'pet') return `<div class="bag-head set"><span>Familiers</span><small>affinité + attaque en combat</small></div>${invGrid(list)}`;
+      const slots = new Set(list.map(s => ITEMS[s.itemId].slot));
+      const worn = (E.activeSets(hero).find(a => a.setId === g) || {}).count || 0;
+      return `<div class="bag-head set"><span>${SETS[g].name}</span><small>${slots.size}/5 pièces trouvées · ${worn} portée${worn > 1 ? 's' : ''}</small></div>
+        <div class="set-mini"><span class="${worn >= 3 ? 'on' : ''}">3 : ${bonusText(SETS[g].bonus3)}</span><span class="${worn >= 5 ? 'on' : ''}">5 : ${bonusText(SETS[g].bonus5)}</span></div>
+        ${invGrid(list.sort((a, b) => SLOT_ORDER.indexOf(ITEMS[a.itemId].slot) - SLOT_ORDER.indexOf(ITEMS[b.itemId].slot) || b.rarity - a.rarity))}`;
+    }).join('');
+  }
   return `
     <section class="card">
       <h2>Équipement</h2>
@@ -491,16 +565,13 @@ function viewBag() {
     </section>
     <section class="card">
       <h2>Sac <span style="color:var(--muted)">(${hero.inventory.length})</span></h2>
-      <p class="hint">2 objets identiques = 1 objet de rareté supérieure. Touche un objet pour l’équiper ou le fusionner.</p>
-      ${st.length ? `<div class="inv">
-        ${st.map(s => `
-          <button class="it" style="--rc:${RARITIES[s.rarity].color}" data-act="item" data-id="${s.itemId}" data-r="${s.rarity}">
-            <canvas class="px" data-icon="${s.itemId}"></canvas>
-            ${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}
-            ${s.equipped ? '<span class="eq">ÉQUIPÉ</span>' : ''}
-            ${s.items.length >= 2 && s.rarity < RARITIES.length - 1 ? '<span class="fu">✦</span>' : ''}
-          </button>`).join('')}
-      </div>` : '<p class="empty">Ton sac est vide. Va ouvrir des coffres !</p>'}
+      <p class="hint">2 objets identiques = 1 objet de rareté supérieure. Touche un objet pour l’équiper, le fusionner ou le vendre.</p>
+      <div class="seg" style="margin-bottom:12px">
+        <button class="${bagMode === 'rarity' ? 'on' : ''}" data-act="bagMode" data-mode="rarity">Par rareté</button>
+        <button class="${bagMode === 'set' ? 'on' : ''}" data-act="bagMode" data-mode="set">Par panoplie</button>
+      </div>
+      ${body}
+      ${commons ? `<button class="btn small block" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
     </section>`;
 }
 
@@ -528,6 +599,7 @@ function openItem(itemId, rarity) {
   const cur = !isEq && curUid ? hero.inventory.find(i => i.uid === curUid) : null;
   const curStats = cur ? E.itemStats(cur.itemId, cur.rarity) : null;
   const canFuse = stack.length >= 2 && rarity < RARITIES.length - 1;
+  const spare = stack.filter(s => s.uid !== curUid).length;
   const R = RARITIES[rarity];
   const next = RARITIES[rarity + 1];
   openModal(`
@@ -541,6 +613,7 @@ function openItem(itemId, rarity) {
     </div>
     ${statLines(stats, curStats)}
     ${it.set ? setBox(it.set) : ''}
+    ${PETS[itemId] ? petBox(itemId, rarity) : ''}
     ${cur ? `<p class="hint" style="margin-top:8px">Comparé à ton ${SLOTS[slot].name.toLowerCase()} actuel : ${esc(ITEMS[cur.itemId].name)} (${RARITIES[cur.rarity].name})</p>` : ''}
     ${canFuse ? `
       <div class="fuse-box">
@@ -555,12 +628,33 @@ function openItem(itemId, rarity) {
         ${statLines(E.itemStats(itemId, rarity + 1), stats)}
         <button class="btn block" style="margin-top:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuse" data-id="${itemId}" data-r="${rarity}">Fusionner en ${next.name}</button>
       </div>` : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Trouve un 2ᵉ exemplaire pour le fusionner en <b style="color:${next.color}">${next.name}</b>.</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
+    ${spare ? `
+      <div class="sell-box">
+        <span>Revente : <b>${SELL_PRICE[rarity]}</b> Flouze pièce${isEq ? ' (l’objet équipé est gardé)' : ''}</span>
+        <div class="row" style="gap:6px;margin-top:8px">
+          <button class="btn small" style="flex:1" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="1">Vendre 1 · +${SELL_PRICE[rarity]}<canvas class="px" data-clat></canvas></button>
+          ${spare > 1 ? `<button class="btn small" style="flex:1" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="${spare}">Vendre les ${spare} · +${spare * SELL_PRICE[rarity]}<canvas class="px" data-clat></canvas></button>` : ''}
+        </div>
+      </div>` : ''}
     <div class="close-row">
       ${isEq
         ? `<button class="btn" data-act="unequip" data-slot="${slot}">Retirer</button>`
         : `<button class="btn primary" data-act="equip" data-id="${itemId}" data-r="${rarity}">Équiper</button>`}
       <button class="btn" data-act="closeModal">Fermer</button>
     </div>`);
+}
+
+/** Fiche d'un familier : son affinité de classe et son attaque */
+function petBox(itemId, rarity) {
+  const P = PETS[itemId];
+  const on = P.aff[0] === hero.classId;
+  const boost = Math.round(20 * rarity);
+  return `
+    <div class="set-box pet-box">
+      <div class="row"><b>Attaque : ${esc(P.atk.name)}</b><span class="spacer"></span><span class="pill">toutes les ${PET_EVERY} actions</span></div>
+      <div class="set-line">${esc(P.atk.desc)}${boost ? ` <b style="color:var(--green)">+${boost} % (rareté)</b>` : ''}</div>
+      <div class="set-line ${on ? 'on' : ''}">Affinité ${CLASSES[P.aff[0]].name} : +5 % ${STATS[P.aff[1]].name}${on ? ' ✓' : ` (ton perso est ${CLASSES[hero.classId].name})`}</div>
+    </div>`;
 }
 
 // ------------------------------ Vue Combats ------------------------------
@@ -570,10 +664,10 @@ function viewFights() {
   return `
     <section class="card">
       <h2>Arène du jour</h2>
-      <p class="hint">Un combat classé par adversaire et par jour. ${WINS_PER_COMBAT_CHEST} victoires = 1 coffre de combat. Ensuite, tu peux faire des <b>revanches</b> pour le fun : la 1ʳᵉ revanche gagnée contre chaque adversaire rapporte 1 Pierre Clat par jour.</p>
+      <p class="hint">Un combat classé par adversaire et par jour. ${WINS_PER_COMBAT_CHEST} victoires = 1 coffre de combat. Tout repart à zéro à minuit. Ensuite, tu peux faire des <b>revanches</b> pour le fun : la 1ʳᵉ revanche gagnée contre chaque adversaire rapporte 1 Flouze par jour.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
         <span class="pill gold">${left} combat${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</span>
-        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Pierre${acc.clat > 1 ? 's' : ''} Clat</span>
+        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span>
         <span class="pill">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>
         <span class="pill" data-timer="day">Nouveaux combats dans ${fmt(msToMidnight())}</span>
       </div>
@@ -598,31 +692,33 @@ function viewFights() {
 
 // ------------------------------ Vue Donjons ------------------------------
 function viewDungeons() {
-  const n = hero.dungeon.stored;
+  const left = E.totalRunsLeft(hero);
   return `
     <section class="card">
       <h2>Donjons</h2>
-      <p class="hint">Bats le boss pour gagner de l’XP et 1 objet. Plus le donjon est haut, plus l’XP et les objets sont bons. Même en cas de défaite, tu gagnes un peu d’XP.</p>
+      <p class="hint">Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (remise à zéro à minuit et à midi), pour chacun de tes personnages. Bats le boss pour gagner de l’XP et <b>1 clef</b> (1 clef = 1 coffre). Même en cas de défaite, tu gagnes un peu d’XP.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
-        <span class="pill gold">Entrées : ${n} / ${DUNGEON_MAX}</span>
-        <span class="pill" data-timer="dungeon">${n >= DUNGEON_MAX ? 'Entrées au maximum' : `Prochaine entrée dans ${fmt(E.nextDungeonIn(hero))}`}</span>
+        <span class="pill gold">${left} combat${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''}</span>
+        <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys} clef${hero.keys > 1 ? 's' : ''}</span>
+        <span class="pill" data-timer="half">Remise à zéro dans ${fmt(E.msToNextHalf())}</span>
       </div>
     </section>
     <section class="card">
       ${DUNGEONS.map(d => {
         const locked = hero.level < d.lvl;
         const clears = hero.dungeonClears[d.id] || 0;
+        const n = E.runsLeft(hero, d);
         return `
         <div class="opp dj ${locked ? 'locked' : ''}">
           <div class="av"><canvas class="px" data-monster="${d.sprite}"></canvas></div>
           <div class="o-body">
             <div class="o-name">${d.name}</div>
             <div class="o-sub">${d.boss} · Nv.${d.lvl}${clears ? ` · vaincu ${clears}×` : ''}</div>
-            ${locked ? '' : `<div class="o-sub" style="color:var(--gold)">+${E.dungeonXp(d)} XP · 1 objet</div>`}
+            ${locked ? '' : `<div class="o-sub" style="color:var(--gold)">+${E.dungeonXp(d)} XP · 1 clef</div>`}
           </div>
           ${locked
             ? `<span class="pill">🔒 Nv.${d.lvl}</span>`
-            : `<button class="btn small danger" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}>Entrer</button>`}
+            : `<div class="done-col"><button class="btn small danger" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}>Entrer</button><span class="runs">${'●'.repeat(n)}${'○'.repeat(DUNGEON_RUNS - n)}</span></div>`}
         </div>`;
       }).join('')}
     </section>`;
@@ -653,6 +749,7 @@ function viewRanking() {
   const list = rankingEntries();
   const key = rankMode;
   const medal = ['🥇', '🥈', '🥉'];
+  const scoreOf = (e) => (key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : `Étage ${e.tower}`);
   return `
     <section class="card">
       <h2>Classement</h2>
@@ -662,7 +759,8 @@ function viewRanking() {
         <button class="${rankMode === 'tower' ? 'on' : ''}" data-act="rank" data-mode="tower">Tour</button>
       </div>
       <p class="hint" style="margin-top:12px">${NET.online ? 'Niveau du personnage le plus fort · victoires de tous les personnages · meilleur étage de la tour.' : 'Hors ligne : tes amis sont des bots.'}</p>
-      ${list.map((e, i) => `
+      ${podium(list, scoreOf)}
+      ${list.slice(3).map((e, j) => ({ e, i: j + 3 })).map(({ e, i }) => `
         <div class="opp rank ${e.me ? 'me' : ''}">
           <div class="pos">${medal[i] || i + 1}</div>
           <div class="av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
@@ -670,9 +768,26 @@ function viewRanking() {
             <div class="o-name">${nameHtml(e.name, e.data)}${e.me ? ' <span class="pill gold">toi</span>' : ''}</div>
             <div class="o-sub">${CLASSES[e.classId].name} ${titleHtml(e.data)}</div>
           </div>
-          <div class="score">${key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : `Étage ${e.tower}`}</div>
+          <div class="score">${scoreOf(e)}</div>
         </div>`).join('')}
     </section>`;
+}
+
+/** Podium des 3 premiers (2e à gauche, 1er au milieu, 3e à droite) */
+function podium(list, scoreOf) {
+  const top = list.slice(0, 3);
+  if (!top.length) return '';
+  const order = [1, 0, 2].filter(i => top[i]);
+  return `<div class="podium">${order.map(i => {
+    const e = top[i];
+    return `
+    <div class="pod p${i + 1} ${e.me ? 'me' : ''}">
+      <div class="pod-av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
+      <div class="pod-name">${nameHtml(e.name, e.data)}</div>
+      <div class="pod-score">${scoreOf(e)}</div>
+      <div class="pod-step"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${i + 1}</b></div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // ------------------------------ Vue Guerre ------------------------------
@@ -684,8 +799,8 @@ const WAR_RULES = () => `
     <summary>Règles de la guerre</summary>
     <ul>
       <li>2 sections de ${WAR.maxPerSection} joueurs maximum. Chacun choisit la sienne. Un changement possible par mois.</li>
-      <li>Une guerre dure une semaine, du lundi 00:00 au dimanche 23:59.</li>
-      <li>${WAR.attacksPerDay} attaques de guerre par jour, contre les membres de l’autre section (1 fois max par adversaire et par jour).</li>
+      <li>Une guerre dure 7 jours complets, puis la suivante commence aussitôt.</li>
+      <li>Chaque jour, tu peux attaquer <b>une fois chaque combattant</b> de l’autre section. Tout repart à zéro à minuit.</li>
       <li>Victoire contre plus fort que toi : <b>+3 pts</b>. Contre un niveau égal : <b>+2</b>. Contre plus faible : <b>+1</b>.</li>
       <li>Si ton attaque échoue, la section adverse gagne <b>+1 pt</b> de défense.</li>
       <li>Fin de semaine : la section avec le plus de points gagne. Ses membres ayant fait au moins ${WAR.minAttacks} attaques reçoivent un <b>Coffre de guerre</b> (${WAR.warChestItems} objets, jamais de Commun).</li>
@@ -718,7 +833,7 @@ function viewWar() {
   const allies = members.filter(m => m.section === mine);
   const wk = E.warWeek(acc);
   const myPower = E.powerScore(E.snapshot(hero));
-  const left = WAR.attacksPerDay - Object.keys(war.done).length;
+  const left = enemies.filter(o => !war.done[o.id]).length;
   const p = war.pending;
   const outcomeTxt = p && ({ win: 'Victoire de ta section !', loss: 'Défaite de ta section…', tie: 'Égalité !' }[p.outcome]);
   return `
@@ -736,6 +851,7 @@ function viewWar() {
       </section>` : ''}
     <section class="card">
       <h2>Guerre de la semaine</h2>
+      <div class="train-wrap war-wrap"><canvas id="war-cv"></canvas></div>
       <div class="score-row">
         <div>${secTag(mine)}<div class="sc">${score[mine]}</div></div>
         <div class="vs">VS</div>
@@ -750,6 +866,7 @@ function viewWar() {
     </section>
     <section class="card">
       <h2>Attaquer · ${left} restante${left > 1 ? 's' : ''} aujourd’hui</h2>
+      <p class="hint">Une attaque par adversaire et par jour. Nouvelles attaques dans <span data-timer="day3">${fmt(msToMidnight())}</span>.</p>
       ${enemies.length ? '' : '<p class="empty">Personne dans l’autre section pour l’instant.</p>'}
       ${enemies.map(o => {
         const done = war.done[o.id];
@@ -763,7 +880,7 @@ function viewWar() {
           </div>
           ${done
             ? `<span class="pill ${done === 'win' ? 'green' : 'red'}">${done === 'win' ? 'GAGNÉ' : 'PERDU'}</span>`
-            : `<button class="btn small danger" data-act="warAttack" data-id="${o.id}" ${left > 0 ? '' : 'disabled'}>+${pts} pts</button>`}
+            : `<button class="btn small danger" data-act="warAttack" data-id="${o.id}">+${pts} pts</button>`}
         </div>`;
       }).join('')}
     </section>
@@ -780,28 +897,53 @@ function viewWar() {
     </section>`;
 }
 
+/** Animation de la guerre : les 4 bleus contre les 4 rouges, en boucle */
+function startSkirmish() {
+  const cv = document.getElementById('war-cv');
+  if (!cv || !acc.war.section) return;
+  const { members } = E.warStandings(acc, E.weekKey(), others());
+  const sh = E.strongestHero(acc);
+  const all = [...members.map(m => {
+    const h = m.data ? E.strongestHero(m.data) : null;
+    return { name: m.name, classId: m.classId, dye: h ? h.dye : null, section: m.section };
+  }), { name: acc.pseudo, classId: sh.classId, dye: sh.dye, section: acc.war.section }];
+  const side = (sec) => {
+    const list = all.filter(m => m.section === sec);
+    // s'il manque du monde, des recrues viennent compléter l'équipe
+    const cls = Object.keys(CLASSES);
+    for (let i = list.length; i < WAR.maxPerSection; i++) list.push({ name: 'Recrue', classId: cls[i % cls.length], dye: null });
+    return list;
+  };
+  stopPreviews.push(playSkirmish(cv, side('bleue'), side('rouge'), { colors: [WAR.sections.bleue.color, WAR.sections.rouge.color] }));
+}
+
 function startWarAttack(foeId) {
   E.ensureWar(acc, others());
   const war = acc.war;
-  if (war.done[foeId] || Object.keys(war.done).length >= WAR.attacksPerDay) return;
+  if (war.done[foeId]) return;
   const opp = opponents().find(o => o.id === foeId);
   if (!opp) return;
   const me = mySnap();
   const seed = hashStr(war.day + foeId + 'guerre' + acc.pseudo);
-  const result = E.simulate(me, opp.snap, seed);
-  const won = result.winner === 0;
-  E.missionEvent(acc, 'war');
-  logFight('war', foeId, opp.name, me, opp.snap, seed, won);
-  const rw = E.warAttackResult(acc, hero, { id: foeId, name: opp.name, level: opp.level }, won, E.powerScore(me), E.powerScore(opp.snap));
-  save();
   runBattle({
-    me, foe: opp.snap, result, theme: 'castle', rewards: rw,
+    me, foe: opp.snap, seed, theme: 'castle', victory: myVictory(),
     title: `⚔ ${secTag(war.section)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
-    rewardsHtml: `
-      <div class="rw">
-        <span class="pill gold">+${rw.xp} XP</span>
-        ${won ? `<span class="pill green">+${rw.pts} pts pour ta section</span>` : '<span class="pill red">+1 pt pour la section adverse</span>'}
-      </div>`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      E.missionEvent(acc, 'war');
+      if (won) E.missionEvent(acc, 'war_win');
+      logFight('war', foeId, opp.name, me, opp.snap, seed, won);
+      const rw = E.warAttackResult(acc, hero, { id: foeId, name: opp.name, level: opp.level }, won, E.powerScore(me), E.powerScore(opp.snap));
+      save();
+      return {
+        rewards: rw,
+        rewardsHtml: `
+          <div class="rw">
+            <span class="pill gold">+${rw.xp} XP</span>
+            ${won ? `<span class="pill green">+${rw.pts} pts pour ta section</span>` : '<span class="pill red">+1 pt pour la section adverse</span>'}
+          </div>`,
+      };
+    },
   });
 }
 
@@ -919,7 +1061,7 @@ function setBadge(id, n) {
 // ------------------------------ Missions du jour ------------------------------
 function claimableMissions() {
   const list = E.ensureMissions(acc);
-  return list.filter(m => !acc.missions.claimed[m.id] && (acc.missions.progress[m.id] || 0) >= m.n).length;
+  return list.filter(m => !acc.missions.claimed[m.id] && E.missionProgress(acc, m) >= m.n).length;
 }
 
 function missionsCard() {
@@ -927,9 +1069,9 @@ function missionsCard() {
   const M = acc.missions;
   return `
     <section class="card missions">
-      <h2>Missions du jour</h2>
+      <h2>Missions</h2>
       ${list.map(m => {
-        const p = Math.min(m.n, M.progress[m.id] || 0);
+        const p = E.missionProgress(acc, m);
         const done = p >= m.n, claimed = M.claimed[m.id];
         return `
         <div class="mission ${claimed ? 'claimed' : ''}">
@@ -942,24 +1084,24 @@ function missionsCard() {
             : `<button class="btn small ${done ? 'green' : ''}" data-act="claimMission" data-id="${m.id}" ${done ? '' : 'disabled'}>${p}/${m.n} · +${m.reward}<canvas class="px" data-clat></canvas></button>`}
         </div>`;
       }).join('')}
-      <p class="hint" style="margin:10px 0 0">Les 3 missions faites = <b>+${MISSIONS_BONUS}</b> Pierres Clat en bonus. Nouvelles missions dans <span data-timer="day2">${fmt(msToMidnight())}</span>.</p>
+      <p class="hint" style="margin:10px 0 0">Les 3 missions faites = <b>+${MISSIONS_BONUS}</b> Flouze en bonus. 3 nouvelles missions toutes les 12 h (minuit et midi) : prochaines dans <span data-timer="half">${fmt(E.msToNextHalf())}</span>.</p>
     </section>`;
 }
 
 // ------------------------------ Hub Combats ------------------------------
 function viewCombat() {
   const fightsLeft = opponents().filter(o => !o.done).length;
-  const towerLeft = TOWER.attemptsPerDay - E.towerState(hero).used;
-  const raidLeft = RAID.attemptsPerDay - E.raidState(acc).used;
-  const warLeft = acc.war.section ? Math.max(0, WAR.attacksPerDay - Object.keys(acc.war.done).length) : 0;
+  const raidLeft = RAID.attemptsPerHalf - E.raidState(acc).used;
+  const warLeft = acc.war.section ? opponents().filter(o => o.section === E.otherSide(acc.war.section) && !acc.war.done[o.id]).length : 0;
+  const runs = E.totalRunsLeft(hero);
   const duels = bets.challenges.filter(c => c.status === 'pending' && c.to_id === myId()).length;
   const tiles = [
     { id: 'fights', name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, icon: 'loic_weapon', badge: fightsLeft },
-    { id: 'dungeons', name: 'Donjons', sub: `${hero.dungeon.stored}/${DUNGEON_MAX} entrées`, monster: 'skeleton', badge: hero.dungeon.stored },
-    { id: 'tower', name: 'Tour infinie', sub: `Record : étage ${hero.tower.best}`, monster: 'golem', badge: towerLeft },
-    { id: 'raid', name: `Raid : ${RAID.boss.name}`, sub: `${raidLeft}/${RAID.attemptsPerDay} assauts`, monster: RAID.boss.sprite, badge: raidLeft },
+    { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, monster: 'skeleton', badge: runs },
+    { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1} à battre`, monster: 'golem', badge: 0 },
+    { id: 'raid', name: `Raid : ${RAID.boss.name}`, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: RAID.boss.sprite, badge: raidLeft },
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', icon: 'guillaume_weapon', badge: warLeft },
-    { id: 'bets', name: 'Paris & duels', sub: 'Mise tes Pierres Clat', clat: true, badge: duels },
+    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', clat: true, badge: duels },
   ];
   return missionsCard() + `
     <section class="card">
@@ -1026,9 +1168,9 @@ function replayFight(row) {
   const result = E.simulate(row.a_snap, row.d_snap, Number(row.seed));
   const winName = result.winner === 0 ? row.attacker_name : row.defender_name;
   runBattle({
-    me: row.a_snap, foe: row.d_snap, result, theme: row.kind === 'war' ? 'castle' : 'arena', rewards: null,
+    me: row.a_snap, foe: row.d_snap, result, theme: row.kind === 'war' ? 'castle' : 'arena', track: false,
     title: `Rediffusion · ${esc(row.attacker_name)} <span style="color:var(--gold)">VS</span> ${esc(row.defender_name)}`,
-    headline: `${winName.toUpperCase()} GAGNE !`, headClass: 'win', rewardsHtml: '',
+    finish: () => ({ headline: `${winName.toUpperCase()} GAGNE !`, headClass: 'win' }),
   });
 }
 
@@ -1066,7 +1208,7 @@ async function shareFight(id) {
   try {
     const m = await NET.sendMessage(acc.pseudo, `⚔️ ${f.attacker_name} vs ${f.defender_name} (${KIND_NAME[f.kind] || ''}) [[combat:${f.id}]]`);
     onChatMessage(m);
-    E.missionEvent(acc, 'chat'); save();
+    E.missionEvent(acc, 'chat'); E.missionEvent(acc, 'share'); save();
     toast('Combat partagé dans le tchat !');
   } catch (e) { toast(e.message); }
 }
@@ -1136,10 +1278,10 @@ function viewBets() {
   return `
     <section class="card">
       <h2>Paris & duels</h2>
-      <p class="hint">Défie un pote. S’il accepte, tout le monde a <b>24 h</b> pour miser des Pierres Clat. Ensuite le combat se joue (avec le perso le plus fort de chacun) et les gagnants touchent leur mise × la cote.</p>
+      <p class="hint">Défie un pote. S’il accepte, tout le monde a <b>24 h</b> pour miser du Flouze. Ensuite le combat se joue (avec le perso le plus fort de chacun) et les gagnants touchent leur mise × la cote.</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">
-        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Pierres Clat</span>
-        ${gains.ids.length ? `<button class="btn small ${gains.total ? 'green' : ''}" data-act="claimBets">${gains.total ? `Récupérer ${gains.total} Pierres Clat` : 'Voir mes paris perdus'}</button>` : ''}
+        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span>
+        ${gains.ids.length ? `<button class="btn small ${gains.total ? 'green' : ''}" data-act="claimBets">${gains.total ? `Récupérer ${gains.total} Flouze` : 'Voir mes paris perdus'}</button>` : ''}
       </div>
     </section>
 
@@ -1202,13 +1344,13 @@ const raidEndOf = (startMs) => startMs + RAID_DAYS * 86400000;
 function localRaid() {
   const L = acc.raid.local;
   const keys = Object.keys(L).filter(k => L[k].start).sort((a, b) => L[b].start - L[a].start);
-  let curKey = keys.find(k => Date.now() < raidEndOf(L[k].start));
+  let curKey = keys.find(k => L[k].tag === RAID_TAG && Date.now() < raidEndOf(L[k].start));
   if (!curKey) {
-    curKey = E.dayKey();
+    curKey = RAID_TAG + E.dayKey();
     const lv = groupLevels();
-    L[curKey] = { start: Date.now(), hp: E.raidHp(lv), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
+    L[curKey] = { start: Date.now(), tag: RAID_TAG, hp: E.raidHp(lv), level: Math.round(lv.reduce((a, b) => a + b, 0) / lv.length), hits: [] };
   }
-  const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start && Date.now() >= raidEndOf(L[k].start)).sort((a, b) => L[b].start - L[a].start)[0] || '';
+  const prevKey = Object.keys(L).filter(k => k !== curKey && L[k].start).sort((a, b) => L[b].start - L[a].start)[0] || '';
   for (const k of Object.keys(L)) if (k !== curKey && k !== prevKey) delete L[k];
   const botHits = (key, days, level) => FRIENDS.flatMap(f => {
     const out = [];
@@ -1226,10 +1368,9 @@ function localRaid() {
   return res;
 }
 
-// Les raids ouverts avant le passage à 1 assaut par jour avaient 2× trop de PV : on les corrige pour tout le monde
-const RAID_TAG = RAID.boss.id + ':v2';
-// (et Mélenchon a toujours au moins RAID.minHp PV)
-const fixRaid = (r) => (r ? { ...r, hp: Math.max(RAID.minHp, r.boss === RAID.boss.id ? Math.round(r.hp * 0.5) : r.hp) } : r);
+// Seuls les raids de la version actuelle comptent (les anciens sont terminés) ; Mélenchon a toujours au moins RAID.minHp PV
+const RAID_TAG = RAID.tag;
+const fixRaid = (r) => (r ? { ...r, hp: Math.max(RAID.minHp, r.hp) } : r);
 
 /** Raid en ligne : le plus récent encore actif (7 jours après son ouverture), sinon on en ouvre un nouveau */
 function loadRaid() {
@@ -1240,11 +1381,11 @@ function loadRaid() {
     try {
       const list = (await NET.fetchLatestRaids()).map(fixRaid);
       const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
-      let raid = list.find(r => Date.now() < endOf(r)) || null;
-      const prev = list.find(r => r !== raid && Date.now() >= endOf(r)) || null;
+      let raid = list.find(r => r.boss === RAID_TAG && Date.now() < endOf(r)) || null;
+      const prev = list.find(r => r !== raid) || null;
       if (!raid) {
         const lv = groupLevels();
-        raid = fixRaid(await NET.openRaid(E.dayKey(), RAID_TAG, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
+        raid = fixRaid(await NET.openRaid(RAID_TAG.split(':')[1] + '-' + E.dayKey(), RAID_TAG, E.raidHp(lv), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
       const [hits, prevHits] = await Promise.all([NET.fetchRaidHits(raid.week), prev ? NET.fetchRaidHits(prev.week) : []]);
@@ -1280,7 +1421,7 @@ function viewRaid() {
   }
   const me = myId();
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
-  const left = RAID.attemptsPerDay - E.raidState(acc).used;
+  const left = RAID.attemptsPerHalf - E.raidState(acc).used;
   const mine = S.board.find(b => b.id === me);
   const isMvp = S.board[0] && S.board[0].id === me;
   const canClaim = S.killed && mine && !acc.raid.claimed[raidInfo.week];
@@ -1306,13 +1447,14 @@ function viewRaid() {
       <div class="score-bar raid-bar"><div style="width:${(S.remaining / raidInfo.raid.hp) * 100}%;background:#ff5d6c"></div><div style="flex:1;background:#3a2f45"></div></div>
       <div class="o-sub" style="text-align:center;margin-top:6px">${S.killed ? '<b style="color:var(--green)">VAINCU !</b>' : `${fmtNum(S.remaining)} / ${fmtNum(raidInfo.raid.hp)} PV`}</div>
       <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px">
-        <span class="pill gold">Assauts : ${left} / ${RAID.attemptsPerDay}</span>
+        <span class="pill gold">Assauts : ${left} / ${RAID.attemptsPerHalf}</span>
+        <span class="pill" data-timer="half">Nouveaux assauts dans ${fmt(E.msToNextHalf())}</span>
         <span class="pill">Fin dans <b data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</b></span>
       </div>
       ${canClaim
         ? `<button class="btn primary block" style="margin-top:12px" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
         : `<button class="btn danger block" style="margin-top:12px" data-act="attackRaid" ${left > 0 && !S.killed ? '' : 'disabled'}>${S.killed ? 'Boss vaincu' : 'Attaquer'}</button>`}
-      <p class="hint" style="margin:12px 0 0">Tout le groupe tape le même boss. Le raid dure 7 jours. S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Pierres Clat</b> pour chaque participant, et un coffre de guerre en plus pour le meilleur. Sinon, ${R.failClat} Pierres Clat de consolation.</p>
+      <p class="hint" style="margin:12px 0 0">Tout le groupe tape le même boss. ${RAID.attemptsPerHalf} assauts par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours. S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour le meilleur. Sinon, ${R.failClat} Flouze de consolation.</p>
     </section>
     <section class="card">
       <h2>Dégâts du raid</h2>
@@ -1325,26 +1467,32 @@ function viewRaid() {
 
 function attackRaid() {
   const st = E.raidState(acc);
-  if (st.used >= RAID.attemptsPerDay || !raidInfo.raid) return;
+  if (st.used >= RAID.attemptsPerHalf || !raidInfo.raid) return;
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
   if (S.killed) return;
   const me = mySnap();
   const boss = E.raidBoss(raidInfo.raid.level, raidInfo.raid.hp, S.remaining);
-  const result = E.simulate(me, boss, (Math.random() * 2 ** 31) | 0, { maxActions: RAID.maxActions, timeoutWinner: false });
-  const dmg = E.damageDealt(result, S.remaining);
   st.used++;
   E.missionEvent(acc, 'raid');
-  const hit = { user_id: myId(), pseudo: acc.pseudo, damage: dmg };
-  raidInfo.hits.push(hit);
-  if (NET.online) NET.addRaidHit(raidInfo.week, acc.pseudo, dmg).catch(e => toast(e.message));
-  else acc.raid.local[raidInfo.week].hits.push(hit);
   save();
-  const killed = dmg >= S.remaining;
+  const week = raidInfo.week;
   runBattle({
-    me, foe: boss, result, theme: RAID.boss.theme, rewards: null, victory: killed ? myVictory() : null,
-    title: `Raid · ${RAID.boss.name}`,
-    headline: killed ? `${RAID.boss.name.toUpperCase()} EST TOMBÉ !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
-    rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span></div>`,
+    me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, sim: { maxActions: RAID.maxActions, timeoutWinner: false },
+    theme: RAID.boss.theme, manual: true, victory: myVictory(), title: `Raid · ${RAID.boss.name}`,
+    finish: (result) => {
+      const dmg = E.damageDealt(result, S.remaining);
+      const hit = { user_id: myId(), pseudo: acc.pseudo, damage: dmg };
+      if (raidInfo.week === week) raidInfo.hits.push(hit);
+      if (NET.online) NET.addRaidHit(week, acc.pseudo, dmg).catch(e => toast(e.message));
+      else if (acc.raid.local[week]) acc.raid.local[week].hits.push(hit);
+      E.missionEvent(acc, 'raid_dmg', dmg);
+      save();
+      const killed = dmg >= S.remaining;
+      return {
+        headline: killed ? `${RAID.boss.name.toUpperCase()} EST TOMBÉ !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
+        rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span></div>`,
+      };
+    },
   });
 }
 
@@ -1355,7 +1503,7 @@ function claimRaid(week) {
   const rw = E.raidReward(acc, week, S.killed, S.board[0] && S.board[0].id === me, S.board.some(b => b.id === me));
   if (!rw) return;
   save(); render();
-  toast(`Récompense : ${rw.chests ? `${rw.chests} coffre${rw.chests > 1 ? 's' : ''} de guerre + ` : ''}${rw.clat} Pierres Clat !`);
+  toast(`Récompense : ${rw.chests ? `${rw.chests} coffre${rw.chests > 1 ? 's' : ''} de guerre + ` : ''}${rw.clat} Flouze !`);
 }
 
 // ------------------------------ Tour infinie ------------------------------
@@ -1370,20 +1518,18 @@ function towerBoard() {
 
 function viewTower() {
   const t = E.towerState(hero);
-  const left = TOWER.attemptsPerDay - t.used;
   const next = t.best + 1;
   const m = E.towerMonster(next);
   return `
     <section class="card raid">
       <h2>Tour infinie</h2>
-      <p class="hint">Chaque étage est plus dur que le précédent, et la tour ne s’arrête jamais. +${TOWER.clatPerFloor} Pierre Clat par nouvel étage, +${TOWER.clatEvery10} tous les 10 étages.</p>
+      <p class="hint">Chaque étage est plus dur que le précédent, et la tour ne s’arrête jamais. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner. +${TOWER.clatPerFloor} Flouze par nouvel étage, +${TOWER.clatEvery10} tous les 10 étages.</p>
       <div class="raid-boss"><canvas class="px" data-monster="${m.dungeon.sprite}"></canvas></div>
       <div class="raid-name">Étage ${next} · ${m.snap.name} <span class="pill">Nv.${m.snap.level}</span></div>
       <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px">
         <span class="pill gold">Record de ton ${CLASSES[hero.classId].name} : étage ${t.best}</span>
-        <span class="pill">Tentatives : ${left} / ${TOWER.attemptsPerDay}</span>
       </div>
-      <button class="btn danger block" style="margin-top:12px" data-act="attackTower" ${left > 0 ? '' : 'disabled'}>Attaquer l’étage ${next}</button>
+      <button class="btn danger block" style="margin-top:12px" data-act="attackTower">Attaquer l’étage ${next}</button>
     </section>
     <section class="card">
       <h2>Classement de la tour</h2>
@@ -1397,22 +1543,26 @@ function viewTower() {
 
 function attackTower() {
   const t = E.towerState(hero);
-  if (t.used >= TOWER.attemptsPerDay) return;
   const next = t.best + 1;
   const m = E.towerMonster(next);
   const me = mySnap();
-  const result = E.simulate(me, m.snap, (Math.random() * 2 ** 31) | 0);
-  const won = result.winner === 0;
-  const rw = E.towerResult(acc, hero, won);
-  if (won) E.missionEvent(acc, 'tower');
-  save();
+  const h = hero;
   runBattle({
-    me, foe: m.snap, result, theme: m.theme, rewards: null, victory: won ? myVictory() : null,
+    me, foe: m.snap, seed: (Math.random() * 2 ** 31) | 0, theme: m.theme, manual: true, victory: myVictory(),
     title: `Tour · Étage ${next}`,
-    headline: won ? `ÉTAGE ${next} RÉUSSI !` : 'ÉCHEC…', headClass: won ? 'win' : 'lose',
-    rewardsHtml: won
-      ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Pierre${rw.clat > 1 ? 's' : ''} Clat</span></div>`
-      : `<p style="color:var(--muted);margin:0">Encore ${TOWER.attemptsPerDay - t.used} tentative(s) aujourd’hui.</p>`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      const rw = E.towerResult(acc, h, won);
+      E.missionEvent(acc, 'tower_try');
+      if (won) E.missionEvent(acc, 'tower');
+      save();
+      return {
+        headline: won ? `ÉTAGE ${next} RÉUSSI !` : 'ÉCHEC…', headClass: won ? 'win' : 'lose',
+        rewardsHtml: won
+          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Flouze</span></div>`
+          : '<p style="color:var(--muted);margin:0">Tu restes à cet étage : réessaie autant que tu veux !</p>',
+      };
+    },
   });
 }
 
@@ -1433,8 +1583,13 @@ function viewShop() {
   return `
     <section class="card">
       <h2>Boutique</h2>
-      <p class="hint">Des apparences pour frimer, payées en Pierres Clat. Aucun effet sur la force.${shopKind === 'dye' ? ` Les teintures s’appliquent à ton personnage actif (${CLASSES[hero.classId].name}).` : ''}</p>
-      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Pierres Clat</span></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span></div>
+      <div class="key-shop">
+        <canvas class="px" data-key></canvas>
+        <div class="o-body"><b>Clef</b><small>Ouvre 1 coffre. Pour ton ${CLASSES[hero.classId].name} (tu en as ${hero.keys}).</small></div>
+        <button class="btn small green" data-act="buyKey" ${acc.clat < KEY_PRICE ? 'disabled' : ''}>${KEY_PRICE}<canvas class="px" data-clat></canvas></button>
+      </div>
+      <p class="hint" style="margin:12px 0 0">Et des apparences pour frimer : aucun effet sur la force.${shopKind === 'dye' ? ` Les teintures s’appliquent à ton personnage actif (${CLASSES[hero.classId].name}).` : ''}</p>
       <div class="seg seg4" style="margin-top:12px">
         ${SHOP_TABS.map(([k, n]) => `<button class="${shopKind === k ? 'on' : ''}" data-act="shopKind" data-k="${k}">${n}</button>`).join('')}
       </div>
@@ -1506,20 +1661,21 @@ function toast(text) {
 }
 function announce(lv) {
   if (!lv) return;
-  if (lv.levels > 0) { SFX.level(); toast(`Niveau ${hero.level} ! +${lv.levels * 3} points de caractéristiques`); }
+  if (lv.levels > 0) { SFX.level(); E.missionEvent(acc, 'level', lv.levels); save(); toast(`Niveau ${hero.level} ! +${lv.levels * 3} points de caractéristiques`); }
   for (const s of lv.newSpells || []) toast(`Nouveau sort : ${s.name}`);
 }
 
 // ------------------------------ Ouverture de coffre ------------------------------
-function openChestFlow(kind) {
-  const res = E.openChest(acc, hero, kind);
+function openChestFlow(kind, all = false) {
+  const res = all ? E.openAllChests(acc, hero) : E.openChest(acc, hero, kind);
   if (!res) return;
-  E.missionEvent(acc, 'chest');
+  E.missionEvent(acc, 'chest', all ? res.count : 1);
+  E.missionEvent(acc, 'key_use', all ? res.keys : res.key ? 1 : 0);
   save();
   SFX.chest();
   openModal(`
     <div class="open-stage">
-      <h3>${{ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || 'Coffre'}</h3>
+      <h3>${all ? `${res.count} coffres${res.keys ? ` (dont ${res.keys} avec une clef)` : ''}` : ({ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || (res.key ? 'Coffre (clef)' : 'Coffre'))}</h3>
       <div class="rays" id="chest-wrap"><canvas class="px chest-big shake" id="chest-cv" data-chest="${kind}"></canvas></div>
       <div id="loot"></div>
     </div>`, { center: true });
@@ -1530,9 +1686,9 @@ function openChestFlow(kind) {
     cv.classList.add('burst');
     SFX.loot(Math.max(...res.items.map(it => it.rarity)));
     document.getElementById('loot').innerHTML = `
-      <div class="loot">
+      <div class="loot ${res.items.length > 4 ? 'many' : ''}">
         ${res.items.map((it, i) => `
-          <div class="loot-card" style="--rc:${RARITIES[it.rarity].color};animation-delay:${i * 0.18}s">
+          <div class="loot-card" style="--rc:${RARITIES[it.rarity].color};animation-delay:${Math.min(i * 0.18, 2)}s">
             <canvas class="px" data-icon="${it.itemId}"></canvas>
             <div class="ln">${esc(ITEMS[it.itemId].name)}</div>
             ${ITEMS[it.itemId].set ? `<div class="ls">${SETS[ITEMS[it.itemId].set].name}</div>` : ''}
@@ -1549,37 +1705,108 @@ function openChestFlow(kind) {
 
 // ------------------------------ Combat ------------------------------
 let battleCtl = null;
+let battleFight = null;      // combat en direct (le mode manuel est possible)
+const MANUAL_PREF = 'fuze-manual';
+const manualPref = () => { try { return localStorage.getItem(MANUAL_PREF) === '1'; } catch (e) { return false; } };
+const setManualPref = (v) => { try { localStorage.setItem(MANUAL_PREF, v ? '1' : '0'); } catch (e) { /* stockage indisponible */ } };
 
-/** Affiche un combat en plein écran puis le panneau de résultat */
-function runBattle({ me, foe, result, theme, title, rewardsHtml, rewards, victory = null, headline = null, headClass = null }) {
+/** Compte ce qui s'est passé dans un combat, pour les missions */
+function trackBattle(result) {
+  let spells = 0, crits = 0, dodges = 0, pet = 0;
+  for (const e of result.log) {
+    if (e.type !== 'action') continue;
+    if (e.actor === 0) {
+      if (e.pet) pet++; else if (e.id) spells++;
+      crits += e.results.filter(r => r.type === 'hit' && r.crit && r.target === 1).length;
+    } else dodges += e.results.filter(r => r.type === 'dodge' && r.target === 0).length;
+  }
+  E.missionEvent(acc, 'fight');
+  if (result.winner === 0) E.missionEvent(acc, 'win');
+  if (result.winner === 0 && result.usedManual) E.missionEvent(acc, 'manual_win');
+  E.missionEvent(acc, 'spell', spells);
+  E.missionEvent(acc, 'crit', crits);
+  E.missionEvent(acc, 'dodge', dodges);
+  E.missionEvent(acc, 'pet', pet);
+}
+
+/** Barre des 4 sorts sous le héros : recharge, sort lancé, sort demandé (manuel) */
+function updateSpellBar(e) {
+  const bar = document.getElementById('spellbar');
+  if (!bar || !e.s) return;
+  const cds = e.s[0].cd || [];
+  bar.querySelectorAll('.sb').forEach(b => {
+    const left = Math.max(0, (cds[+b.dataset.i] || 0) - 1);
+    b.classList.toggle('ready', left === 0);
+    b.querySelector('.cd').textContent = left ? left : '';
+    if (e.type === 'action' && e.actor === 0 && e.id === b.dataset.id) {
+      b.classList.remove('fire'); void b.offsetWidth; b.classList.add('fire');
+    }
+    // sort demandé (manuel) : reste en surbrillance tant que le héros ne l'a pas lancé
+    b.classList.toggle('queued', !!battleFight && battleFight.queued === b.dataset.id);
+  });
+}
+
+/**
+ * Combat en plein écran puis panneau de résultat.
+ * - Contre un vrai joueur (manual = false) : combat calculé d'avance, mode auto obligatoire,
+ *   et finish(result) est appelé tout de suite (impossible de « rejouer » en quittant).
+ * - En donjon, à la tour et au raid (manual = true) : combat en direct, on peut passer en manuel ;
+ *   finish(result) est appelé à la fin. finish renvoie { rewardsHtml, rewards, headline, headClass }.
+ */
+function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
-  const won = result.winner === 0;
+  let out = null;
+  battleFight = null;
+  if (manual) battleFight = E.createFight(me, foe, seed, { ...sim, manual: manualPref() });
+  else {
+    if (!result) result = E.simulate(me, foe, seed, sim);
+    out = finish(result) || {};
+    if (track) trackBattle(result);
+  }
+  const fight = battleFight;
+  const spells = (me.spells || []).filter(id => SPELLS[id]);
   const ov = document.createElement('div');
   ov.className = 'battle';
   ov.innerHTML = `
     <div class="battle-vs">${title}</div>
     <div class="battle-wrap"><canvas id="arena"></canvas></div>
     <div class="battle-ctrl">
-      <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-      <button class="btn small" data-act="skip">Passer ⏭</button>
-      <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${getPref('sfx') || getPref('music') ? '🔊' : '🔇'}</button>
+      ${spells.length ? `<div class="spellbar" id="spellbar">
+        ${spells.map((id, i) => `<button class="sb ready" data-act="cast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
+        ${fight ? `<button class="sb-mode ${fight.manual ? 'man' : ''}" data-act="toggleManual" id="mode-btn">${fight.manual ? 'MANUEL' : 'AUTO'}</button>`
+          : '<span class="sb-mode lock">AUTO 🔒</span>'}
+      </div>` : ''}
+      <div class="ctrl-row">
+        <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
+        <button class="btn small" data-act="skip">Passer ⏭</button>
+        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${getPref('sfx') || getPref('music') ? '🔊' : '🔇'}</button>
+      </div>
     </div>
     <div class="battle-after" id="result-slot"></div>`;
   document.body.appendChild(ov);
-  battleCtl = playBattle(ov.querySelector('#arena'), me, foe, result, { theme, victory });
+  hydrate(ov);
+  battleCtl = playBattle(ov.querySelector('#arena'), me, foe, fight || result, { theme, victory, spellBar: spells.length > 0, onBegin: updateSpellBar });
   battleCtl.speedIdx = 0;
   battleCtl.promise.then(() => {
-    ov.querySelector('.battle-ctrl').remove();
+    if (fight) {
+      result = fight.result();
+      out = finish(result) || {};
+      if (track) trackBattle(result);
+      save();
+    }
+    battleFight = null;
+    const won = out.won ?? result.winner === 0;
+    ov.querySelector('.battle-ctrl')?.remove();
     const slot = ov.querySelector('#result-slot');
     slot.innerHTML = `
       <div class="result">
-        <h2 class="${headClass || (won ? 'win' : 'lose')}">${headline || (won ? 'VICTOIRE !' : 'DÉFAITE…')}</h2>
-        ${rewardsHtml}
+        <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${out.headline || (won ? 'VICTOIRE !' : 'DÉFAITE…')}</h2>
+        ${out.rewardsHtml || ''}
         <button class="btn primary" data-act="endFight">Continuer</button>
       </div>`;
     hydrate(slot);
-    announce(rewards);
+    announce(out.rewards);
   });
 }
 
@@ -1590,28 +1817,32 @@ function startFight(foeId) {
   if (!opp) return;
   const me = mySnap();
   const seed = hashStr(acc.fights.day + foeId + acc.pseudo);
-  const result = E.simulate(me, opp.snap, seed);
-  const won = result.winner === 0;
-  // Le résultat est enregistré tout de suite : impossible de « rejouer » en quittant
-  acc.fights.done[foeId] = won ? 'win' : 'loss';
-  const rw = E.fightRewards(acc, hero, opp.level, won);
-  E.missionEvent(acc, 'arena_fight');
-  if (won) E.missionEvent(acc, 'arena_win');
-  logFight('arena', foeId, opp.name, me, opp.snap, seed, won);
-  save();
   runBattle({
-    me, foe: opp.snap, result, theme: 'arena', rewards: rw, victory: myVictory(),
+    me, foe: opp.snap, seed, theme: 'arena', victory: myVictory(),
     title: `${esc(me.name)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
-    rewardsHtml: `
-      <div class="rw">
-        <span class="pill gold">+${rw.xp} XP</span>
-        ${won ? `<span class="pill green">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>` : ''}
-        ${rw.chest ? '<span class="pill red">Coffre de combat gagné !</span>' : ''}
-      </div>`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      // Le résultat est enregistré tout de suite : impossible de « rejouer » en quittant
+      acc.fights.done[foeId] = won ? 'win' : 'loss';
+      const rw = E.fightRewards(acc, hero, opp.level, won);
+      E.missionEvent(acc, 'arena_fight');
+      if (won) E.missionEvent(acc, 'arena_win');
+      logFight('arena', foeId, opp.name, me, opp.snap, seed, won);
+      save();
+      return {
+        rewards: rw,
+        rewardsHtml: `
+          <div class="rw">
+            <span class="pill gold">+${rw.xp} XP</span>
+            ${won ? `<span class="pill green">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>` : ''}
+            ${rw.chest ? '<span class="pill red">Coffre de combat gagné !</span>' : ''}
+          </div>`,
+      };
+    },
   });
 }
 
-/** Revanche ou vengeance : autant qu'on veut, pour le fun (1 Pierre Clat par adversaire et par jour) */
+/** Revanche ou vengeance : autant qu'on veut, pour le fun (1 Flouze par adversaire et par jour) */
 function startFriendly(foeId, revenge = false) {
   ensureDay();
   if (!revenge && !acc.fights.done[foeId]) return;
@@ -1619,44 +1850,55 @@ function startFriendly(foeId, revenge = false) {
   if (!opp) return;
   const me = mySnap();
   const seed = (Math.random() * 2 ** 31) | 0;
-  const result = E.simulate(me, opp.snap, seed);
-  const won = result.winner === 0;
-  const rw = E.friendlyRewards(acc, won, foeId);
-  E.missionEvent(acc, revenge ? 'revenge' : 'rematch');
-  logFight(revenge ? 'revenge' : 'rematch', foeId, opp.name, me, opp.snap, seed, won);
-  save();
   runBattle({
-    me, foe: opp.snap, result, theme: 'arena', rewards: null, victory: myVictory(),
+    me, foe: opp.snap, seed, theme: 'arena', victory: myVictory(),
     title: `${revenge ? 'Vengeance' : 'Revanche'} · ${esc(me.name)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
-    rewardsHtml: rw.clat
-      ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+1 Pierre Clat (${acc.clat})</span></div>`
-      : `<p style="color:var(--muted);margin:0">${won ? 'Pierre Clat déjà gagnée contre lui aujourd’hui.' : 'C’était pour le fun : rien de perdu !'}</p>`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      const rw = E.friendlyRewards(acc, won, foeId);
+      E.missionEvent(acc, revenge ? 'revenge' : 'rematch');
+      if (won && !revenge) E.missionEvent(acc, 'rematch_win');
+      logFight(revenge ? 'revenge' : 'rematch', foeId, opp.name, me, opp.snap, seed, won);
+      save();
+      return {
+        rewardsHtml: rw.clat
+          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+1 Flouze (${acc.clat})</span></div>`
+          : `<p style="color:var(--muted);margin:0">${won ? 'Flouze déjà gagné contre lui aujourd’hui.' : 'C’était pour le fun : rien de perdu !'}</p>`,
+      };
+    },
   });
 }
 
 function startDungeon(id) {
   const d = DUNGEONS.find(x => x.id === id);
   if (!d || hero.level < d.lvl) return;
-  if (!E.useDungeonCharge(hero)) { toast('Plus d’entrée de donjon. Reviens plus tard !'); return; }
+  if (!E.useDungeonRun(hero, d)) { toast('Plus de combat dans ce donjon. Reviens à minuit ou à midi !'); return; }
+  E.missionEvent(acc, 'dungeon');
+  save();
+  const h = hero;
   const me = mySnap();
   const boss = E.buildMonster(d);
-  const result = E.simulate(me, boss, (Math.random() * 2 ** 31) | 0);
-  const won = result.winner === 0;
-  const rw = E.dungeonRewards(hero, d, won);
-  if (won) E.missionEvent(acc, 'dungeon_win');
-  save();
   runBattle({
-    me, foe: boss, result, theme: d.theme, rewards: rw,
+    me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, theme: d.theme, manual: true, victory: myVictory(),
     title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${esc(d.boss)}`,
-    rewardsHtml: `
-      <div class="rw"><span class="pill gold">+${rw.xp} XP</span></div>
-      ${rw.item ? `
-        <div class="loot-card" style="--rc:${RARITIES[rw.item.rarity].color}">
-          <canvas class="px" data-icon="${rw.item.itemId}"></canvas>
-          <div class="ln">${esc(ITEMS[rw.item.itemId].name)}</div>
-          ${ITEMS[rw.item.itemId].set ? `<div class="ls">${SETS[ITEMS[rw.item.itemId].set].name}</div>` : ''}
-          <div class="rar" style="color:${RARITIES[rw.item.rarity].color}">${RARITIES[rw.item.rarity].name}</div>
-        </div>` : '<p style="color:var(--muted);margin:0">Le boss était trop fort… Améliore ton héros et reviens !</p>'}`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      const rw = E.dungeonRewards(h, d, won);
+      if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
+      save();
+      return {
+        rewards: rw,
+        rewardsHtml: `
+          <div class="rw"><span class="pill gold">+${rw.xp} XP</span></div>
+          ${won ? `
+            <div class="loot-card" style="--rc:#ffd84a">
+              <canvas class="px" data-key></canvas>
+              <div class="ln">+1 clef</div>
+              <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
+            </div>` : '<p style="color:var(--muted);margin:0">Le boss était trop fort… Améliore ton héros et reviens !</p>'}
+          <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} combat${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${E.msToNextHalf() > 0 ? fmt(E.msToNextHalf()) : ''}.</p>`,
+      };
+    },
   });
 }
 
@@ -1677,7 +1919,7 @@ function openSettings() {
       <button class="btn small" data-act="cheat" data-c="fights">Recharger combats + donjons</button>
       <button class="btn small" data-act="cheat" data-c="lvl">+5 niveaux</button>
       <button class="btn small" data-act="cheat" data-c="weekEnd">Finir la guerre</button>
-      <button class="btn small" data-act="cheat" data-c="clat">+100 Pierres Clat</button>
+      <button class="btn small" data-act="cheat" data-c="clat">+100 Flouze</button>
     </div>`}
     <div class="sub">SON</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1765,19 +2007,73 @@ const ACTIONS = {
   addStat: (d) => {
     if (E.freePoints(hero) <= 0) return;
     hero.alloc[d.k] = (hero.alloc[d.k] || 0) + 1;
+    E.missionEvent(acc, 'stat');
     save(); render();
   },
-  resetStats: () => { hero.alloc = {}; save(); render(); toast('Points remis à zéro. Replace-les comme tu veux !'); },
+  resetStats: () => {
+    if (acc.clat < STAT_RESET_COST) { toast(`Il faut ${STAT_RESET_COST} Flouze pour replacer tes points.`); return; }
+    if (!confirm(`Replacer tous tes points pour ${STAT_RESET_COST} Flouze ?`)) return;
+    E.resetStats(acc, hero); save(); render(); toast(`Points remis à zéro (−${STAT_RESET_COST} Flouze). Replace-les comme tu veux !`);
+  },
   spellUp: (d) => { const i = hero.spells.indexOf(d.id); if (i > 0) { [hero.spells[i - 1], hero.spells[i]] = [hero.spells[i], hero.spells[i - 1]]; save(); render(); } },
   spellDown: (d) => { const i = hero.spells.indexOf(d.id); if (i >= 0 && i < hero.spells.length - 1) { [hero.spells[i + 1], hero.spells[i]] = [hero.spells[i], hero.spells[i + 1]]; save(); render(); } },
   spellOff: (d) => { hero.spells = hero.spells.filter(id => id !== d.id); save(); render(); },
   spellOn: (d) => { if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id)) { hero.spells.push(d.id); save(); render(); } },
   openChest: (d) => openChestFlow(d.kind),
+  openAll: () => openChestFlow('normal', true),
+  buyKey: () => {
+    if (!E.buyKey(acc, hero)) { toast(`Il faut ${KEY_PRICE} Flouze.`); return; }
+    SFX.loot(2); save(); render();
+    toast(`Clef achetée pour ton ${CLASSES[hero.classId].name} !`);
+  },
+  bagMode: (d) => { bagMode = d.mode; render(); },
+  bagSet: (d) => { bagSet = d.id; render(); },
+  sell: (d) => {
+    const r = E.sellItems(acc, hero, d.id, +d.r, +d.n || 1);
+    if (!r) return;
+    E.missionEvent(acc, 'sell', r.n);
+    SFX.click(); save(); render();
+    if (E.stackOf(hero, d.id, +d.r).length) openItem(d.id, +d.r); else closeModal();
+    toast(`Vendu : +${r.gain} Flouze`);
+  },
+  sellCommons: () => {
+    const eqUids = new Set(Object.values(hero.equipped));
+    const list = hero.inventory.filter(i => i.rarity === 0 && !eqUids.has(i.uid));
+    if (!list.length) return;
+    if (!confirm(`Vendre ${list.length} objet(s) Commun(s) pour ${list.length * SELL_PRICE[0]} Flouze ?`)) return;
+    const ids = [...new Set(list.map(i => i.itemId))];
+    let gain = 0;
+    for (const id of ids) { const r = E.sellItems(acc, hero, id, 0, 999); if (r) gain += r.gain; }
+    E.missionEvent(acc, 'sell', list.length);
+    SFX.loot(1); save(); render();
+    toast(`Vendu : +${gain} Flouze`);
+  },
+  cast: (d) => {
+    const f = battleFight;
+    if (!f) { toast('Contre un vrai joueur, le mode auto est obligatoire.'); return; }
+    if (!f.manual) { toast('Passe en mode MANUEL pour lancer tes sorts toi-même.'); return; }
+    const b = document.querySelector(`.sb[data-i="${d.i}"]`);
+    if (!b || !b.classList.contains('ready')) return;
+    f.queue(d.id);
+    document.querySelectorAll('.sb.queued').forEach(x => x.classList.remove('queued'));
+    b.classList.add('queued');
+  },
+  toggleManual: () => {
+    const f = battleFight;
+    if (!f) return;
+    f.setManual(!f.manual);
+    setManualPref(f.manual);
+    const btn = document.getElementById('mode-btn');
+    if (btn) { btn.textContent = f.manual ? 'MANUEL' : 'AUTO'; btn.classList.toggle('man', f.manual); }
+    document.querySelectorAll('.sb.queued').forEach(x => x.classList.remove('queued'));
+    toast(f.manual ? 'Mode manuel : touche un sort prêt pour le lancer.' : 'Mode auto : ton héros lance ses sorts tout seul.');
+  },
   item: (d) => openItem(d.id, +d.r),
   equip: (d) => {
     const stack = E.stackOf(hero, d.id, +d.r);
     if (!stack.length) return;
     hero.equipped[ITEMS[d.id].slot] = stack[0].uid;
+    E.missionEvent(acc, 'equip');
     save(); closeModal(); render(); toast(`${ITEMS[d.id].name} équipé !`);
   },
   unequip: (d) => { delete hero.equipped[d.slot]; save(); closeModal(); render(); },
@@ -1807,7 +2103,7 @@ const ACTIONS = {
     const got = E.claimMission(acc, d.id);
     if (!got) return;
     SFX.loot(1); save(); render();
-    toast(`+${got} Pierres Clat !`);
+    toast(`+${got} Flouze !`);
   },
   attackRaid: () => attackRaid(),
   retryRaid: () => { raidError = ''; render(); },
@@ -1816,7 +2112,7 @@ const ACTIONS = {
   shopKind: (d) => { shopKind = d.k; render(); },
   buyCos: (d) => {
     const c = COSMETIC[d.id];
-    if (!E.buyCosmetic(acc, d.id)) { toast('Pas assez de Pierres Clat.'); return; }
+    if (!E.buyCosmetic(acc, d.id)) { toast('Pas assez de Flouze.'); return; }
     E.equipCosmetic(acc, hero, d.id);
     SFX.loot(2); save(); render();
     toast(`${c.name} acheté !`);
@@ -1848,8 +2144,8 @@ const ACTIONS = {
     const c = bets.challenges.find(x => String(x.id) === d.id);
     if (!c) return;
     const amount = Math.floor(+document.getElementById('bet-' + c.id).value || 0);
-    if (amount < 1) { toast('Mise au moins 1 Pierre Clat.'); return; }
-    if (amount > acc.clat) { toast('Pas assez de Pierres Clat.'); return; }
+    if (amount < 1) { toast('Mise au moins 1 Flouze.'); return; }
+    if (amount > acc.clat) { toast('Pas assez de Flouze.'); return; }
     const side = +d.side;
     const odds = duelOdds(c)[side];
     acc.clat -= amount; save();
@@ -1867,16 +2163,16 @@ const ACTIONS = {
     acc.clat += g.total;
     acc.paidWagers = [...acc.paidWagers, ...g.ids].slice(-300);
     save(); render();
-    if (g.total) { SFX.loot(3); toast(`+${g.total} Pierres Clat gagnées aux paris !`); } else toast('Paris perdus… la prochaine sera la bonne !');
+    if (g.total) { SFX.loot(3); toast(`+${g.total} Flouze gagné aux paris !`); } else toast('Paris perdus… la prochaine sera la bonne !');
   },
   replayDuel: (d) => {
     const c = bets.challenges.find(x => String(x.id) === d.id);
     if (!c) return;
     const result = duelResult(c);
     const winName = result.winner === 0 ? c.from_name : c.to_name;
-    runBattle({ me: c.from_snap, foe: c.to_snap, result, theme: 'arena', rewards: null,
+    runBattle({ me: c.from_snap, foe: c.to_snap, result, theme: 'arena', track: false,
       title: `Duel · ${esc(c.from_name)} <span style="color:var(--gold)">VS</span> ${esc(c.to_name)}`,
-      headline: `${winName.toUpperCase()} GAGNE !`, headClass: 'win', rewardsHtml: '' });
+      finish: () => ({ headline: `${winName.toUpperCase()} GAGNE !`, headClass: 'win' }) });
   },
   dungeon: (d) => startDungeon(d.id),
   warAttack: (d) => startWarAttack(d.id),
@@ -1909,7 +2205,7 @@ const ACTIONS = {
     battleCtl.setSpeed(speeds[battleCtl.speedIdx]);
     document.getElementById('speed-btn').textContent = `Vitesse x${speeds[battleCtl.speedIdx]}`;
   },
-  skip: () => battleCtl && battleCtl.skip(),
+  skip: () => { if (battleFight) battleFight.setManual(false); if (battleCtl) battleCtl.skip(); },
   endFight: () => {
     if (battleCtl) battleCtl.destroy();
     battleCtl = null;
@@ -1925,7 +2221,7 @@ const ACTIONS = {
     if (NET.online) return;
     if (d.c === 'chests') hero.chest.stored = CHEST_MAX;
     if (d.c === 'combat') acc.combatChests += 2;
-    if (d.c === 'fights') { acc.fights.done = {}; acc.fights.clat = {}; hero.dungeon.stored = DUNGEON_MAX; acc.war.done = {}; hero.tower.used = 0; acc.raid.used = 0; }
+    if (d.c === 'fights') { acc.fights.done = {}; acc.fights.clat = {}; hero.runs = { half: '', used: {} }; acc.war.done = {}; acc.raid.used = 0; }
     if (d.c === 'clat') acc.clat += 100;
     if (d.c === 'weekEnd' && acc.war.section) {
       const cur = E.warWeek(acc);
@@ -1963,24 +2259,22 @@ document.addEventListener('input', (ev) => { if (ev.target.id === 'chat-input') 
 setInterval(() => {
   if (!acc) return;
   if (!hero) return;
-  const before = hero.chest.stored + hero.dungeon.stored * 10;
+  const before = hero.chest.stored;
   E.refreshChests(hero);
-  E.refreshDungeon(hero);
   const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';
-  if (hero.chest.stored + hero.dungeon.stored * 10 !== before) { save(); if (!busy) render(); return; }
-  if (acc.fights.day !== E.dayKey() && !busy) { render(); return; }
+  if (hero.chest.stored !== before) { save(); if (!busy) render(); return; }
+  if ((acc.fights.day !== E.dayKey() || acc.missions.day !== E.halfKey() || hero.runs.half !== E.halfKey()) && !busy) { render(); return; }
   const t = document.querySelector('[data-timer="chest"]');
   if (t && hero.chest.stored < CHEST_MAX) t.innerHTML = `Prochain coffre dans <b>${fmt(E.nextChestIn(hero))}</b>`;
   const d = document.querySelector('[data-timer="day"]');
   if (d) d.textContent = `Nouveaux combats dans ${fmt(msToMidnight())}`;
-  const d2 = document.querySelector('[data-timer="day2"]');
-  if (d2) d2.textContent = fmt(msToMidnight());
+  const d3 = document.querySelector('[data-timer="day3"]');
+  if (d3) d3.textContent = fmt(msToMidnight());
+  document.querySelectorAll('[data-timer="half"]').forEach(el => { el.textContent = el.textContent.replace(/\d\d:\d\d:\d\d/, fmt(E.msToNextHalf())); });
   document.querySelectorAll('[data-countdown]').forEach(el => { el.textContent = fmt(+el.dataset.countdown - Date.now()); });
   document.querySelectorAll('[data-endlong]').forEach(el => { el.textContent = fmtLong(Math.max(0, +el.dataset.endlong - Date.now())); });
   const wk = document.querySelector('[data-timer="week"]');
   if (wk) wk.textContent = `Fin dans ${fmtLong(E.msToWeekEnd())}`;
-  const dj = document.querySelector('[data-timer="dungeon"]');
-  if (dj && hero.dungeon.stored < DUNGEON_MAX) dj.textContent = `Prochaine entrée dans ${fmt(E.nextDungeonIn(hero))}`;
 }, 1000);
 
 // En ligne : on recharge les autres joueurs de temps en temps, et on sauvegarde avant de quitter
@@ -2013,7 +2307,7 @@ setInterval(checkUpdate, 5 * 60 * 1000);
 
 async function boot() {
   if (NET.online) {
-    app.innerHTML = '<div class="create"><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
+    app.innerHTML = '<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
     try {
       const row = await NET.restore();
       if (row && row.data) {
@@ -2023,7 +2317,7 @@ async function boot() {
         await Promise.all([initChat(), initLive()]);
       }
     } catch (e) {
-      app.innerHTML = `<div class="create"><h1 class="logo">FUZE<span>ARENA</span></h1><p class="auth-msg">${esc(e.message)}</p><button class="btn primary block" onclick="location.reload()">Réessayer</button></div>`;
+      app.innerHTML = `<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="auth-msg">${esc(e.message)}</p><button class="btn primary block" onclick="location.reload()">Réessayer</button></div>`;
       return;
     }
   } else {

@@ -5,10 +5,10 @@
 import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
-  DUNGEON_INTERVAL_MS, DUNGEON_MAX, WAR, FRIENDS,
+  DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018010512';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018010512';
+} from './data.js?v=20261018134333';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018134333';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -89,8 +89,31 @@ export function computeStats(hero) {
     if (!a.bonus) continue;
     for (const k in a.bonus) st[k] *= 1 + a.bonus[k];
   }
+  // Affinité du familier : +5 % dans une stat si le héros est de la bonne classe
+  const aff = petAffinity(eq.pet && eq.pet.itemId, hero.classId);
+  if (aff) st[aff.stat] *= 1 + PET_AFFINITY;
   for (const k of STAT_KEYS) st[k] = Math.round(st[k]);
   return st;
+}
+
+/** Affinité d'un familier avec une classe : { cls, stat, on } (on = vrai si la classe correspond) */
+export function petAffinity(itemId, classId) {
+  const p = itemId && PETS[itemId];
+  if (!p) return null;
+  return p.aff[0] === classId ? { cls: p.aff[0], stat: p.aff[1] } : null;
+}
+
+/** Attaque du familier dans un combat (plus forte selon sa rareté) */
+export function petSpell(pet) {
+  const p = pet && PETS[pet.itemId];
+  if (!p) return null;
+  const a = p.atk;
+  const boost = 1 + 0.2 * (pet.rarity || 0);
+  return {
+    id: null, name: a.name, fx: a.fx || (a.kind === 'self' ? 'heal' : 'claw'), petKind: a.kind || 'shot',
+    scale: a.scale, mult: a.mult ? a.mult * boost : 0, hits: a.hits, crit: a.crit, lifesteal: a.lifesteal,
+    effects: (a.effects || []).map(e => (e.k === 'heal' ? { ...e, pctMax: e.pctMax * boost } : e)),
+  };
 }
 
 /** Panoplies portées : [{ setId, count, bonus }] (bonus = null si moins de 3 pièces) */
@@ -121,6 +144,7 @@ export function snapshot(hero) {
   const stats = computeStats(hero);
   const eq = equippedItems(hero);
   return {
+    v: 2,                     // version des règles (2 = familiers qui attaquent)
     name: hero.name,
     classId: hero.classId,
     level: hero.level,
@@ -140,18 +164,22 @@ const MAX_ACTIONS = 160;
 function isSelfOnly(sp) { return !sp.mult; }
 
 /**
- * Simule un combat complet. Renvoie { log, winner }.
- * Le log est rejoué ensuite par l'écran de combat avec les animations.
+ * Combat « en direct » : fight.next() donne l'étape suivante (ou null à la fin).
+ * En mode manuel, le joueur (côté 0) ne lance ses sorts que quand on les demande avec fight.queue(id) ;
+ * sinon il fait son attaque de base. En automatique, c'est exactement le même calcul que simulate().
  */
-export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true } = {}) {
+export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true, manual = false } = {}) {
   const rng = makeRng(seed);
   const F = [A, B].map((s, i) => ({
     i, s, hp: s.hp ?? s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
-    cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0,
+    cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0, petN: 0,
+    pet: (s.v || 0) >= 2 ? petSpell(s.pet) : null,
   }));
   const log = [];
+  const out = [];
   let actions = 0;
   let rage = 1;
+  let manualMode = manual, queued = null, usedManual = false, ended = false;
 
   const stat = (f, k) => {
     let pct = 0;
@@ -169,8 +197,9 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
       ...f.dots.map(d => ({ n: d.name, k: d.kind })),
       ...(f.stun > 0 ? [{ n: 'Étourdi', k: 'stun' }] : []),
     ],
+    cd: f.s.spells.map(id => f.cds[id] || 0),
   }));
-  const push = (e) => { e.s = summary(); log.push(e); };
+  const push = (e) => { e.s = summary(); log.push(e); out.push(e); };
 
   const worth = (sp, f, foe) => {
     if (!isSelfOnly(sp)) return true;
@@ -182,6 +211,12 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
   };
 
   const choose = (f, foe) => {
+    if (manualMode && f.i === 0) {
+      const sp = queued && SPELLS[queued];
+      queued = null;
+      if (sp && f.s.spells.includes(sp.id) && !((f.cds[sp.id] || 0) > 0)) { usedManual = true; return sp; }
+      return { ...(f.s.basic || CLASSES[f.s.classId].basic), id: null };
+    }
     for (const id of f.s.spells) {
       const sp = SPELLS[id];
       if (!sp || (f.cds[id] || 0) > 0) continue;
@@ -190,8 +225,9 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
     return { ...(f.s.basic || CLASSES[f.s.classId].basic), id: null };
   };
 
-  const perform = (f, foe, sp) => {
+  const perform = (f, foe, sp, pet = false) => {
     const act = { type: 'action', actor: f.i, id: sp.id, name: sp.name, fx: sp.fx, melee: !!sp.melee, selfOnly: isSelfOnly(sp), hits: sp.mult ? (sp.hits || 1) : 0, results: [] };
+    if (pet) { act.pet = sp.petKind; act.id = null; }
     const R = act.results;
     let landed = false;
 
@@ -260,7 +296,8 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
   };
 
   let winner = null;
-  while (winner === null) {
+  // Un tour : le plus rapide joue. Renvoie quand le tour est fini (winner est réglé si le combat s'arrête).
+  function step() {
     // Jauge de vitesse : le plus rapide joue plus souvent
     let actor = null;
     while (!actor) {
@@ -287,7 +324,7 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
       if (actor.hp <= 0) break;
     }
     actor.dots = actor.dots.filter(d => d.turns > 0);
-    if (actor.hp <= 0) { winner = foe.i; break; }
+    if (actor.hp <= 0) { winner = foe.i; return; }
 
     if (actor.stun > 0) {
       actor.stun = 0;
@@ -295,7 +332,12 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
       push({ type: 'stunned', target: actor.i });
     } else {
       perform(actor, foe, choose(actor, foe));
-      if (foe.hp <= 0) { winner = actor.i; break; }
+      if (foe.hp <= 0) { winner = actor.i; return; }
+      // Le familier attaque toutes les PET_EVERY actions de son maître
+      if (actor.pet && ++actor.petN % PET_EVERY === 0) {
+        perform(actor, foe, actor.pet, true);
+        if (foe.hp <= 0) { winner = actor.i; return; }
+      }
     }
 
     // Fin du tour : effets temporaires
@@ -308,9 +350,31 @@ export function simulate(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner =
       winner = !timeoutWinner ? -1 : F[0].hp / F[0].max >= F[1].hp / F[1].max ? 0 : 1;
     }
   }
-  push({ type: 'end', winner });
-  return { log, winner };
+  function advance() {
+    step();
+    if (winner !== null) { push({ type: 'end', winner }); ended = true; }
+  }
+
+  return {
+    next() { while (!out.length && !ended) advance(); return out.shift() || null; },
+    /** Mode manuel : le sort sera lancé à la prochaine action du héros (s'il est prêt) */
+    queue(id) { queued = id; },
+    get queued() { return queued; },
+    setManual(v) { manualMode = v; if (!v) queued = null; },
+    get manual() { return manualMode; },
+    /** Termine le combat (si besoin) et renvoie { log, winner, usedManual } */
+    result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual }; },
+  };
 }
+
+/**
+ * Simule un combat complet. Renvoie { log, winner }.
+ * Le log est rejoué ensuite par l'écran de combat avec les animations.
+ */
+export function simulate(A, B, seed, opts = {}) {
+  return createFight(A, B, seed, opts).result();
+}
+
 
 const STAT_SHORT = { vit: 'VIT', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT+', lck: 'CHA' };
 
@@ -330,8 +394,15 @@ function nextIn(c, interval, max, now = Date.now()) {
 }
 export const refreshChests = (hero, now) => refreshStock(hero.chest, CHEST_INTERVAL_MS, CHEST_MAX, now);
 export const nextChestIn = (hero, now) => nextIn(hero.chest, CHEST_INTERVAL_MS, CHEST_MAX, now);
-export const refreshDungeon = (hero, now) => refreshStock(hero.dungeon, DUNGEON_INTERVAL_MS, DUNGEON_MAX, now);
-export const nextDungeonIn = (hero, now) => nextIn(hero.dungeon, DUNGEON_INTERVAL_MS, DUNGEON_MAX, now);
+
+// ------------------------------ Demi-journées --------------------------
+// Beaucoup de compteurs repartent à zéro à minuit et à midi.
+export const halfKey = (d = new Date()) => dayKey(d) + (d.getHours() < 12 ? 'm' : 's');
+export function msToNextHalf(d = new Date()) {
+  const n = new Date(d);
+  if (d.getHours() < 12) n.setHours(12, 0, 0, 0); else n.setHours(24, 0, 0, 0);
+  return n - d;
+}
 
 export function rollItem(rng, kind) {
   const odds = Array.isArray(kind) ? kind : CHEST_ODDS[kind];
@@ -352,11 +423,16 @@ export function addItem(hero, itemId, rarity) {
  * et de guerre sont gagnés par le compte. Les objets vont toujours au perso actif.
  */
 export function openChest(acc, hero, kind, rng = Math.random) {
+  let key = false;
   if (kind === 'normal') {
     refreshChests(hero);
-    if (hero.chest.stored <= 0) return null;
-    if (hero.chest.stored >= CHEST_MAX) hero.chest.last = Date.now();
-    hero.chest.stored--;
+    if (hero.chest.stored > 0) {
+      if (hero.chest.stored >= CHEST_MAX) hero.chest.last = Date.now();
+      hero.chest.stored--;
+    } else if (hero.keys > 0) {
+      hero.keys--;          // plus de coffre en stock : on utilise une clef
+      key = true;
+    } else return null;
   } else if (kind === 'war') {
     if (acc.warChests <= 0) return null;
     acc.warChests--;
@@ -372,7 +448,50 @@ export function openChest(acc, hero, kind, rng = Math.random) {
   }
   const xp = kind === 'war' ? 120 : kind === 'combat' ? 60 : 20;
   const lv = gainXp(hero, xp);
-  return { items, xp, ...lv };
+  return { items, xp, key, ...lv };
+}
+
+/** Coffres normaux qu'on peut ouvrir tout de suite : le stock + les clefs */
+export const openableChests = (hero) => hero.chest.stored + (hero.keys || 0);
+
+/** Ouvre tous les coffres normaux d'un coup (stock + clefs) */
+export function openAllChests(acc, hero, rng = Math.random) {
+  const out = { items: [], xp: 0, levels: 0, newSpells: [], keys: 0, count: 0 };
+  let r;
+  while ((r = openChest(acc, hero, 'normal', rng))) {
+    out.items.push(...r.items);
+    out.xp += r.xp; out.levels += r.levels; out.newSpells.push(...r.newSpells);
+    if (r.key) out.keys++;
+    out.count++;
+  }
+  return out.count ? out : null;
+}
+
+/** Achète une clef (pour le perso actif) */
+export function buyKey(acc, hero) {
+  if (acc.clat < KEY_PRICE) return false;
+  acc.clat -= KEY_PRICE;
+  hero.keys = (hero.keys || 0) + 1;
+  return true;
+}
+
+/** Vend des objets (jamais celui qui est équipé). Renvoie le Flouze gagné. */
+export function sellItems(acc, hero, itemId, rarity, count = 1) {
+  const eqUids = new Set(Object.values(hero.equipped));
+  const spare = hero.inventory.filter(i => i.itemId === itemId && i.rarity === rarity && !eqUids.has(i.uid)).slice(0, count);
+  if (!spare.length) return 0;
+  hero.inventory = hero.inventory.filter(i => !spare.includes(i));
+  const gain = spare.length * SELL_PRICE[rarity];
+  acc.clat += gain;
+  return { gain, n: spare.length };
+}
+
+/** Replacer ses points : payant */
+export function resetStats(acc, hero) {
+  if (acc.clat < STAT_RESET_COST) return false;
+  acc.clat -= STAT_RESET_COST;
+  hero.alloc = {};
+  return true;
 }
 
 // ------------------------------- Fusion --------------------------------
@@ -462,8 +581,9 @@ export function newHero(name, classId, id = 'h1') {
     stats: { wins: 0, losses: 0, dungeons: 0 },
     dungeonClears: {},
     chest: { stored: 2, last: Date.now() },
-    dungeon: { stored: DUNGEON_MAX, last: Date.now() },
-    tower: { best: 0, day: '', used: 0 },
+    runs: { half: '', used: {} },   // combats de donjon faits sur la demi-journée
+    keys: 0,                        // clefs : 1 clef = 1 coffre (propres à ce perso)
+    tower: { best: 0 },
     dye: null,
   };
 }
@@ -486,6 +606,8 @@ export function newAccount(pseudo, classId) {
     missions: { day: '', progress: {}, claimed: {}, bonus: false },
     raid: { day: '', used: 0, claimed: {}, local: {} },
     paidWagers: [],
+    trainRecord: { dmg: 0, classId: classId },
+    resetId: RESET_ID,
   };
 }
 
@@ -535,13 +657,15 @@ export function migrate(save) {
   // Coffres et donjons passés du compte aux personnages : le 1er perso garde le stock du compte
   acc.heroes.forEach((h, i) => {
     if (!h.chest) h.chest = (i === 0 && acc.chest) ? acc.chest : { stored: 2, last: Date.now() };
-    if (!h.dungeon) h.dungeon = (i === 0 && acc.dungeon) ? acc.dungeon : { stored: DUNGEON_MAX, last: Date.now() };
   });
   delete acc.chest;
   delete acc.dungeon;
   acc.heroes.forEach(h => {
-    if (!h.tower) h.tower = { best: 0, day: '', used: 0 };
+    if (!h.tower) h.tower = { best: 0 };
     if (h.dye === undefined) h.dye = null;
+    if (!h.runs) h.runs = { half: '', used: {} };
+    if (h.keys === undefined) h.keys = 0;
+    delete h.dungeon;
   });
   if (!acc.cosmetics) acc.cosmetics = { owned: [], title: null, color: null, victory: null };
   if (!acc.missions) acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
@@ -550,6 +674,22 @@ export function migrate(save) {
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
   if (acc.clat === undefined) acc.clat = 0;
+  if (!acc.trainRecord) acc.trainRecord = { dmg: 0, classId: acc.heroes[0].classId };
+  // Guerre : la semaine qui a commencé le lundi 12/10 continue dans la guerre qui a démarré le 17/10
+  if (acc.war.weeks[LEGACY_WEEK[1]] && !acc.war.weeks[LEGACY_WEEK[0]]) {
+    acc.war.weeks[LEGACY_WEEK[0]] = acc.war.weeks[LEGACY_WEEK[1]];
+    delete acc.war.weeks[LEGACY_WEEK[1]];
+  }
+  if (acc.war.lastWeek === LEGACY_WEEK[1]) acc.war.lastWeek = LEGACY_WEEK[0];
+  // Remise à zéro générale de tous les compteurs (une seule fois par RESET_ID)
+  if (acc.resetId !== RESET_ID) {
+    acc.resetId = RESET_ID;
+    acc.fights = { day: '', done: {}, lvl: acc.fights.lvl || 1 };
+    acc.war.done = {}; acc.war.day = '';
+    acc.raid.day = ''; acc.raid.used = 0;
+    acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
+    acc.heroes.forEach(h => { h.chest = { stored: CHEST_MAX, last: Date.now() }; h.runs = { half: '', used: {} }; });
+  }
   return acc;
 }
 
@@ -566,7 +706,7 @@ export function fightRewards(acc, hero, foeLevel, won) {
   return { xp, chest, ...lv };
 }
 
-/** Combat amical (revanche, vengeance) : ni XP ni points. 1 Pierre Clat par adversaire et par jour si on gagne. */
+/** Combat amical (revanche, vengeance) : ni XP ni points. 1 Flouze par adversaire et par jour si on gagne. */
 export function friendlyRewards(acc, won, foeId) {
   if (!acc.fights.clat) acc.fights.clat = {};
   const give = won && !acc.fights.clat[foeId];
@@ -606,37 +746,52 @@ export function buildMonster(d) {
   };
 }
 
-/** Consomme une entrée de donjon. Renvoie false s'il n'y en a plus. */
-export function useDungeonCharge(hero) {
-  refreshDungeon(hero);
-  if (hero.dungeon.stored <= 0) return false;
-  if (hero.dungeon.stored >= DUNGEON_MAX) hero.dungeon.last = Date.now();
-  hero.dungeon.stored--;
+/** Combats de donjon de la demi-journée (remis à zéro à minuit et à midi) */
+export function dungeonRuns(hero) {
+  const k = halfKey();
+  if (hero.runs.half !== k) hero.runs = { half: k, used: {} };
+  return hero.runs;
+}
+export const runsLeft = (hero, d) => Math.max(0, DUNGEON_RUNS - (dungeonRuns(hero).used[d.id] || 0));
+/** Combats encore possibles dans tous les donjons débloqués */
+export const totalRunsLeft = (hero) => DUNGEONS.filter(d => hero.level >= d.lvl).reduce((t, d) => t + runsLeft(hero, d), 0);
+
+/** Consomme un combat dans ce donjon. Renvoie false s'il n'y en a plus. */
+export function useDungeonRun(hero, d) {
+  if (runsLeft(hero, d) <= 0) return false;
+  const r = dungeonRuns(hero);
+  r.used[d.id] = (r.used[d.id] || 0) + 1;
   return true;
 }
 
-/** Récompenses de donjon : XP selon le niveau du donjon + 1 objet si victoire */
-export function dungeonRewards(hero, d, won, rng = Math.random) {
+/** Récompenses de donjon : XP selon le niveau du donjon + 1 clef si victoire */
+export function dungeonRewards(hero, d, won) {
   const xp = won ? dungeonXp(d) : Math.round(dungeonXp(d) * 0.4);
   const lv = gainXp(hero, xp);
-  let item = null;
   if (won) {
-    const r = rollItem(rng, dungeonOdds(d));
-    item = addItem(hero, r.itemId, r.rarity);
+    hero.keys = (hero.keys || 0) + 1;
     hero.stats.dungeons++;
     hero.dungeonClears[d.id] = (hero.dungeonClears[d.id] || 0) + 1;
   }
-  return { xp, item, ...lv };
+  return { xp, key: won, ...lv };
 }
 
 // ------------------------------ Guerre des sections --------------------
 const otherSide = (sec) => (sec === 'rouge' ? 'bleue' : 'rouge');
 export { otherSide };
 
-function mondayOf(d) { const m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; }
-export const weekKey = (d = new Date()) => dayKey(mondayOf(d));
-export function msToWeekEnd(d = new Date()) { const m = mondayOf(d); m.setDate(m.getDate() + 7); return m - d; }
-const daysElapsedInWeek = (d = new Date()) => ((d.getDay() + 6) % 7) + 1;
+/** Début de la guerre en cours : les guerres durent 7 jours, à partir de WAR.start */
+function warStartOf(d) {
+  const s = new Date(WAR.start[0], WAR.start[1], WAR.start[2]);
+  if (d < s) { while (d < s) s.setDate(s.getDate() - 7); return s; }
+  for (;;) { const n = new Date(s); n.setDate(n.getDate() + 7); if (n > d) return s; s.setDate(s.getDate() + 7); }
+}
+export const weekKey = (d = new Date()) => dayKey(warStartOf(d));
+export function msToWeekEnd(d = new Date()) { const m = warStartOf(d); m.setDate(m.getDate() + 7); return m - d; }
+const daysElapsedInWeek = (d = new Date()) => Math.min(7, Math.round((new Date(d).setHours(12) - warStartOf(d).setHours(12)) / 86400000) + 1);
+// La 1re guerre a démarré le 17/10 alors que les points étaient rangés sous la semaine du lundi 12/10
+const LEGACY_WEEK = ['2026-10-17', '2026-10-12'];
+const weekStats = (w, week) => (w.weeks && (w.weeks[week] || (week === LEGACY_WEEK[0] && w.weeks[LEGACY_WEEK[1]]))) || null;
 
 /** Points gagnés en battant un ennemi : plus il est fort, plus ça rapporte */
 export function warPoints(myPower, foePower) {
@@ -691,7 +846,7 @@ function botWarWeek(acc, week, days) {
     let pts = 0;
     for (let day = 0; day < days; day++) {
       const rng = makeRng(hashStr(`war${week}${f.id}${day}`));
-      const n = rng() < 0.15 ? 0 : WAR.attacksPerDay;        // certains jours, un pote ne joue pas
+      const n = rng() < 0.15 ? 0 : 1 + Math.floor(rng() * WAR.maxPerSection);   // certains jours, un pote ne joue pas
       for (let a = 0; a < n; a++) {
         if (rng() < 0.55) { const p = 1 + Math.floor(rng() * 3); pts += p; score[side] += p; }
         else score[otherSide(side)] += 1;                     // défense réussie pour l'autre camp
@@ -713,7 +868,7 @@ export function warStandings(acc, week = weekKey(), others = null) {
     for (const p of others) {
       const w = p.data.war;
       if (!w || !w.section) continue;
-      const st = (w.weeks && w.weeks[week]) || { points: 0, enemyBonus: 0 };
+      const st = weekStats(w, week) || { points: 0, enemyBonus: 0 };
       res.score[w.section] += st.points;
       res.score[otherSide(w.section)] += st.enemyBonus;
       const h = strongestHero(p.data);
@@ -807,17 +962,11 @@ export function towerMonster(floor) {
   return { snap: m, theme: d.theme, dungeon: d };
 }
 
-export function towerState(hero) {
-  const t = hero.tower;
-  const today = dayKey();
-  if (t.day !== today) { t.day = today; t.used = 0; }
-  return t;
-}
+export const towerState = (hero) => hero.tower;
 
-/** Résultat d'une tentative : si victoire, on monte d'un étage et on gagne des Pierres Clat */
+/** Résultat d'une tentative (illimitées) : si victoire, on monte d'un étage et on gagne du Flouze ; sinon on reste bloqué */
 export function towerResult(acc, hero, won) {
   const t = towerState(hero);
-  t.used++;
   let clat = 0;
   if (won) {
     t.best++;
@@ -852,7 +1001,7 @@ export function raidExpectedDamage(lvl) {
 /** PV du boss pour la semaine, selon les niveaux de tout le groupe */
 export function raidHp(levels) {
   const total = levels.reduce((t, l) => t + raidExpectedDamage(l), 0);
-  return Math.max(RAID.minHp, Math.round(total * RAID.attemptsPerDay * 7 * RAID.participation));
+  return Math.max(RAID.minHp, Math.round(total * RAID.attemptsPerHalf * 2 * 7 * RAID.participation));
 }
 
 /** Dégâts infligés pendant un assaut (d'après le journal du combat) */
@@ -862,10 +1011,11 @@ export function damageDealt(result, startHp) {
   return Math.max(0, startHp - endHp);
 }
 
+/** Assauts de la demi-journée (3 par compte, remis à zéro à minuit et à midi) */
 export function raidState(acc) {
   const r = acc.raid;
-  const today = dayKey();
-  if (r.day !== today) { r.day = today; r.used = 0; }
+  const k = halfKey();
+  if (r.day !== k) { r.day = k; r.used = 0; }
   return r;
 }
 
@@ -882,36 +1032,48 @@ export function raidReward(acc, week, killed, isMvp, participated) {
   return rw;
 }
 
-// ------------------------------ Missions du jour -----------------------
-/** Les 3 missions du jour (les mêmes pour tout le monde) */
-export function missionsFor(day) {
-  const rng = makeRng(hashStr('missions' + day));
+// ------------------------------ Missions ------------------------------
+/** Les 3 missions de la demi-journée (les mêmes pour tout le monde, tirées au hasard) */
+export function missionsFor(key) {
+  const rng = makeRng(hashStr('missions' + key));
   const pool = MISSION_POOL.slice();
   const out = [];
   while (out.length < MISSIONS_PER_DAY && pool.length) {
     const m = pool.splice(Math.floor(rng() * pool.length), 1)[0];
-    const n = m.n[0] + Math.floor(rng() * (m.n[1] - m.n[0] + 1));
-    out.push({ id: m.id, n, reward: m.reward, text: m.text.replace('{n}', n) });
+    if (out.some(x => x.ev === m.ev)) continue;
+    let n = m.n[0] + Math.floor(rng() * (m.n[1] - m.n[0] + 1));
+    if (m.n[1] >= 100) n = Math.round(n / 50) * 50;
+    out.push({ id: m.id, ev: m.ev, n, reward: m.reward, text: m.text.replace('{n}', n.toLocaleString('fr-FR')) });
   }
   return out;
 }
 
 export function ensureMissions(acc) {
-  const today = dayKey();
-  if (acc.missions.day !== today) acc.missions = { day: today, progress: {}, claimed: {}, bonus: false };
-  return missionsFor(today);
+  const k = halfKey();
+  if (acc.missions.day !== k) acc.missions = { day: k, progress: {}, claimed: {}, bonus: false, seen: {} };
+  return missionsFor(k);
 }
 
-/** Note une action pour les missions (ex : missionEvent(acc, 'chest')) */
-export function missionEvent(acc, type, n = 1) {
+/** Note une action pour les missions (ex : missionEvent(acc, 'chest')). tag = pour compter des choses différentes. */
+export function missionEvent(acc, type, n = 1, tag = null) {
+  if (!(n > 0)) return;
   ensureMissions(acc);
-  acc.missions.progress[type] = (acc.missions.progress[type] || 0) + n;
+  const M = acc.missions;
+  if (tag !== null) {
+    M.seen ||= {};
+    const k = type + ':' + tag;
+    if (M.seen[k]) return;
+    M.seen[k] = true;
+  }
+  M.progress[type] = (M.progress[type] || 0) + n;
 }
+
+export const missionProgress = (acc, m) => Math.min(m.n, acc.missions.progress[m.ev] || 0);
 
 export function claimMission(acc, id) {
   const list = ensureMissions(acc);
   const m = list.find(x => x.id === id);
-  if (!m || acc.missions.claimed[id] || (acc.missions.progress[id] || 0) < m.n) return 0;
+  if (!m || acc.missions.claimed[id] || missionProgress(acc, m) < m.n) return 0;
   acc.missions.claimed[id] = true;
   acc.clat += m.reward;
   let bonus = 0;

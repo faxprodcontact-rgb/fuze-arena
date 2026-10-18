@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018010512';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018010512';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018010512';
+import { CLASSES } from './data.js?v=20261018134333';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, HAND, HERO_W, HERO_H } from './sprites.js?v=20261018134333';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018134333';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -143,7 +143,7 @@ const NO_SFX = new Proxy({}, { get: () => () => {} });
  * Joue un combat dans le canvas.
  * training = entraînement silencieux (pas de musique ni de bruitages) ; onEntry = appelé à chaque étape.
  */
-export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null } = {}) {
+export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null, onBegin = null, spellBar = false } = {}) {
   // Taille « logique » de la scène, recalculée selon l'écran (propre à chaque combat).
   // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
   let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
@@ -193,7 +193,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     return {
       i, snap, weapon, idle, dir: i === 0 ? 1 : -1, baseX: 0,
       offX: 0, offY: 0, rot: 0, flash: 0, alpha: 1, squash: 0,
-      wAng: idle, wOff: 0, run: false, spin: 0, phase: i * 1.7,
+      wAng: idle, wOff: 0, run: false, spin: 0, phase: i * 1.7, petDX: 0, petDY: 0,
       hp: snap.hp ?? snap.maxHp, max: snap.maxHp, hpShown: snap.hp ?? snap.maxHp, hpLag: snap.hp ?? snap.maxHp, shield: 0, shieldShown: 0,
       tags: [], dead: false, stars: 0, petHop: 0, glow: 0, glowColor: '#fff',
       // les boss sont dessinés plus gros (4 px au lieu de 3)
@@ -218,6 +218,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   // ---------- positions ----------
   const fx = (f) => f.baseX + f.offX * f.dir;
   const center = (f) => ({ x: fx(f), y: GROUND - f.sh * S * 0.55 + f.offY });
+  // familier : flotte derrière son maître
+  const petBox = (f) => {
+    const pw = f.pet.width * 2, ph = f.pet.height * 2;
+    const x = fx(f) - (PORTRAIT ? 34 : 52) * f.dir - pw / 2 + f.petDX;
+    const y = GROUND - 64 + Math.sin(time * 4 + f.phase) * 4 - f.petHop * 10 + f.petDY;
+    return { x, y, pw, ph, cx: x + pw / 2, cy: y + ph / 2 };
+  };
   const handPos = (f) => f.weapon ? {
     x: fx(f) + (-HERO_W * S / 2 + HAND.x * S) * f.dir,
     y: GROUND + f.offY - HERO_H * S + HAND.y * S,
@@ -305,7 +312,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     const T = {
       fireball: ['#ff9f43', '#ffd84a', '#ff5e3a'], bolt: ['#c38bff', '#ffffff'], ice: ['#bff3ff', '#ffffff'],
       drain: ['#8a3bd1', '#c38bff'], poisonArrow: ['#7bed6f', '#3fbf3f'], meteor: ['#ff9f43', '#ffd84a', '#ff3a1a', '#666'],
-      spore: ['#7bed6f', '#b8ffb0', '#9b59b6'], rock: ['#8d8a84', '#5f5c57'],
+      spore: ['#7bed6f', '#b8ffb0', '#9b59b6'], rock: ['#8d8a84', '#5f5c57'], spit: ['#7bed6f', '#2f9e3f'],
     }[p.type];
     if (!T || Math.random() > 0.8) return;
     effects.push({ kind: 'p', x: p.x + (Math.random() * 6 - 3), y: p.y + (Math.random() * 6 - 3), vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, g: -20, life: 350, max: 350, color: T[Math.floor(Math.random() * T.length)], size: p.type === 'meteor' ? 5 : 3 });
@@ -443,13 +450,50 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     await tween(f, { offY: 0, wAng: f.idle }, 200);
   }
 
+  // Attaque du familier : il bondit sur l'ennemi, crache un projectile ou soigne son maître
+  async function doPet(f, T, e) {
+    if (!f.pet) { e.results.forEach(apply); return; }
+    const b = petBox(f);
+    float(e.name, b.cx, b.y - 8, '#9fe8ff', 7, { vy: -12, life: 1000 });
+    if (e.pet === 'pounce') {
+      const to = center(T);
+      const dx = to.x - b.cx - 18 * f.dir, dy = to.y - b.cy;
+      sfx.swing();
+      await tween(f, { petDX: dx * 0.5, petDY: dy * 0.5 - 30 }, 170, 'outQuad');
+      await tween(f, { petDX: dx, petDY: dy }, 130, 'inQuad');
+      for (let s = 0; s < Math.max(1, e.hits); s++) {
+        const c = center(T);
+        effects.push({ kind: 'claw', x: c.x - 4 * f.dir, y: c.y, life: 220, max: 220 });
+        byStep(e.results, s).forEach(apply);
+        await wait(e.hits > 1 ? 150 : 120);
+      }
+      await tween(f, { petDX: 0, petDY: 0 }, 320, 'inOutQuad');
+    } else if (e.pet === 'self') {
+      await tween(f, { petDY: -18 }, 150);
+      for (let j = 0; j < 8; j++) effects.push({ kind: 'plus', x: b.cx + (Math.random() * 30 - 15), y: b.cy, vy: -40 - Math.random() * 30, life: 700, max: 700 });
+      e.results.forEach(apply);
+      await tween(f, { petDY: 0 }, 200);
+    } else {
+      await tween(f, { petDY: -10 }, 120);
+      for (let s = 0; s < Math.max(1, e.hits); s++) {
+        ({ bark: sfx.roar, spit: sfx.dot }[e.fx] || sfx.magic)();
+        await projectile(e.fx, { x: b.cx, y: b.cy }, center(T), 300);
+        byStep(e.results, s).forEach(apply);
+      }
+      await tween(f, { petDY: 0 }, 160);
+    }
+  }
+
   function sync(s) {
     if (!s) return;
     s.forEach((st, i) => { F[i].hp = st.hp; F[i].shield = st.shield; F[i].tags = st.tags; if (!st.tags.some(t => t.k === 'stun')) F[i].stars = Math.min(F[i].stars, 0.999); });
   }
 
   async function playEntry(e) {
-    if (e.type === 'action') {
+    if (e.type === 'action' && e.pet) {
+      await doPet(F[e.actor], F[1 - e.actor], e);
+      await wait(120);
+    } else if (e.type === 'action') {
       const f = F[e.actor], T = F[1 - e.actor];
       if (e.id) { const c = center(f); float(e.name, c.x, GROUND - f.sh * S - 20, '#ffe08a', 7, { vy: -10, life: 1100 }); }
       f.petHop = 1; tween(f, { petHop: 0 }, 400, 'linear');
@@ -547,9 +591,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     ctx.globalAlpha = f.alpha;
     // familier
     if (f.pet) {
-      const pw = f.pet.width * 2, ph = f.pet.height * 2;
-      const px = x - 52 * f.dir - pw / 2;
-      const py = GROUND - 64 + Math.sin(time * 4 + f.phase) * 4 - f.petHop * 10;
+      const { x: px, y: py, pw, ph } = petBox(f);
       ctx.save();
       ctx.translate(px + pw / 2, 0); ctx.scale(f.dir, 1); ctx.translate(-(px + pw / 2), 0);
       ctx.drawImage(f.pet, px, py, pw, ph);
@@ -693,6 +735,10 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
         ctx.fillRect(e.x + j * 6 - 2, e.y + 6 - close * 8, 4, 8);
       }
       ctx.fillStyle = '#5c6670'; ctx.fillRect(e.x - 22, e.y - 2, 44, 4);
+    } else if (e.kind === 'claw') {
+      ctx.globalAlpha = 1 - p;
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+      for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.moveTo(e.x - 12 + j * 8, e.y - 14 + p * 6); ctx.lineTo(e.x + 4 + j * 8, e.y + 12 + p * 6); ctx.stroke(); }
     } else if (e.kind === 'flashScreen') {
       ctx.globalAlpha = (1 - p) * 0.5;
       ctx.fillStyle = e.color; ctx.fillRect(0, 0, W, H);
@@ -729,6 +775,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       ctx.fillStyle = '#5f5c57'; ctx.fillRect(-9, -8, 18, 16);
       ctx.fillStyle = '#8d8a84'; ctx.fillRect(-7, -8, 14, 12);
       ctx.fillStyle = '#b3b0a8'; ctx.fillRect(-5, -6, 5, 4);
+    } else if (e.type === 'spit') {
+      ctx.fillStyle = '#2f9e3f'; ctx.fillRect(-6, -5, 12, 10);
+      ctx.fillStyle = '#7bed6f'; ctx.fillRect(-4, -3, 7, 6);
+    } else if (e.type === 'bark') {
+      ctx.rotate(e.angle);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      for (let j = 0; j < 3; j++) { ctx.beginPath(); ctx.arc(-j * 7, 0, 6 + j * 3, -0.9, 0.9); ctx.stroke(); }
     } else if (e.type === 'drain') {
       ctx.fillStyle = '#3d1366'; ctx.fillRect(-8, -8, 16, 16);
       ctx.fillStyle = '#8a3bd1'; ctx.fillRect(-5, -5, 10, 10);
@@ -751,16 +804,11 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
 
   function drawHud() {
     F.forEach((f, i) => {
-      if (training && i === 1) {
-        ctx.font = `8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-        ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
-        ctx.strokeText(f.snap.name, W - 12, 14); ctx.fillStyle = '#f1d27a'; ctx.fillText(f.snap.name, W - 12, 14);
-        return;
-      }
+      if (training && i === 1) return;
       const left = PORTRAIT || i === 0;
       const bw = PORTRAIT ? W - 24 : 190, bh = PORTRAIT ? 14 : 12;
       const x = PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
-      const y = PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : H - SAFE_BOT - 112) : 18;
+      const y = PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : H - SAFE_BOT - (spellBar ? 150 : 112)) : 18;
       ctx.font = `${PORTRAIT ? 9 : 8}px ${FONT}`; ctx.textBaseline = 'alphabetic';
       ctx.textAlign = left ? 'left' : 'right';
       ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
@@ -859,8 +907,11 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
     if (!training) startMusic();
     await wait(training ? 200 : 600);
-    for (const e of result.log) {
+    let idx = 0;
+    const nextEntry = result.log ? () => result.log[idx++] || null : () => result.next();
+    for (let e = nextEntry(); e; e = nextEntry()) {
       if (!alive) return;
+      if (onBegin) onBegin(e);
       await playEntry(e);
       if (onEntry && alive) onEntry(e);
     }
@@ -924,4 +975,221 @@ export function playTraining(canvas, mkFight, { onEntry = null, speed = 1.3 } = 
   };
   next();
   return () => { stopped = true; if (ctl) ctl.destroy(); };
+}
+
+/**
+ * Guerre des sections : 4 héros bleus contre 4 héros rouges qui se battent en boucle (pour le décor).
+ * blue / red = [{ name, classId, dye }]. Renvoie une fonction pour tout arrêter.
+ */
+export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'] } = {}) {
+  const ctx = canvas.getContext('2d');
+  const W = 360;
+  let H = 202, GROUND = 176, k = 1, alive = true, last = performance.now(), time = 0, shake = 0;
+  const SC = 2.9;
+  const tweens = [], effects = [], texts = [];
+  const score = [0, 0];
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.width = Math.max(1, Math.round(r.width * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+    k = canvas.width / W;
+    H = Math.round(W * (r.height / Math.max(1, r.width)));
+    GROUND = H - 16;
+  }
+  resize();
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+
+  const tween = (obj, to, dur, ease = 'outQuad') => new Promise(res => {
+    const from = {};
+    for (const key in to) from[key] = obj[key];
+    tweens.push({ obj, from, to, dur, t: 0, ease: EASE[ease], res });
+  });
+  const wait = (ms) => tween({ v: 0 }, { v: 1 }, ms, 'linear');
+  const float = (text, x, y, color, size = 9) => texts.push({ text, x, y, vy: -36, life: 900, max: 900, color, size });
+  const burst = (x, y, n, cols) => {
+    for (let j = 0; j < n; j++) {
+      const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 90;
+      effects.push({ kind: 'p', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: 500, max: 500, color: cols[j % cols.length] });
+    }
+  };
+
+  // Emplacements : 2 au premier rang, 2 derrière
+  const SLOTS = [[0.43, 0], [0.25, 2], [0.345, -22], [0.15, -20]];
+  const mk = (m, side, j) => {
+    const weapon = CLASSES[m.classId].weapon;
+    const [px, dy] = SLOTS[j % SLOTS.length];
+    return {
+      ...m, side, dir: side === 0 ? 1 : -1, slotX: side === 0 ? px : 1 - px, dy,
+      sprite: heroCanvas(m.classId, m.dye || null), weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon),
+      idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon], offX: 0, offY: 0, rot: 0, alpha: 1, flash: 0,
+      hp: 1, shown: 1, dead: false, busy: false, cd: 0.6 + Math.random() * 1.8, phase: Math.random() * 6,
+      ranged: weapon === 'staff' || weapon === 'bow',
+    };
+  };
+  const F = [...blue.slice(0, 4).map((m, j) => mk(m, 0, j)), ...red.slice(0, 4).map((m, j) => mk(m, 1, j))];
+  const baseX = (f) => f.slotX * W;
+  const posX = (f) => baseX(f) + f.offX * f.dir;
+  const footY = (f) => GROUND + f.dy + f.offY;
+  const mid = (f) => ({ x: posX(f), y: footY(f) - HERO_H * SC * 0.55 });
+
+  function hurt(T, f) {
+    if (T.dead) return;
+    const crit = Math.random() < 0.15;
+    const dmg = (0.14 + Math.random() * 0.16) * (crit ? 1.8 : 1);
+    T.hp = Math.max(0, T.hp - dmg);
+    T.flash = 1; tween(T, { flash: 0 }, 220, 'linear');
+    tween(T, { offX: -8 }, 80).then(() => tween(T, { offX: 0 }, 200, 'outBack'));
+    const c = mid(T);
+    burst(c.x, c.y, crit ? 12 : 7, crit ? ['#fff', '#ffd84a'] : ['#fff', '#ff6b6b']);
+    float(String(Math.round(dmg * 100 + Math.random() * 9)), c.x, c.y - 26, crit ? '#ffd84a' : '#ffffff', crit ? 12 : 9);
+    shake = Math.max(shake, crit ? 4 : 2);
+    if (T.hp <= 0) {
+      T.dead = true;
+      score[1 - T.side]++;
+      tween(T, { rot: -85, alpha: 0.3 }, 500);
+      setTimeout(() => { if (!alive) return; T.dead = false; T.hp = 1; T.rot = 0; tween(T, { alpha: 1 }, 400, 'linear'); }, 3200);
+    }
+  }
+
+  async function act(f) {
+    const foes = F.filter(x => x.side !== f.side && !x.dead);
+    if (!foes.length) return;
+    const T = foes[Math.floor(Math.random() * foes.length)];
+    f.busy = true;
+    if (f.ranged) {
+      await tween(f, { wAng: f.idle - 25, offY: -4 }, 150);
+      const from = { x: posX(f) + 10 * f.dir, y: footY(f) - HERO_H * SC * 0.6 }, to = mid(T);
+      const p = { kind: 'shot', x: from.x, y: from.y, arrow: f.weapon === 'bow', angle: Math.atan2(to.y - from.y, to.x - from.x), life: 1e9, max: 1e9 };
+      effects.push(p);
+      const o = { t: 0 };
+      await new Promise(res => tweens.push({ obj: o, from: { t: 0 }, to: { t: 1 }, dur: 320, t: 0, ease: EASE.linear, res,
+        onStep: () => { p.x = from.x + (to.x - from.x) * o.t; p.y = from.y + (to.y - from.y) * o.t - (p.arrow ? 20 * Math.sin(Math.PI * o.t) : 0); } }));
+      p.life = 0;
+      hurt(T, f);
+      await tween(f, { wAng: f.idle, offY: 0 }, 200);
+    } else {
+      const dist = Math.abs(baseX(T) - baseX(f)) - HERO_W * SC * 0.9;
+      await tween(f, { offX: dist }, 340, 'inOutQuad');
+      await tween(f, { wAng: -80 }, 110);
+      await tween(f, { wAng: 130 }, 80, 'inQuad');
+      const c = mid(T);
+      effects.push({ kind: 'slash', x: c.x - 4 * f.dir, y: c.y, dir: f.dir, life: 200, max: 200 });
+      hurt(T, f);
+      await wait(150);
+      await tween(f, { offX: 0, wAng: f.idle }, 320, 'inOutQuad');
+    }
+    f.busy = false;
+    f.cd = 1.3 + Math.random() * 1.8;
+  }
+
+  function update(dt) {
+    time += dt / 1000;
+    for (let j = tweens.length - 1; j >= 0; j--) {
+      const tw = tweens[j];
+      tw.t += dt;
+      const p = Math.min(1, tw.t / tw.dur), ev = tw.ease(p);
+      for (const key in tw.to) tw.obj[key] = tw.from[key] + (tw.to[key] - tw.from[key]) * ev;
+      if (tw.onStep) tw.onStep();
+      if (p >= 1) { tweens.splice(j, 1); tw.res(); }
+    }
+    const s = dt / 1000;
+    for (let j = effects.length - 1; j >= 0; j--) {
+      const e = effects[j];
+      e.life -= dt;
+      if (e.kind === 'p') { e.vy += 260 * s; e.x += e.vx * s; e.y += e.vy * s; }
+      if (e.life <= 0) effects.splice(j, 1);
+    }
+    for (let j = texts.length - 1; j >= 0; j--) { const t = texts[j]; t.life -= dt; t.y += t.vy * s; if (t.life <= 0) texts.splice(j, 1); }
+    shake = Math.max(0, shake - s * 20);
+    for (const f of F) {
+      f.shown += (f.hp - f.shown) * Math.min(1, s * 8);
+      if (f.dead || f.busy) continue;
+      f.cd -= s;
+      if (f.cd <= 0) act(f);
+    }
+  }
+
+  function drawOne(f) {
+    const x = posX(f), y = footY(f) + Math.sin(time * 3 + f.phase) * 1;
+    const SW = HERO_W * SC, SH = HERO_H * SC;
+    ctx.globalAlpha = 0.25 * f.alpha; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(x, footY(f) + 2, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = f.alpha;
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(f.dir, 1);
+    ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
+    ctx.drawImage(f.sprite, -SW / 2, -SH, SW, SH);
+    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(f.sprite), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
+    ctx.translate(-SW / 2 + HAND.x * SC, -SH + HAND.y * SC);
+    ctx.rotate((f.wAng * Math.PI) / 180);
+    ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, f.wS.width * SC, f.wS.height * SC);
+    ctx.restore();
+    // nom + barre de vie
+    if (!f.dead) {
+      const top = footY(f) - SH - 6;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#16121f'; ctx.fillRect(x - 17, top, 34, 5);
+      ctx.fillStyle = colors[f.side]; ctx.fillRect(x - 16, top + 1, 32 * Math.max(0, f.shown), 3);
+      ctx.font = `6px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+      const name = String(f.name || '').slice(0, 9);
+      ctx.strokeText(name, x, top - 3); ctx.fillStyle = '#ffffff'; ctx.fillText(name, x, top - 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function render() {
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.save();
+    ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    const bg = background('castle');
+    const sb = (W + 12) / 160, top = GROUND - 75 * sb;
+    ctx.fillStyle = THEMES.castle.sky[0]; ctx.fillRect(-10, -10, W + 20, H + 20);
+    ctx.drawImage(bg, -6, top, W + 12, 90 * sb);
+    [...F].sort((a, b) => a.dy - b.dy).forEach(drawOne);
+    for (const e of effects) {
+      const p = 1 - e.life / e.max;
+      if (e.kind === 'p') { ctx.globalAlpha = Math.max(0, e.life / e.max); ctx.fillStyle = e.color; ctx.fillRect(e.x - 1.5, e.y - 1.5, 3, 3); }
+      else if (e.kind === 'slash') {
+        ctx.globalAlpha = 1 - p; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath();
+        const a0 = e.dir > 0 ? -1.9 : Math.PI + 1.9, a1 = e.dir > 0 ? 0.9 : Math.PI - 0.9;
+        ctx.arc(e.x, e.y, 26, Math.min(a0, a1), Math.max(a0, a1)); ctx.stroke();
+      } else if (e.kind === 'shot') {
+        ctx.globalAlpha = 1;
+        ctx.save(); ctx.translate(e.x, e.y);
+        if (e.arrow) { ctx.rotate(e.angle); ctx.fillStyle = '#8a5a2b'; ctx.fillRect(-10, -1, 14, 2); ctx.fillStyle = '#e8eef5'; ctx.fillRect(3, -2, 4, 4); }
+        else { ctx.fillStyle = '#8a3bd1'; ctx.fillRect(-4, -4, 8, 8); ctx.fillStyle = '#e0c8ff'; ctx.fillRect(-2, -2, 4, 4); }
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+    for (const t of texts) {
+      ctx.globalAlpha = Math.min(1, t.life / 300);
+      ctx.font = `${t.size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f'; ctx.strokeText(t.text, t.x, t.y);
+      ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // tableau des K.O.
+    ctx.font = `9px ${FONT}`; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+    ctx.textAlign = 'left'; ctx.strokeText(`K.O. ${score[0]}`, 10, 16); ctx.fillStyle = colors[0]; ctx.fillText(`K.O. ${score[0]}`, 10, 16);
+    ctx.textAlign = 'right'; ctx.strokeText(`K.O. ${score[1]}`, W - 10, 16); ctx.fillStyle = colors[1]; ctx.fillText(`K.O. ${score[1]}`, W - 10, 16);
+  }
+
+  function frame(now) {
+    if (!alive) return;
+    if (!canvas.isConnected) { stop(); return; }
+    const dt = Math.min(50, now - last);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+  function stop() { alive = false; ro.disconnect(); }
+  requestAnimationFrame(frame);
+  return stop;
 }

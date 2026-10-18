@@ -8,8 +8,12 @@ export const CHEST_INTERVAL_MS = 2 * 60 * 60 * 1000; // un coffre toutes les 2 h
 export const CHEST_MAX = 5;                          // cumulables jusqu'à 5
 export const WINS_PER_COMBAT_CHEST = 3;              // 3 victoires = 1 coffre de combat
 export const MAX_ACTIVE_SPELLS = 4;
-export const DUNGEON_INTERVAL_MS = 2 * 60 * 60 * 1000; // une entrée de donjon toutes les 2 h
-export const DUNGEON_MAX = 3;                          // cumulables jusqu'à 3
+export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h (remise à zéro à minuit et à midi), par personnage
+export const KEY_PRICE = 100;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
+export const SELL_PRICE = [1, 3, 7, 16, 40];   // revente d'un objet selon sa rareté (en Flouze)
+export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
+// Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
+export const RESET_ID = '2026-10-18-maj';
 
 export const STAT_KEYS = ['vit', 'atk', 'mag', 'def', 'spd', 'lck'];
 
@@ -38,14 +42,14 @@ export const CHEST_ODDS = {
 };
 
 // ---------------------------------------------------------------------
-//  GUERRE DES SECTIONS — semaine du lundi 00:00 au dimanche 23:59
+//  GUERRE DES SECTIONS — une guerre dure 7 jours complets (à partir du samedi 17/10/2026 à 00:00)
 // ---------------------------------------------------------------------
 export const WAR = {
   sections: {
     rouge: { name: 'Section Rouge', color: '#ff5d6c' },
     bleue: { name: 'Section Bleue', color: '#3d9bff' },
   },
-  attacksPerDay: 3,        // attaques de guerre par jour (1 fois max par adversaire)
+  start: [2026, 9, 17],    // début de la 1re guerre (année, mois - 1, jour) : ensuite une toutes les 7 jours
   minAttacks: 5,           // attaques minimum dans la semaine pour toucher la récompense
   changeCooldownDays: 30,  // on ne peut changer de section qu'une fois par mois
   maxPerSection: 4,        // 8 joueurs max dans le jeu = 4 par section
@@ -245,6 +249,9 @@ export const SETS = {
   fax: { name: 'Panoplie Fax', stat: 'mag', bonus3: { mag: 0.10 }, bonus5: { mag: 0.20, lck: 0.10 } },
   deuxb: { name: 'Panoplie 2B', stat: 'def', bonus3: { def: 0.10 }, bonus5: { def: 0.20, mag: 0.10 } },
   romain: { name: 'Panoplie de Romain', stat: 'def', bonus3: { def: 0.10 }, bonus5: { def: 0.20, atk: 0.10 } },
+  // Panoplies de magie (pour que les mages aient autant de choix que les autres)
+  mcdo: { name: 'Panoplie McDo', stat: 'mag', bonus3: { mag: 0.10 }, bonus5: { mag: 0.20, vit: 0.10 } },
+  foot: { name: 'Panoplie du Footballeur', stat: 'mag', bonus3: { mag: 0.10 }, bonus5: { mag: 0.20, spd: 0.10 } },
 };
 
 // ---------------------------------------------------------------------
@@ -342,6 +349,20 @@ export const ITEM_LIST = [
     ['boots', 'Bottes de chantier', 'boots', ['#c98a2b', '#2a2238']],
     ['amulet', 'Cache-cou', 'gaiter', ['#3a3a46', '#ff8c1a']],
   ]),
+  ...setItems('mcdo', 'mag', [
+    ['hat', 'Casquette d’équipier', 'cap', ['#d62a1e', '#ffc72c']],
+    ['weapon', 'Cornet de frites', 'fries', ['#d62a1e', '#ffc72c']],
+    ['armor', 'Tenue d’équipier', 'mcshirt', ['#d62a1e', '#ffc72c']],
+    ['boots', 'Baskets antidérapantes', 'sneaker', ['#2a2238', '#ffc72c']],
+    ['amulet', 'Médaillon Big Mac', 'burger', ['#ffc72c', '#d62a1e']],
+  ]),
+  ...setItems('foot', 'mag', [
+    ['hat', 'Bandeau de capitaine', 'headband', ['#f4f4f8', '#2d5fbf']],
+    ['weapon', 'Ballon d’or', 'ball', ['#ffd84a', '#c9a227']],
+    ['armor', 'Maillot n°10', 'jersey', ['#2d5fbf', '#f4f4f8']],
+    ['boots', 'Crampons', 'cleats', ['#ff5d6c', '#f4f4f8']],
+    ['amulet', 'Médaille de champion', 'medal', ['#ffd84a', '#2d5fbf']],
+  ]),
 
   // Familiers — chats
   pet('woody', 'Woody', 'catFat', ['#9b8f80', '#c9bfb2'], { vit: 3, def: 2 }),
@@ -366,6 +387,31 @@ export const ITEM_LIST = [
 export const ITEMS = Object.fromEntries(ITEM_LIST.map(i => [i.id, i]));
 
 // ---------------------------------------------------------------------
+//  FAMILIERS — affinité (+5 % dans une stat si ton héros est de la bonne classe)
+//  et attaque : le familier frappe toutes les 3 actions de son maître, avec les stats du héros.
+//  kind : 'pounce' = il bondit sur l'ennemi, sinon c'est un projectile (fx).
+// ---------------------------------------------------------------------
+export const PET_EVERY = 3;
+export const PET_AFFINITY = 0.05;
+export const PETS = {
+  woody: { aff: ['guerrier', 'vit'], atk: { name: 'Plat ventre', kind: 'pounce', scale: 'atk', mult: 0.55, effects: [{ k: 'stun', chance: 0.15 }], desc: 'Il s’écrase sur l’ennemi (55 % Attaque), peut l’étourdir.' } },
+  kuzco: { aff: ['archer', 'atk'], atk: { name: 'Griffes de tigre', kind: 'pounce', scale: 'atk', mult: 0.32, hits: 2, desc: '2 coups de griffes (32 % Attaque).' } },
+  shiva: { aff: ['archer', 'spd'], atk: { name: 'Patte éclair', kind: 'pounce', scale: 'atk', mult: 0.5, crit: 0.25, desc: 'Coup de patte vif (50 % Attaque), +25 % de critique.' } },
+  malo: { aff: ['guerrier', 'def'], atk: { name: 'Morsure lourde', kind: 'pounce', scale: 'atk', mult: 0.6, desc: 'Grosse morsure (60 % Attaque).' } },
+  fidji: { aff: ['mage', 'mag'], atk: { name: 'Regard glacé', fx: 'ice', scale: 'mag', mult: 0.5, effects: [{ k: 'debuff', stat: 'spd', pct: 0.15, turns: 2 }], desc: 'Rayon de glace (50 % Magie), ralentit l’ennemi.' } },
+  nala: { aff: ['mage', 'atk'], atk: { name: 'Chat noir', fx: 'bolt', scale: 'mag', mult: 0.5, effects: [{ k: 'debuff', stat: 'lck', pct: 0.3, turns: 2 }], desc: 'Porte malheur (50 % Magie), −30 % Chance ennemie.' } },
+  gaia: { aff: ['paladin', 'def'], atk: { name: 'Ronron', kind: 'self', fx: 'heal', effects: [{ k: 'heal', pctMax: 0.04 }], desc: 'Ronronne et soigne son maître (4 % des PV max).' } },
+  wiz: { aff: ['paladin', 'vit'], atk: { name: 'Coup de boule', kind: 'pounce', scale: 'mix', mult: 0.5, desc: 'Coup de tête (50 % Attaque/Magie).' } },
+  isco: { aff: ['archer', 'spd'], atk: { name: 'Sprint', kind: 'pounce', scale: 'atk', mult: 0.3, hits: 2, desc: 'Fonce 2 fois sur l’ennemi (30 % Attaque).' } },
+  buck: { aff: ['paladin', 'spd'], atk: { name: 'Aboiement', fx: 'bark', scale: 'mix', mult: 0.45, effects: [{ k: 'debuff', stat: 'atk', pct: 0.1, turns: 2 }], desc: 'Aboie fort (45 %), −10 % Attaque ennemie.' } },
+  ivory: { aff: ['guerrier', 'atk'], atk: { name: 'Mâchoire de fer', kind: 'pounce', scale: 'atk', mult: 0.65, desc: 'Mord très fort (65 % Attaque).' } },
+  salto: { aff: ['guerrier', 'vit'], atk: { name: 'Salto', kind: 'pounce', scale: 'atk', mult: 0.5, effects: [{ k: 'stun', chance: 0.1 }], desc: 'Saute sur l’ennemi (50 % Attaque), peut l’étourdir.' } },
+  uby: { aff: ['paladin', 'atk'], atk: { name: 'Gardien', kind: 'pounce', scale: 'mix', mult: 0.5, lifesteal: 0.3, desc: 'Mord (50 %) et soigne son maître de 30 % des dégâts.' } },
+  idan: { aff: ['archer', 'lck'], atk: { name: 'Venin', fx: 'spit', scale: 'atk', mult: 0.3, effects: [{ k: 'dot', kind: 'poison', name: 'Poison', mult: 0.2, turns: 3 }], desc: 'Crache du venin (30 % Attaque) + poison.' } },
+  mitsuki: { aff: ['mage', 'spd'], atk: { name: 'Hypnose', fx: 'spore', scale: 'mag', mult: 0.45, effects: [{ k: 'stun', chance: 0.15 }], desc: 'Hypnotise (45 % Magie), peut étourdir.' } },
+};
+
+// ---------------------------------------------------------------------
 //  AMIS (bots du mode hors ligne : 7 + toi = 8 joueurs)
 // ---------------------------------------------------------------------
 export const FRIENDS = [
@@ -386,7 +432,7 @@ export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de re
 // =====================================================================
 //  TOUR INFINIE
 // =====================================================================
-export const TOWER = { attemptsPerDay: 5, clatPerFloor: 1, clatEvery10: 10 };
+export const TOWER = { clatPerFloor: 1, clatEvery10: 10 };   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné
 
 // =====================================================================
 //  RAID DE LA SEMAINE — un boss commun à tout le groupe
@@ -400,10 +446,11 @@ SPELL_LIST.push(...S('monster', [
 SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
 
 export const RAID = {
-  attemptsPerDay: 1,              // chacun peut le taper 1 fois par jour
+  tag: 'melenchon:v3',            // version du raid (changer ce nom relance un Mélenchon tout neuf)
+  attemptsPerHalf: 3,             // 3 assauts par compte toutes les 12 h (remise à zéro à minuit et à midi)
   maxActions: 40,                 // un assaut dure au plus 40 actions (on ne peut pas le tuer d'un coup)
   minHp: 20000,                   // Mélenchon a toujours au moins 20 000 PV
-  participation: 0.75,            // PV calculés pour qu'il tombe si le groupe tape ~3 jours sur 4
+  participation: 0.5,             // PV calculés pour qu'il tombe si chacun fait ~3 assauts par jour
   rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
   boss: {
     id: 'melenchon', name: 'Mélenchon', sprite: 'melenchon', theme: 'meeting',
@@ -414,27 +461,49 @@ export const RAID = {
 };
 
 // =====================================================================
-//  MISSIONS DU JOUR — 3 par jour, les mêmes pour tout le monde
+//  MISSIONS — 3 missions toutes les 12 h (minuit et midi), tirées au hasard, les mêmes pour tout le monde
+//  ev = l'action qui fait avancer la mission
 // =====================================================================
+const M = (id, ev, text, n, reward) => ({ id, ev, text, n, reward });
 export const MISSION_POOL = [
-  { id: 'arena_win', text: 'Gagne {n} combats d’Arène', n: [2, 3], reward: 3 },
-  { id: 'arena_fight', text: 'Fais {n} combats d’Arène', n: [3, 5], reward: 2 },
-  { id: 'rematch', text: 'Fais {n} revanches', n: [2, 3], reward: 2 },
-  { id: 'chest', text: 'Ouvre {n} coffres', n: [2, 4], reward: 2 },
-  { id: 'dungeon_win', text: 'Bats {n} boss de donjon', n: [1, 2], reward: 3 },
-  { id: 'tower', text: 'Monte {n} étage(s) de la Tour', n: [1, 3], reward: 3 },
-  { id: 'raid', text: 'Attaque Mélenchon aujourd’hui', n: [1, 1], reward: 3 },
-  { id: 'war', text: 'Fais {n} attaques de guerre', n: [1, 3], reward: 3 },
-  { id: 'fuse', text: 'Fusionne {n} objet(s)', n: [1, 2], reward: 3 },
-  { id: 'chat', text: 'Envoie {n} message(s) dans le tchat', n: [1, 3], reward: 1 },
-  { id: 'bet', text: 'Mise sur {n} duel(s)', n: [1, 1], reward: 2 },
-  { id: 'revenge', text: 'Venge-toi {n} fois', n: [1, 1], reward: 2 },
+  M('arena_win', 'arena_win', 'Gagne {n} combats d’Arène', [2, 3], 3),
+  M('arena_fight', 'arena_fight', 'Fais {n} combats d’Arène', [3, 5], 2),
+  M('rematch', 'rematch', 'Fais {n} revanches', [2, 4], 2),
+  M('rematch_win', 'rematch_win', 'Gagne {n} revanche(s)', [1, 2], 2),
+  M('chest', 'chest', 'Ouvre {n} coffres', [2, 5], 2),
+  M('key_use', 'key_use', 'Ouvre {n} coffre(s) avec une clef', [1, 3], 2),
+  M('dungeon_win', 'dungeon_win', 'Bats {n} boss de donjon', [2, 4], 3),
+  M('dungeon', 'dungeon', 'Lance {n} combats de donjon', [3, 6], 2),
+  M('dungeon_diff', 'dungeon_kinds', 'Bats {n} donjons différents', [2, 3], 3),
+  M('tower', 'tower', 'Monte {n} étage(s) de la Tour', [1, 3], 3),
+  M('tower_try', 'tower_try', 'Tente {n} fois la Tour infinie', [2, 4], 2),
+  M('raid', 'raid', 'Attaque Mélenchon {n} fois', [1, 3], 3),
+  M('raid_dmg', 'raid_dmg', 'Inflige {n} dégâts à Mélenchon', [300, 900], 3),
+  M('war', 'war', 'Fais {n} attaques de guerre', [1, 3], 3),
+  M('war_win', 'war_win', 'Gagne {n} attaque(s) de guerre', [1, 2], 3),
+  M('fuse', 'fuse', 'Fusionne {n} objet(s)', [1, 2], 3),
+  M('sell', 'sell', 'Vends {n} objets', [2, 6], 2),
+  M('equip', 'equip', 'Équipe {n} objet(s)', [1, 3], 1),
+  M('stat', 'stat', 'Place {n} points de caractéristique', [3, 6], 1),
+  M('level', 'level', 'Gagne {n} niveau(x)', [1, 2], 3),
+  M('fight', 'fight', 'Fais {n} combats (tous modes)', [5, 10], 2),
+  M('win', 'win', 'Gagne {n} combats (tous modes)', [4, 8], 3),
+  M('spell', 'spell', 'Lance {n} sorts en combat', [8, 16], 2),
+  M('crit', 'crit', 'Place {n} coups critiques', [5, 12], 2),
+  M('dodge', 'dodge', 'Esquive {n} attaques', [3, 8], 2),
+  M('pet', 'pet', 'Ton familier attaque {n} fois', [5, 12], 2),
+  M('manual_win', 'manual_win', 'Gagne {n} combat(s) en mode manuel', [1, 2], 3),
+  M('chat', 'chat', 'Envoie {n} message(s) dans le tchat', [1, 3], 1),
+  M('share', 'share', 'Partage {n} combat dans le tchat', [1, 1], 2),
+  M('bet', 'bet', 'Mise sur {n} duel(s)', [1, 1], 2),
+  M('revenge', 'revenge', 'Venge-toi {n} fois', [1, 1], 2),
+  M('train', 'train_rec', 'Bats ton record d’entraînement', [1, 1], 2),
 ];
 export const MISSIONS_PER_DAY = 3;
-export const MISSIONS_BONUS = 5;   // Pierres Clat en plus si les 3 sont faites
+export const MISSIONS_BONUS = 5;   // Flouze en plus si les 3 sont faites
 
 // =====================================================================
-//  BOUTIQUE D'APPARENCE — payée en Pierres Clat, aucun effet sur les stats
+//  BOUTIQUE D'APPARENCE — payée en Flouze, aucun effet sur les stats
 // =====================================================================
 const T = (id, name, price) => ({ id: 't_' + id, kind: 'title', name, price });
 const C = (id, name, price, color) => ({ id: 'c_' + id, kind: 'color', name, price, color });
@@ -478,6 +547,6 @@ export const COSMETICS = [
   V('eclairs', 'Éclairs', 50, ['#e8f4ff', '#8fd3ff', '#ffd84a']),
   V('feu', 'Feu d’artifice', 60, ['#ff9f1a', '#ffd84a', '#ff3a1a', '#ffffff']),
   V('or', 'Pluie d’or', 80, ['#ffd84a', '#e5b33a', '#fff3b0']),
-  V('clat', 'Pluie de Pierres Clat', 100, ['#2ecc71', '#a8f0c0', '#1e8449']),
+  V('clat', 'Pluie de Flouze', 100, ['#2ecc71', '#a8f0c0', '#1e8449']),
 ];
 export const COSMETIC = Object.fromEntries(COSMETICS.map(c => [c.id, c]));
