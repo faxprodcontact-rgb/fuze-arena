@@ -282,13 +282,24 @@ export const SETS = {
 //  et un petit peu de toutes les autres.
 //  icon : forme dessinée, colors : [couleur principale, couleur secondaire]
 // ---------------------------------------------------------------------
-const FOCUS = 3, OTHER = 0.55;
+// Chaque objet a son propre profil (toujours le même pour un objet donné), à puissance égale :
+//  - la stat de la panoplie : 3
+//  - la stat liée à l'emplacement (arme = attaque ou magie, armure = défense…) : 1,2
+//  - une stat « bonus » propre à l'objet : 0,8
+//  - les 3 autres : 0,25 chacune (elles apparaissent surtout aux raretés élevées)
+const FOCUS = 3, SLOT_PART = 1.2, BONUS_PART = 0.8, REST_PART = 0.25;
+const SLOT_STAT = { hat: 'vit', armor: 'def', boots: 'spd', amulet: 'lck' };
+const pickFrom = (id, list) => list[[...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % list.length];
 function setItems(set, weaponStat, list) {
   const focus = SETS[set].stat;
   return list.map(([slot, name, icon, colors, extra = {}]) => {
+    const id = `${set}_${slot}`;
+    let slotStat = slot === 'weapon' ? weaponStat : SLOT_STAT[slot];
+    if (slotStat === focus) slotStat = pickFrom(id + 'slot', STAT_KEYS.filter(k => k !== focus));
+    const bonus = pickFrom(id, STAT_KEYS.filter(k => k !== focus && k !== slotStat));
     const stats = {};
-    for (const k of STAT_KEYS) stats[k] = k === focus ? FOCUS : OTHER;
-    return { id: `${set}_${slot}`, name, slot, set, icon, colors, stats, ...extra };
+    for (const k of STAT_KEYS) stats[k] = k === focus ? FOCUS : k === slotStat ? SLOT_PART : k === bonus ? BONUS_PART : REST_PART;
+    return { id, name, slot, set, icon, colors, stats, ...extra };
   });
 }
 const pet = (id, name, icon, colors, stats, extra = {}) => ({ id, name, slot: 'pet', icon, colors, stats, ...extra });

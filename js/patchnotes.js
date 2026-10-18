@@ -4,6 +4,18 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1447', date: '18/10/2026', time: '14h47', title: 'Chaque objet a ses propres stats',
+    sections: [
+      { title: 'Objets', items: [
+        'Chaque objet a maintenant son propre mélange de stats, toujours à puissance égale.',
+        'La stat de sa panoplie reste la plus forte (27 pour un Légendaire).',
+        'Puis une stat liée à l’emplacement : Attaque ou Magie pour une arme, Défense pour une armure, Vitesse pour des bottes, Chance pour une amulette, Vitalité pour un chapeau (11 en Légendaire).',
+        'Puis une stat bonus propre à l’objet (7), et un peu de tout le reste (2 chacune).',
+        'Deux objets de la même panoplie ne donnent donc plus les mêmes stats : compare-les dans ton sac !',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1443', date: '18/10/2026', time: '14h43', title: 'Chaque panoplie a son domaine',
     sections: [
       { title: 'Objets', items: [
