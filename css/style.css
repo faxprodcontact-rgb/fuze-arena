@@ -718,3 +718,4 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .sgrid.locked small { opacity: .6; }
 .slock { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-family: var(--pixel); font-size: 7px; background: rgba(14,11,22,.9); color: var(--muted); padding: 3px 4px; border-radius: 5px; white-space: nowrap; }
 .big-ic.spell-ic { --rc: var(--gold); }
+.stat-sum i { display: block; font-style: normal; font-size: 9.5px; color: var(--muted); margin-top: 2px; }

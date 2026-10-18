@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018151034';
-import * as E from './engine.js?v=20261018151034';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018151034';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018151034';
-import { hashStr, makeRng } from './rng.js?v=20261018151034';
-import { APP_VERSION } from './version.js?v=20261018151034';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018151034';
-import * as NET from './net.js?v=20261018151034';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018151034';
+} from './data.js?v=20261018151547';
+import * as E from './engine.js?v=20261018151547';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018151547';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018151547';
+import { hashStr, makeRng } from './rng.js?v=20261018151547';
+import { APP_VERSION } from './version.js?v=20261018151547';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018151547';
+import * as NET from './net.js?v=20261018151547';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018151547';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -162,13 +162,14 @@ function dummySnap(level) {
 function trainingStatsHtml() {
   if (!T) resetTraining();
   const st = E.computeStats(hero);
+  const gx = E.gearExtras(hero);
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
   const box = (ico, label, val, sub) => `<div class="ts"><span>${ico} ${label}</span><b>${val}</b><small>${sub}</small></div>`;
   const speedRatio = T.foeActs ? (T.acts / T.foeActs).toFixed(1) : '—';
   return [
     box('⚔', 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
-    box('💥', 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.critChance(st.lck) * 100)} %`),
-    box('💨', 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.dodgeChance(st.lck) * 100)} %`),
+    box('💥', 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %`),
+    box('💨', 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %`),
     box('🛡', 'Défense', `−${Math.round((1 - 100 / (100 + st.def)) * 100)} %`, `dégâts reçus ${T.foeHits ? Math.round(T.taken / T.foeHits) : '—'}`),
     box('⚡', 'Vitesse', `×${speedRatio}`, 'actions par coup reçu'),
     box('❤', 'Soins', T.heal, `PV max ${E.maxHp(st, hero.level)}`),
@@ -348,6 +349,7 @@ function viewHero() {
   const st = E.computeStats(hero);
   const base = E.computeStats({ ...hero, equipped: {} });
   const raw = E.computeStats({ ...hero, equipped: {}, alloc: {} });   // classe + niveau seulement
+  const gx = E.gearExtras(hero);
   const hp = E.maxHp(st, hero.level);
   const pts = E.freePoints(hero);
   const snap = E.snapshot(hero);
@@ -404,8 +406,8 @@ function viewHero() {
       <p class="hint" style="margin:6px 0 0">${pts > 0 ? `<span class="pill green pts-pill">${pts} point${pts > 1 ? 's' : ''} à placer</span> Touche les + pour les placer.` : 'Tu gagnes 3 points à placer à chaque niveau.'}</p>
       <div class="stat-sum">
         <div><small>❤ Vie</small><b>${fmtNum(hp)}</b></div>
-        <div><small>💥 Critique</small><b>${Math.round(E.critChance(st.lck) * 100)} %</b></div>
-        <div><small>💨 Esquive</small><b>${Math.round(E.dodgeChance(st.lck) * 100)} %</b></div>
+        <div><small>💥 Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} équip.` : 'max 40 %'}</i></div>
+        <div><small>💨 Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} équip.` : 'max 25 %'}</i></div>
       </div>
       <div class="stat-legend">
         <span><i class="sl-base"></i>Base (classe + niveau)</span>
@@ -637,6 +639,18 @@ function statLines(stats, compare = null) {
   }).join('');
 }
 
+const pctTxt = (v) => `${Math.round(v * 1000) / 10} %`;
+/** Lignes « Critique » / « Esquive » d'un objet (armes et bottes), comparées à l'objet porté */
+function extraLines(itemId, rarity, cur) {
+  const x = E.itemExtras(itemId, rarity);
+  const c = cur ? E.itemExtras(cur.itemId, cur.rarity) : null;
+  const line = (name, color, v, old) => {
+    const d = c ? Math.round((v - old) * 1000) / 10 : 0;
+    return `<div class="st-line"><span style="color:${color}">${name}</span><span>+${pctTxt(v)}${d ? ` <span class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d} %)</span>` : ''}</span></div>`;
+  };
+  return (x.crit ? line('Coups critiques', '#ffd84a', x.crit, c ? c.crit : 0) : '') + (x.dodge ? line('Esquive', '#7fd6ff', x.dodge, c ? c.dodge : 0) : '');
+}
+
 function openItem(itemId, rarity) {
   const it = ITEMS[itemId];
   const stack = E.stackOf(hero, itemId, rarity);
@@ -661,6 +675,7 @@ function openItem(itemId, rarity) {
       </div>
     </div>
     ${statLines(stats, curStats)}
+    ${extraLines(itemId, rarity, cur)}
     ${it.set ? setBox(it.set) : ''}
     ${PETS[itemId] ? petBox(itemId, rarity) : ''}
     ${cur ? `<p class="hint" style="margin-top:8px">Comparé à ton ${SLOTS[slot].name.toLowerCase()} actuel : ${esc(ITEMS[cur.itemId].name)} (${RARITIES[cur.rarity].name})</p>` : ''}

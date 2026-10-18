@@ -308,6 +308,11 @@ export const SETS = {
 //  - une stat « bonus » propre à l'objet : 0,8
 //  - les 3 autres : 0,25 chacune (elles apparaissent surtout aux raretés élevées)
 const FOCUS = 3, SLOT_PART = 1.2, BONUS_PART = 0.8, REST_PART = 0.25;
+// Les armes donnent aussi du critique et les bottes de l'esquive (en %, selon la rareté).
+// Plafonds : jamais plus de 40 % de critique ni de 25 % d'esquive au total.
+export const ITEM_CRIT = [0.01, 0.02, 0.03, 0.04, 0.06];
+export const ITEM_DODGE = [0.01, 0.015, 0.02, 0.03, 0.04];
+export const CRIT_CAP = 0.40, DODGE_CAP = 0.25;
 const SLOT_STAT = { hat: 'vit', armor: 'def', boots: 'spd', amulet: 'lck' };
 const pickFrom = (id, list) => list[[...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % list.length];
 function setItems(set, weaponStat, list) {
@@ -319,7 +324,7 @@ function setItems(set, weaponStat, list) {
     const bonus = pickFrom(id, STAT_KEYS.filter(k => k !== focus && k !== slotStat));
     const stats = {};
     for (const k of STAT_KEYS) stats[k] = k === focus ? FOCUS : k === slotStat ? SLOT_PART : k === bonus ? BONUS_PART : REST_PART;
-    return { id, name, slot, set, icon, colors, stats, ...extra };
+    return { id, name, slot, set, icon, colors, stats, crit: slot === 'weapon', dodge: slot === 'boots', ...extra };
   });
 }
 const pet = (id, name, icon, colors, stats, extra = {}) => ({ id, name, slot: 'pet', icon, colors, stats, ...extra });

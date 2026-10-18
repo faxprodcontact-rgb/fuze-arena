@@ -6,9 +6,10 @@ import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018151034';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018151034';
+} from './data.js?v=20261018151547';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018151547';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -133,6 +134,22 @@ export function activeSets(hero) {
 export const maxHp = (st, level) => Math.round(60 + st.vit * 8 + level * 4);
 export const critChance = (lck) => 0.05 + 0.45 * lck / (lck + 120);
 export const dodgeChance = (lck) => 0.03 + 0.25 * lck / (lck + 200);
+/** Chances finales (Chance + bonus des objets), toujours plafonnées */
+export const finalCrit = (lck, bonus = 0) => Math.min(CRIT_CAP, critChance(lck) + bonus);
+export const finalDodge = (lck, bonus = 0) => Math.min(DODGE_CAP, dodgeChance(lck) + bonus);
+
+/** Bonus de critique / d'esquive d'un objet */
+export function itemExtras(itemId, rarity) {
+  const it = ITEMS[itemId];
+  return { crit: it && it.crit ? ITEM_CRIT[rarity] : 0, dodge: it && it.dodge ? ITEM_DODGE[rarity] : 0 };
+}
+/** Total des bonus de critique / d'esquive de l'équipement porté */
+export function gearExtras(hero) {
+  const eq = equippedItems(hero);
+  const out = { crit: 0, dodge: 0 };
+  for (const slot in eq) { const x = itemExtras(eq[slot].itemId, eq[slot].rarity); out.crit += x.crit; out.dodge += x.dodge; }
+  return out;
+}
 
 export function powerScore(snap) {
   const s = snap.stats;
@@ -143,8 +160,10 @@ export function powerScore(snap) {
 export function snapshot(hero) {
   const stats = computeStats(hero);
   const eq = equippedItems(hero);
+  const ex = gearExtras(hero);
   return {
-    v: 2,                     // version des règles (2 = familiers qui attaquent)
+    v: 3,                     // version des règles (2 = familiers qui attaquent, 3 = critique/esquive des objets + plafonds)
+    critB: ex.crit, dodgeB: ex.dodge,
     name: hero.name,
     classId: hero.classId,
     level: hero.level,
@@ -234,7 +253,8 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
     if (sp.mult) {
       for (let h = 0; h < (sp.hits || 1); h++) {
         if (foe.hp <= 0) break;
-        if (rng() < dodgeChance(stat(foe, 'lck'))) {
+        const dodgeP = (foe.s.v || 0) >= 3 ? finalDodge(stat(foe, 'lck'), foe.s.dodgeB || 0) : dodgeChance(stat(foe, 'lck'));
+        if (rng() < dodgeP) {
           R.push({ step: h, type: 'dodge', target: foe.i });
           continue;
         }
@@ -243,7 +263,8 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
         dmg *= 100 / (100 + def);
         dmg *= 0.9 + rng() * 0.2;
         if (sp.execute && foe.hp / foe.max < 0.35) dmg *= 1 + sp.execute;
-        const crit = rng() < critChance(stat(f, 'lck')) + (sp.crit || 0);
+        const critP = (f.s.v || 0) >= 3 ? finalCrit(stat(f, 'lck'), f.s.critB || 0) : critChance(stat(f, 'lck'));
+        const crit = rng() < critP + (sp.crit || 0);
         if (crit) dmg *= 1.6;
         dmg = Math.max(1, Math.round(dmg * rage));
         const absorbed = Math.min(Math.round(foe.shield), dmg);

@@ -4,6 +4,20 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1515', date: '18/10/2026', time: '15h15', title: 'Critique et esquive sur les objets',
+    sections: [
+      { title: 'Objets', items: [
+        'Les armes donnent maintenant des coups critiques en plus : de +1 % (Commun) à +6 % (Légendaire).',
+        'Les bottes donnent de l’esquive en plus : de +1 % (Commun) à +4 % (Légendaire).',
+        'Ces bonus s’affichent dans la fiche de l’objet, comparés à celui que tu portes.',
+      ] },
+      { title: 'Équilibre', items: [
+        'Plafonds pour tout le monde : jamais plus de 40 % de critique ni de 25 % d’esquive (Chance, objets et bonus compris).',
+        'Tes vraies chances, plafonds compris, s’affichent dans les Caractéristiques et pendant l’entraînement.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1510', date: '18/10/2026', time: '15h10', title: 'Nouvel onglet Héros et 20 nouveaux sorts',
     sections: [
       { title: 'Onglet Héros', items: [
