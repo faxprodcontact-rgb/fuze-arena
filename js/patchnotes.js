@@ -5,6 +5,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2054', date: '18/10/2026', time: '20h54', title: 'Tour infinie : moins d’XP',
+    sections: [
+      { title: 'Tour infinie', items: [
+        'Chaque étage réussi rapporte maintenant 3 fois moins d’XP qu’avant : on montait de niveau beaucoup trop vite dans la Tour.',
+        'Le Flouze gagné par étage ne change pas.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2036', date: '18/10/2026', time: '20h36', title: 'Donjons : enchaînement automatique',
     sections: [
       { title: 'Donjons', items: [

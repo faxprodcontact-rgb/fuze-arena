@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018204606';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018204606';
+} from './data.js?v=20261018205436';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018205436';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -1258,7 +1258,7 @@ export const towerState = (hero) => hero.tower;
 export function towerResult(acc, hero, won, foeLevel = hero.level) {
   const t = towerState(hero);
   let clat = 0, xp = 0;
-  const base = 25 + 5 * Math.min(foeLevel, hero.level + 10);
+  const base = Math.round((25 + 5 * Math.min(foeLevel, hero.level + 10)) * TOWER.xpMult);
   if (won) {
     t.best++;
     clat = TOWER.clatPerFloor + (t.best % 10 === 0 ? TOWER.clatEvery10 : 0);

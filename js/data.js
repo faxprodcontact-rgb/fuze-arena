@@ -515,7 +515,7 @@ export const HORDE = {
   flouzeBase: 3,   // Flouze = 3 + 0.22 par monstre battu (arrondi), dès le 1er monstre battu
   flouzePer: 0.22,
 };
-export const TOWER = { clatPerFloor: 1, clatEvery10: 10 };   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné
+export const TOWER = { clatPerFloor: 1, clatEvery10: 10, xpMult: 0.3 };   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné ; XP par étage = 30 % de l'XP d'un boss du même niveau
 
 // =====================================================================
 //  RAID DE LA SEMAINE — un boss commun à tout le groupe
