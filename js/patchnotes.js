@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1443', date: '18/10/2026', time: '14h43', title: 'Chaque panoplie a son domaine',
+    sections: [
+      { title: 'Objets', items: [
+        'Chaque pièce de panoplie donne maintenant un peu de toutes les stats, et beaucoup de la stat de sa panoplie (par exemple, la panoplie de Thomas est spécialisée en Vitesse).',
+        'Un objet Légendaire donne ainsi 27 dans la stat de sa panoplie et 5 dans chacune des autres.',
+        'Les bonus de panoplie ne boostent plus que la stat de leur domaine : +12 % avec 3 pièces, +25 % avec 5 pièces.',
+        'Les objets que tu as déjà sont mis à jour automatiquement.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1441', date: '18/10/2026', time: '14h41', title: 'Nouvel écran d’équipement',
     sections: [
       { title: 'Sac', items: [

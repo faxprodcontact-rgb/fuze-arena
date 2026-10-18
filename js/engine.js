@@ -7,8 +7,8 @@ import {
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018144131';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018144131';
+} from './data.js?v=20261018144307';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018144307';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;

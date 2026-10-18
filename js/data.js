@@ -278,16 +278,16 @@ export const SETS = {
 
 // ---------------------------------------------------------------------
 //  OBJETS — stats au rang Commun (multipliées selon la rareté)
-//  Chaque pièce : 3 points dans la stat de la panoplie + 2 points selon l'emplacement
+//  Chaque panoplie a son domaine : chaque pièce donne beaucoup de la stat de sa panoplie
+//  et un petit peu de toutes les autres.
 //  icon : forme dessinée, colors : [couleur principale, couleur secondaire]
 // ---------------------------------------------------------------------
-const SECOND = { hat: 'vit', armor: 'def', boots: 'spd', amulet: 'lck' };
+const FOCUS = 3, OTHER = 0.55;
 function setItems(set, weaponStat, list) {
   const focus = SETS[set].stat;
   return list.map(([slot, name, icon, colors, extra = {}]) => {
-    const stats = { [focus]: 3 };
-    const sec = slot === 'weapon' ? weaponStat : SECOND[slot];
-    stats[sec] = (stats[sec] || 0) + 2;
+    const stats = {};
+    for (const k of STAT_KEYS) stats[k] = k === focus ? FOCUS : OTHER;
     return { id: `${set}_${slot}`, name, slot, set, icon, colors, stats, ...extra };
   });
 }
@@ -407,6 +407,12 @@ export const ITEM_LIST = [
 ];
 
 export const ITEMS = Object.fromEntries(ITEM_LIST.map(i => [i.id, i]));
+
+// Bonus de panoplie : ils ne boostent que la stat du domaine de la panoplie
+for (const set of Object.values(SETS)) {
+  set.bonus3 = { [set.stat]: 0.12 };
+  set.bonus5 = { [set.stat]: 0.25 };
+}
 
 // ---------------------------------------------------------------------
 //  FAMILIERS — affinité (+5 % dans une stat si ton héros est de la bonne classe)
