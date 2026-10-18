@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018174428';
-import * as E from './engine.js?v=20261018174428';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174428';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174428';
-import { hashStr, makeRng } from './rng.js?v=20261018174428';
-import { APP_VERSION } from './version.js?v=20261018174428';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018174428';
-import * as NET from './net.js?v=20261018174428';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174428';
+} from './data.js?v=20261018174952';
+import * as E from './engine.js?v=20261018174952';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018174952';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018174952';
+import { hashStr, makeRng } from './rng.js?v=20261018174952';
+import { APP_VERSION } from './version.js?v=20261018174952';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018174952';
+import * as NET from './net.js?v=20261018174952';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018174952';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -131,7 +131,7 @@ function render() {
       <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">${ico('chat')}<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
       <button class="tb-gear" data-act="settings" aria-label="Réglages">${ico('gear')}</button>
     </header>
-    <main id="view">${PARENT[tab] ? `<button class="backbar" data-act="tab" data-id="${PARENT[tab]}">‹ ${PARENT_NAME[PARENT[tab]]}</button>` : ''}${VIEWS[tab]()}</main>
+    <main id="view" class="${tab === 'chat' ? 'is-chat' : ''}">${PARENT[tab] ? `<button class="backbar" data-act="tab" data-id="${PARENT[tab]}">‹ ${PARENT_NAME[PARENT[tab]]}</button>` : ''}${VIEWS[tab]()}</main>
     <nav class="tabs">
       ${tabBtn('hero', 'Héros', pts)}
       ${tabBtn('chests', 'Coffres', chests)}
@@ -1121,7 +1121,11 @@ function viewChat() {
     </div>`;
 }
 
-function scrollChat() { const l = document.getElementById('chat-list'); if (l) l.scrollTop = l.scrollHeight; }
+// le tchat défile avec la page : on descend tout en bas (dernier message juste au-dessus de la barre d'écriture)
+function scrollChat() {
+  if (!document.getElementById('chat-list')) return;
+  requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+}
 function markChatSeen() {
   chatUnread = 0;
   const b = document.getElementById('chat-badge');

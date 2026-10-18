@@ -1266,3 +1266,6 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .gift-done { font-family: var(--pixel); font-size: 9px; color: #7bf09a; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .gift.got { box-shadow: inset 0 0 0 2px rgba(76,217,100,.4); }
 .gift.got .gift-art canvas { animation: none; }
+/* Tchat : un seul défilement (la page), le dernier message reste au-dessus de la barre d'écriture */
+#view.is-chat { padding-bottom: calc(150px + var(--safe-bot)); }
+.chat-list { height: auto; min-height: 160px; overflow: visible; }

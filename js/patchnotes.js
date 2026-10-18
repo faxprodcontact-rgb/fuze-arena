@@ -5,6 +5,12 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1749', date: '18/10/2026', time: '17h49', title: 'Correctif : le tchat',
+    sections: [
+      { title: 'Correctif', items: ['Le tchat défile normalement jusqu’en bas : le dernier message s’affiche juste au-dessus de la barre d’écriture, et le tchat s’ouvre directement sur les derniers messages.'] },
+    ],
+  },
+  {
     id: '2026-10-18-1744', date: '18/10/2026', time: '17h44', title: 'Cadeau de bienvenue : 150 Flouze',
     gift: { id: 'bienvenue-2026-10-18', amount: 150, text: 'Bienvenue dans le nouveau Fuze Arena\u00a0! Pour fêter toutes les nouveautés (Horde, Social, Boutique, skins…), voici 150 Flouze offerts à chaque joueur. Bon jeu, et que le meilleur gagne\u00a0!' },
     sections: [
