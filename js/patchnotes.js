@@ -5,6 +5,16 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2000', date: '18/10/2026', time: '20h00', title: 'Correctif : bonus d’XP',
+    sections: [
+      { title: 'XP', items: [
+        'Persos secondaires : XP ×2 (au lieu de ×1,5) tant qu’ils sont sous le niveau de ton perso le plus haut. Dès qu’ils l’atteignent, le bonus s’arrête.',
+        'Aide aux retardataires corrigée : +5 % d’XP par niveau de retard sur le perso le plus haut du jeu (tous joueurs confondus), jusqu’à +100 %. Avant, le calcul se faisait sur une moyenne, d’où des bonus bizarres comme +1 %.',
+        'Les deux bonus s’ajoutent, et ils s’affichent maintenant tous les deux sur la fiche du perso.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1945', date: '18/10/2026', time: '19h45', title: 'PvP : aucun soin entre les duels',
     sections: [
       { title: 'PvP et Horde', items: [

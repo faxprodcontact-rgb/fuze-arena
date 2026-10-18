@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018194554';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018194554';
+} from './data.js?v=20261018200055';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018200055';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -29,16 +29,15 @@ let xpBonus = 1;
 let altBonus = { mult: 1, cap: 0 };   // bonus des persos secondaires : s'arrête net au niveau du perso le plus haut
 export function setXpBonus(mult, alt = null) { xpBonus = Math.max(1, mult || 1); altBonus = alt && alt.mult > 1 ? alt : { mult: 1, cap: 0 }; }
 export const getXpBonus = () => xpBonus;
+export const getAltXpBonus = () => altBonus.mult;
 
-/** Bonus de rattrapage : +5 % d'XP par niveau de retard sur la moyenne des autres (max +100 %) */
-export function catchupBonus(myLevel, otherLevels) {
-  if (!otherLevels.length) return 1;
-  const avg = otherLevels.reduce((a, b) => a + b, 0) / otherLevels.length;
-  const gap = Math.max(0, avg - myLevel);
+/** Bonus de rattrapage : +5 % d'XP par niveau de retard sur le perso le plus haut du jeu (max +100 %) */
+export function catchupBonus(myLevel, topLevel) {
+  const gap = Math.max(0, topLevel - myLevel);
   return 1 + Math.min(XP_CATCHUP.max, gap * XP_CATCHUP.perLevel);
 }
 
-/** Bonus d'un perso secondaire : ×1,5 tant qu'il est sous le niveau du perso le plus haut du compte (cap = ce niveau) */
+/** Bonus d'un perso secondaire : ×2 tant qu'il est sous le niveau du perso le plus haut du compte (cap = ce niveau) */
 export function altXpBonus(acc, hero) {
   const top = Math.max(...acc.heroes.map(h => h.level));
   return hero.level < top ? { mult: ALT_XP_MULT, cap: top } : null;

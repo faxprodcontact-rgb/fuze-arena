@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018194554';
-import * as E from './engine.js?v=20261018194554';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018194554';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018194554';
-import { hashStr, makeRng } from './rng.js?v=20261018194554';
-import { APP_VERSION } from './version.js?v=20261018194554';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018194554';
-import * as NET from './net.js?v=20261018194554';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018194554';
+} from './data.js?v=20261018200055';
+import * as E from './engine.js?v=20261018200055';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018200055';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018200055';
+import { hashStr, makeRng } from './rng.js?v=20261018200055';
+import { APP_VERSION } from './version.js?v=20261018200055';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018200055';
+import * as NET from './net.js?v=20261018200055';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018200055';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -390,6 +390,7 @@ function viewHero() {
       <div class="hb-chips">
         <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
         <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys}</span>
+        ${E.getAltXpBonus() > 1 ? `<span class="pill green">Perso secondaire XP ×${E.getAltXpBonus()}</span>` : ''}
         ${E.getXpBonus() > 1 ? `<span class="pill green">Rattrapage +${Math.round((E.getXpBonus() - 1) * 100)} % XP</span>` : ''}
         ${acc.titles.warHero ? `<span class="pill gold">${ico('swords')} Héros de guerre ×${acc.titles.warHero}</span>` : ''}
       </div>
@@ -2297,10 +2298,11 @@ async function initLive() {
   try { await NET.subscribeLive(onLive); } catch (e) { /* le direct est optionnel */ }
 }
 
-/** Bonus d'XP de rattrapage selon le retard sur les autres */
+/** Bonus d'XP de rattrapage selon le retard sur le perso le plus haut du jeu (tous les persos de tous les joueurs, les miens compris) */
 function updateXpBonus() {
-  const catchup = NET.online && players.length ? E.catchupBonus(hero.level, players.map(p => E.strongestHero(p.data).level)) : 1;
-  E.setXpBonus(catchup, E.altXpBonus(acc, hero));   // persos secondaires : ×1,5 en plus, jusqu'au niveau du perso le plus haut
+  const top = Math.max(...[acc, ...players.map(p => p.data)].flatMap(a => (a && a.heroes || []).map(h => h.level)));
+  const catchup = NET.online ? E.catchupBonus(hero.level, top) : 1;
+  E.setXpBonus(catchup, E.altXpBonus(acc, hero));   // persos secondaires : ×2 en plus, jusqu'au niveau du perso le plus haut du compte
 }
 
 const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
