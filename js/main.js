@@ -6,14 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018142441';
-import * as E from './engine.js?v=20261018142441';
-import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018142441';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018142441';
-import { hashStr, makeRng } from './rng.js?v=20261018142441';
-import { APP_VERSION } from './version.js?v=20261018142441';
-import * as NET from './net.js?v=20261018142441';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018142441';
+} from './data.js?v=20261018142915';
+import * as E from './engine.js?v=20261018142915';
+import { playBattle, playTraining, idlePreview, playSkirmish } from './battle.js?v=20261018142915';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018142915';
+import { hashStr, makeRng } from './rng.js?v=20261018142915';
+import { APP_VERSION } from './version.js?v=20261018142915';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018142915';
+import * as NET from './net.js?v=20261018142915';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018142915';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -120,6 +121,7 @@ function render() {
         <div class="tb-name">${esc(acc.pseudo)}<span>${CLASSES[hero.classId].name} Nv.${hero.level}</span></div>
         <div class="xpbar"><div style="width:${xpPct}%"></div></div>
       </div>
+      <button class="tb-gear" data-act="patchNotes" aria-label="Notes de mise à jour">📜<span class="badge dot" id="patch-badge" ${patchUnseen() ? '' : 'hidden'}>!</span></button>
       <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">💬<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
       <button class="tb-gear" data-act="settings" aria-label="Réglages">⚙︎</button>
     </header>
@@ -316,6 +318,7 @@ async function doAuth() {
     await refreshPlayers();
     initChat().then(() => render());
     initLive().then(() => softRender());
+    NET.joinPresence(acc.pseudo, onPresence).catch(() => {});
     tab = authMode === 'signup' ? 'chests' : 'hero';
     render();
     toast(authMode === 'signup' ? 'Bienvenue ! Tu as 2 coffres à ouvrir.' : `Salut ${acc.pseudo} !`);
@@ -682,7 +685,7 @@ function viewFights() {
         <div class="opp ${o.done ? 'done' : ''}">
           <div class="av"><canvas class="px" data-portrait="${o.classId}" data-dye="${o.dye || ''}"></canvas></div>
           <div class="o-body">
-            <div class="o-name">${nameHtml(o.name, o.data)} ${titleHtml(o.data)}</div>
+            <div class="o-name">${dotHtml(o.id)}${nameHtml(o.name, o.data)} ${titleHtml(o.data)}</div>
             <div class="o-sub">${CLASSES[o.classId].name} · Nv.${o.level} · Puissance ${E.powerScore(o.snap)}</div>
           </div>
           ${o.done
@@ -733,10 +736,10 @@ function rankingEntries() {
   const wins = (a) => a.heroes.reduce((t, h) => t + h.stats.wins, 0);
   const tow = (a) => Math.max(0, ...a.heroes.map(h => (h.tower && h.tower.best) || 0));
   const sh = E.strongestHero(acc);
-  const me = { name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, level: sh.level, wins: wins(acc), tower: tow(acc), me: true };
+  const me = { id: myId(), name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, level: sh.level, wins: wins(acc), tower: tow(acc), me: true };
   let rest;
   if (NET.online) {
-    rest = players.map(p => { const h = E.strongestHero(p.data); return { name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, level: h.level, wins: wins(p.data), tower: tow(p.data) }; });
+    rest = players.map(p => { const h = E.strongestHero(p.data); return { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, level: h.level, wins: wins(p.data), tower: tow(p.data) }; });
   } else {
     const totalMine = hero.stats.wins + hero.stats.losses;
     rest = opponents().map(o => {
@@ -768,7 +771,7 @@ function viewRanking() {
           <div class="pos">${medal[i] || i + 1}</div>
           <div class="av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
           <div class="o-body">
-            <div class="o-name">${nameHtml(e.name, e.data)}${e.me ? ' <span class="pill gold">toi</span>' : ''}</div>
+            <div class="o-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}${e.me ? ' <span class="pill gold">toi</span>' : ''}</div>
             <div class="o-sub">${CLASSES[e.classId].name} ${titleHtml(e.data)}</div>
           </div>
           <div class="score">${scoreOf(e)}</div>
@@ -786,7 +789,7 @@ function podium(list, scoreOf) {
     return `
     <div class="pod p${i + 1} ${e.me ? 'me' : ''}">
       <div class="pod-av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
-      <div class="pod-name">${nameHtml(e.name, e.data)}</div>
+      <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
       <div class="pod-score">${scoreOf(e)}</div>
       <div class="pod-step"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${i + 1}</b></div>
     </div>`;
@@ -1051,7 +1054,7 @@ const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p 
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { fights: 'combat', dungeons: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social' };
+const PARENT = { fights: 'combat', dungeons: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 const PARENT_NAME = { combat: 'Combats', social: 'Social' };
 
 function setBadge(id, n) {
@@ -1125,6 +1128,7 @@ function viewSocial() {
     { id: 'journal', name: 'Journal', sub: 'Revois tes combats, venge-toi', icon: 'loic_weapon', badge: journalUnseen },
     { id: 'chat', name: 'Tchat', sub: 'Chambrer les potes', icon: 'tom_weapon', badge: chatUnread },
     { id: 'ranking', name: 'Classement', sub: 'Niveau, victoires, tour', icon: 'guillaume_hat', badge: 0 },
+    { id: 'players', name: 'Joueurs', sub: NET.online ? `${onlineCount()} en ligne` : 'En ligne seulement', icon: 'thomas_hat', badge: 0, online: true },
   ];
   return `
     <section class="card">
@@ -1132,11 +1136,78 @@ function viewSocial() {
         ${tiles.map(t => `
           <button class="tile" data-act="tab" data-id="${t.id}">
             <canvas class="px" data-icon="${t.icon}"></canvas>
-            <b>${t.name}</b><small>${t.sub}</small>
+            <b>${t.name}</b><small>${t.online ? '<i class="dot-on"></i>' : ''}${t.sub}</small>
             ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
           </button>`).join('')}
       </div>
     </section>`;
+}
+
+// ------------------------------ Joueurs en ligne ------------------------------
+let onlineIds = new Set();
+const isOnline = (id) => NET.online && onlineIds.has(id);
+const onlineCount = () => [...onlineIds].length || (NET.online ? 1 : 0);
+const dotHtml = (id) => (NET.online ? `<i class="${isOnline(id) ? 'dot-on' : 'dot-off'}" title="${isOnline(id) ? 'En ligne' : 'Hors ligne'}"></i>` : '');
+const agoText = (iso) => {
+  if (!iso) return 'jamais vu';
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 2) return 'vu à l’instant';
+  if (m < 60) return `vu il y a ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `vu il y a ${h} h`;
+  const d = Math.round(h / 24);
+  return `vu il y a ${d} jour${d > 1 ? 's' : ''}`;
+};
+
+function onPresence(ids) {
+  onlineIds = new Set(ids);
+  if (['players', 'social', 'fights', 'ranking'].includes(tab)) softRender();
+}
+
+function viewPlayers() {
+  if (!NET.online) return offlineCard('Joueurs', 'La liste des joueurs en ligne marche seulement dans la version en ligne.');
+  const me = NET.myId();
+  const rows = [{ id: me, name: acc.pseudo, data: acc, me: true }, ...players.map(p => ({ id: p.id, name: p.pseudo, data: p.data, seen: p.updated_at }))];
+  rows.sort((a, b) => (isOnline(b.id) ? 1 : 0) - (isOnline(a.id) ? 1 : 0) || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(b.seen || '').localeCompare(String(a.seen || '')));
+  const n = rows.filter(r => isOnline(r.id)).length;
+  return `
+    <section class="card">
+      <h2>Joueurs</h2>
+      <p class="hint">${n} joueur${n > 1 ? 's' : ''} en ligne sur ${rows.length}. Le voyant passe au vert dès qu’un pote ouvre l’appli.</p>
+      ${rows.map(r => {
+        const h = E.strongestHero(r.data);
+        const sec = r.data.war && r.data.war.section;
+        return `
+        <div class="opp ${isOnline(r.id) ? '' : 'away'}">
+          <div class="av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></div>
+          <div class="o-body">
+            <div class="o-name">${dotHtml(r.id)}${nameHtml(r.name, r.data)}${r.me ? ' <span class="pill gold">toi</span>' : ''}</div>
+            <div class="o-sub">${CLASSES[h.classId].name} Nv.${h.level}${sec ? ` · <span style="color:${WAR.sections[sec].color}">${WAR.sections[sec].name}</span>` : ''}</div>
+          </div>
+          <span class="pill ${isOnline(r.id) ? 'green' : ''}">${isOnline(r.id) ? 'En ligne' : agoText(r.seen)}</span>
+        </div>`;
+      }).join('')}
+    </section>`;
+}
+
+// ------------------------------ Notes de mise à jour ------------------------------
+const PATCH_SEEN = 'fuze-patch-seen';
+function patchUnseen() {
+  try { return localStorage.getItem(PATCH_SEEN) !== PATCH_NOTES[0].id; } catch (e) { return false; }
+}
+function openPatchNotes() {
+  try { localStorage.setItem(PATCH_SEEN, PATCH_NOTES[0].id); } catch (e) { /* stockage indisponible */ }
+  const b = document.getElementById('patch-badge');
+  if (b) b.hidden = true;
+  openModal(`
+    <h3>Notes de mise à jour</h3>
+    <p class="hint" style="margin-top:6px">Les nouveautés du jeu, la plus récente en premier.</p>
+    ${PATCH_NOTES.map((n, i) => `
+      <details class="patch" ${i === 0 ? 'open' : ''}>
+        <summary><span class="pdate">${n.date} · ${n.time}</span><b>${esc(n.title)}</b>${i === 0 ? '<span class="pill gold">NOUVEAU</span>' : ''}</summary>
+        ${n.sections.map(sec => `<div class="psec">${esc(sec.title)}</div><ul>${sec.items.map(it => `<li>${esc(it)}</li>`).join('')}</ul>`).join('')}
+      </details>`).join('')}
+    <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>`);
 }
 
 // ------------------------------ Journal des combats ------------------------------
@@ -1644,7 +1715,7 @@ function updateXpBonus() {
 }
 
 const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
-  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, bets: viewBets, journal: viewJournal };
+  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, bets: viewBets, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
@@ -1954,7 +2025,7 @@ const ACTIONS = {
   tab: (d) => {
     SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
-    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'combat'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
+    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets') refreshBets().then(() => { if (tab === 'bets') softRender(); });
     if (d.id === 'raid') loadRaid().then(() => { if (tab === 'raid') softRender(); });
@@ -2217,6 +2288,7 @@ const ACTIONS = {
     render();
   },
   settings: openSettings,
+  patchNotes: () => openPatchNotes(),
   rename: () => {
     const v = (document.getElementById('rename').value || '').trim();
     if (v) { acc.pseudo = v; acc.heroes.forEach(h => { h.name = v; }); save(); closeModal(); render(); }
@@ -2319,6 +2391,7 @@ async function boot() {
         acc.pseudo = row.pseudo;
         await refreshPlayers();
         await Promise.all([initChat(), initLive()]);
+        NET.joinPresence(acc.pseudo, onPresence).catch(() => {});
       }
     } catch (e) {
       app.innerHTML = `<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="auth-msg">${esc(e.message)}</p><button class="btn primary block" onclick="location.reload()">Réessayer</button></div>`;

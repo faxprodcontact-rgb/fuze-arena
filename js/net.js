@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018142441';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261018142915';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;
@@ -97,7 +97,7 @@ export async function restore() {
 /** Les autres joueurs (pour l'arène, la guerre et le classement) */
 export async function fetchOthers() {
   const c = await client();
-  const { data, error } = await c.from('accounts').select('id, pseudo, data').neq('id', userId);
+  const { data, error } = await c.from('accounts').select('id, pseudo, data, updated_at').neq('id', userId);
   if (error) throw new Error(frError(error));
   return (data || []).filter(p => p.data && p.data.heroes);
 }
@@ -130,6 +130,7 @@ export async function signOut() {
   await unsubscribeChat();
   const c = await client();
   if (liveChannel) { await c.removeChannel(liveChannel); liveChannel = null; }
+  if (presenceChannel) { await c.removeChannel(presenceChannel); presenceChannel = null; onlineIds = new Set(); }
   await c.auth.signOut();
   userId = null;
 }
@@ -277,4 +278,24 @@ export async function subscribeLive(onEvent) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wagers' }, (p) => onEvent('wager', p.new))
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'raid_hits' }, (p) => onEvent('raid', p.new))
     .subscribe();
+}
+
+// ------------------------------ Joueurs en ligne ------------------------------
+// Chaque joueur connecté s'annonce sur un canal « présence » : quand il ferme l'appli, il disparaît de la liste.
+let presenceChannel = null;
+let onlineIds = new Set();
+export const onlineSet = () => onlineIds;
+
+export async function joinPresence(pseudo, onChange) {
+  const c = await client();
+  if (presenceChannel) await c.removeChannel(presenceChannel);
+  presenceChannel = c.channel('en-ligne', { config: { presence: { key: userId } } });
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      onlineIds = new Set(Object.keys(presenceChannel.presenceState()));
+      onChange(onlineIds);
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') await presenceChannel.track({ pseudo, since: new Date().toISOString() });
+    });
 }
