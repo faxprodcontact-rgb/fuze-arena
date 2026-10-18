@@ -4,6 +4,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1545', date: '18/10/2026', time: '15h45', title: 'Le Sac devient une armurerie',
+    sections: [
+      { title: 'Sac', items: [
+        'Nouveau bandeau « Armurerie » : ta puissance, tes emplacements équipés, tes objets et tes panoplies actives.',
+        'Ton héros est sous un projecteur, avec un sol lumineux à ses pieds.',
+        'Les emplacements vides montrent une icône de ce qui va dedans ; les emplacements remplis brillent à la couleur de la rareté.',
+        'Objets du sac plus stylés : reflet, halo selon la rareté, Épiques et Légendaires qui scintillent, titres de rareté avec une gemme.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1541', date: '18/10/2026', time: '15h41', title: 'Correctif : visage de l’archère',
     sections: [
       { title: 'Correctif', items: ['Le visage de l’archère est redessiné : la capuche ne mord plus sur le côté droit et l’œil n’est plus écrasé.'] },

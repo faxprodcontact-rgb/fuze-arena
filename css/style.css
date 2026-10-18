@@ -766,3 +766,50 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .doll-stage { position: relative; z-index: 1; overflow: visible; min-height: 220px; }
 .doll-stage canvas { position: absolute; width: 230%; left: -65%; bottom: 22px; height: auto; pointer-events: none; }
 .doll-name { position: relative; z-index: 3; }
+
+/* ---------- Sac façon armurerie ---------- */
+.arm-top { --hc: #ff5d6c; position: relative; overflow: hidden; border-radius: 16px; padding: 12px 14px;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--hc) 28%, #1a1426) 0%, #1a1426 60%, #120e1c 100%);
+  box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 2px color-mix(in srgb, var(--hc) 45%, transparent), 0 10px 22px rgba(0,0,0,.4); }
+.arm-top::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5; background: repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 8px, transparent 8px 18px); }
+.arm-top::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--hc), var(--gold), var(--hc)); }
+.arm-top.cls-mage, .armory.cls-mage { --hc: #a77bff; } .arm-top.cls-archer, .armory.cls-archer { --hc: #4cd964; } .arm-top.cls-paladin, .armory.cls-paladin { --hc: #ffd84a; }
+.at-main { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.at-main h1 { font-family: var(--pixel); font-size: 16px; margin: 0; color: #fff; text-shadow: 0 3px 0 #000, 0 0 16px color-mix(in srgb, var(--hc) 70%, transparent); }
+.at-main p { margin: 5px 0 0; font-size: 12px; color: var(--muted); font-weight: 800; }
+.at-power { text-align: right; background: rgba(0,0,0,.3); border-radius: 10px; padding: 6px 10px; box-shadow: inset 0 0 0 1px rgba(255,216,74,.35); }
+.at-power small { display: block; font-size: 9.5px; color: var(--muted); font-weight: 800; letter-spacing: 1px; }
+.at-power b { font-family: var(--pixel); font-size: 16px; color: var(--gold); text-shadow: 0 0 12px rgba(255,216,74,.45); }
+.at-chips { position: relative; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* l'armurerie : projecteur sur le héros, sol lumineux */
+.armory { --hc: #ff5d6c; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 45% 60% at 50% 0%, color-mix(in srgb, var(--hc) 22%, transparent), transparent 70%),
+              radial-gradient(ellipse 60% 25% at 50% 92%, rgba(255,216,74,.18), transparent 70%),
+              linear-gradient(180deg, #1c1630, #120e1c);
+  box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 2px color-mix(in srgb, var(--hc) 30%, transparent), 0 10px 22px rgba(0,0,0,.4); }
+.armory::before { content: ''; position: absolute; left: 50%; top: -20px; width: 140px; height: 260px; margin-left: -70px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), transparent 75%); clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); }
+.armory .doll-stage { background: transparent; box-shadow: none; }
+.armory .slot { border-radius: 12px; background: linear-gradient(160deg, rgba(58,48,88,.85), rgba(22,18,34,.85)); box-shadow: inset 0 0 0 2px #3d3456, inset 0 2px 0 rgba(255,255,255,.08), 0 3px 0 rgba(0,0,0,.4); }
+.armory .slot .sl-name { font-size: 9px; font-weight: 800; color: var(--muted); }
+.armory .empty-slot .sl-ghost { font-size: 22px; opacity: .22; filter: grayscale(1); }
+.armory .slot.filled { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 35%, transparent), rgba(22,18,34,.9) 72%);
+  box-shadow: inset 0 0 0 2px var(--rc), 0 0 14px color-mix(in srgb, var(--rc) 45%, transparent), 0 3px 0 rgba(0,0,0,.4); }
+.armory .slot.filled .sl-name { color: #fff; }
+.armory .slot.filled canvas { filter: drop-shadow(0 3px 0 rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb, var(--rc) 60%, transparent)); }
+/* objets du sac : cadre de rareté, reflet, coin lumineux */
+.it { overflow: hidden; background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--rc) 32%, transparent), #17131f 78%); }
+.it::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40%; background: linear-gradient(rgba(255,255,255,.10), transparent); pointer-events: none; }
+.it.r2, .slot.filled.r2 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 10px rgba(61,155,255,.35); }
+.it.r3 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 14px rgba(176,92,255,.5); }
+.it.r4 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 18px rgba(255,159,26,.6); animation: legend 2.4s ease-in-out infinite; }
+@keyframes legend { 50% { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 0 2px #0e0b16, 0 0 26px rgba(255,200,60,.85); } }
+.it.r3::after, .it.r4::after, .slot.filled.r3::after, .slot.filled.r4::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.3) 50%, transparent 65%); animation: shimmer 3s infinite; pointer-events: none; }
+.slot.filled { overflow: hidden; }
+.it .n { background: rgba(14,11,22,.85); padding: 2px 4px; border-radius: 5px; right: 3px; bottom: 3px; }
+/* titres de rareté */
+.bag-head { position: relative; overflow: hidden; border-left: 0; padding: 7px 10px 7px 30px; background: linear-gradient(90deg, color-mix(in srgb, var(--rc, var(--gold)) 30%, transparent), transparent 85%); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--rc, var(--gold)) 50%, transparent); }
+.bag-head .gem { position: absolute; left: 9px; top: 50%; width: 12px; height: 12px; margin-top: -6px; transform: rotate(45deg); background: var(--rc, var(--gold)); box-shadow: 0 0 10px var(--rc, var(--gold)), inset 2px 2px 0 rgba(255,255,255,.45); }
+.bag-head.set { padding-left: 10px; }
+.bag-head span { text-shadow: 0 0 10px color-mix(in srgb, var(--rc, var(--gold)) 60%, transparent); }
+.bag-card .seg { background: #120e1c; }

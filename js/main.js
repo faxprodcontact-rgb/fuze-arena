@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018154140';
-import * as E from './engine.js?v=20261018154140';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018154140';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018154140';
-import { hashStr, makeRng } from './rng.js?v=20261018154140';
-import { APP_VERSION } from './version.js?v=20261018154140';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018154140';
-import * as NET from './net.js?v=20261018154140';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018154140';
+} from './data.js?v=20261018154534';
+import * as E from './engine.js?v=20261018154534';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018154534';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018154534';
+import { hashStr, makeRng } from './rng.js?v=20261018154534';
+import { APP_VERSION } from './version.js?v=20261018154534';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018154534';
+import * as NET from './net.js?v=20261018154534';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018154534';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -557,11 +557,12 @@ function stacks() {
 }
 
 const groupOf = (itemId) => ITEMS[itemId].set || 'pet';
+const SLOT_GLYPH = { hat: '⛑', weapon: '⚔', armor: '🛡', boots: '👢', amulet: '📿', pet: '🐾' };
 const groupName = (g) => (g === 'pet' ? 'Familiers' : SETS[g].name.replace(/^Panoplie (de |d’|du )?/, ''));
 
 function invGrid(list) {
   return `<div class="inv">${list.map(s => `
-    <button class="it" style="--rc:${RARITIES[s.rarity].color}" data-act="item" data-id="${s.itemId}" data-r="${s.rarity}">
+    <button class="it r${s.rarity}" style="--rc:${RARITIES[s.rarity].color}" data-act="item" data-id="${s.itemId}" data-r="${s.rarity}">
       <canvas class="px" data-icon="${s.itemId}"></canvas>
       ${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}
       ${s.equipped ? '<span class="eq">ÉQUIPÉ</span>' : ''}
@@ -574,9 +575,12 @@ function viewBag() {
   const slotHtml = (slot) => {
     const it = eq[slot];
     return it
-      ? `<button class="slot filled" style="--rc:${RARITIES[it.rarity].color}" data-act="item" data-id="${it.itemId}" data-r="${it.rarity}"><canvas class="px" data-icon="${it.itemId}"></canvas>${SLOTS[slot].name}</button>`
-      : `<div class="slot">${SLOTS[slot].name}<br>—</div>`;
+      ? `<button class="slot filled r${it.rarity}" style="--rc:${RARITIES[it.rarity].color}" data-act="item" data-id="${it.itemId}" data-r="${it.rarity}"><canvas class="px" data-icon="${it.itemId}"></canvas><span class="sl-name">${SLOTS[slot].name}</span></button>`
+      : `<div class="slot empty-slot"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><span class="sl-name">${SLOTS[slot].name}</span></div>`;
   };
+  const power = E.powerScore(E.snapshot(hero));
+  const filled = Object.keys(eq).length;
+  const setsOn = E.activeSets(hero).filter(a => a.bonus);
   const st = stacks();
   const eqUids = new Set(Object.values(hero.equipped));
   const commons = hero.inventory.filter(i => i.rarity === 0 && !eqUids.has(i.uid)).length;
@@ -587,7 +591,7 @@ function viewBag() {
       const list = st.filter(s => s.rarity === R.id);
       if (!list.length) return '';
       const n = list.reduce((t, s) => t + s.items.length, 0);
-      return `<div class="bag-head" style="--rc:${R.color}"><span>${R.name}</span><small>${n} objet${n > 1 ? 's' : ''} · revente ${SELL_PRICE[R.id]} Flouze</small></div>${invGrid(list)}`;
+      return `<div class="bag-head r${R.id}" style="--rc:${R.color}"><i class="gem"></i><span>${R.name}</span><small>${n} objet${n > 1 ? 's' : ''} · revente ${SELL_PRICE[R.id]} Flouze</small></div>${invGrid(list)}`;
     }).join('');
   } else {
     const groups = [...Object.keys(SETS), 'pet'];
@@ -609,8 +613,18 @@ function viewBag() {
     }).join('');
   }
   return `
-    <section class="card">
-      <h2>Équipement</h2>
+    <section class="arm-top cls-${hero.classId}">
+      <div class="at-main">
+        <div><h1>Armurerie</h1><p>${CLASSES[hero.classId].name} Nv.${hero.level}</p></div>
+        <div class="at-power"><small>PUISSANCE</small><b>${fmtNum(power)}</b></div>
+      </div>
+      <div class="at-chips">
+        <span class="pill ${filled === 6 ? 'gold' : ''}">⚔ ${filled}/6 équipés</span>
+        <span class="pill">🎒 ${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}</span>
+        ${setsOn.length ? setsOn.map(a => `<span class="pill green">${groupName(a.setId)} ${a.count}/5</span>`).join('') : '<span class="pill">Aucune panoplie active</span>'}
+      </div>
+    </section>
+    <section class="card armory cls-${hero.classId}">
       <div class="doll">
         <div class="doll-col">${['hat', 'armor', 'boots'].map(slotHtml).join('')}</div>
         <div class="doll-stage"><canvas class="px" data-doll="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas>
@@ -618,7 +632,7 @@ function viewBag() {
         <div class="doll-col">${['weapon', 'amulet', 'pet'].map(slotHtml).join('')}</div>
       </div>
     </section>
-    <section class="card">
+    <section class="card bag-card">
       <h2>Sac <span style="color:var(--muted)">(${hero.inventory.length})</span></h2>
       <p class="hint">2 objets identiques = 1 objet de rareté supérieure. Touche un objet pour l’équiper, le fusionner ou le vendre.</p>
       <div class="seg" style="margin-bottom:12px">
