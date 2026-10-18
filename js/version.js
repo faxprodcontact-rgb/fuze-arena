@@ -1,2 +1,2 @@
 // Numéro de version, mis à jour automatiquement par publier.sh
-export const APP_VERSION = '20261018145448';
+export const APP_VERSION = '20261018151034';

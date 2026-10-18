@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018145448';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018151034';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -790,6 +790,14 @@ const SPELL_ART = {
   p1: ['hammer', { s: '#e8e1cf' }], p10: ['cross'], p20: ['shield', { m: '#e5b33a', l: '#fff3b0', d: '#b8860b', y: '#2e5aa8' }], p30: ['sun'],
   p40: ['hammer', { s: '#c3cad3', w: '#ffffff' }], p50: ['shield', { m: '#2e5aa8', l: '#8fb3ff', d: '#1c3566' }], p60: ['sun', { y: '#ffe08a' }],
   p70: ['sword', { w: '#fff3b0', l: '#ffd84a', y: '#ffffff' }], p80: ['heart', { r: '#7bed6f' }], p90: ['pillar'], p100: ['wings'],
+  // sorts des niveaux 15, 35, 45, 65 et 85
+  g15: ['roar', { m: '#ffb38a', r: '#ffd84a' }], g35: ['sword', { w: '#ff9a9a', l: '#a82424' }], g45: ['shield', { m: '#5c6670', l: '#c9d1da', d: '#3a3344', y: '#e5b33a' }],
+  g65: ['sword', { w: '#ffe08a', l: '#e5a92a' }], g85: ['star', { y: '#ff7a5a' }],
+  m15: ['bolt', { y: '#c38bff' }], m35: ['snow', { c: '#e0f7ff' }], m45: ['shield', { m: '#6a4cff', l: '#c3b0ff', d: '#3d2a7a', y: '#ffffff' }],
+  m65: ['bolt', { y: '#7fe7ff' }], m85: ['sun', { y: '#ff9f43', w: '#ffe08a' }],
+  a15: ['arrow', { s: '#ff9f43' }], a35: ['arrow', { s: '#bff3ff' }], a45: ['wind', { w: '#7bed6f' }], a65: ['target', { r: '#ff9f43' }], a85: ['rain', { s: '#7bed6f', n: '#2f5a2a' }],
+  p15: ['star', { y: '#fff3b0' }], p35: ['shield', { m: '#ffd84a', l: '#fff3b0', d: '#b8860b', y: '#ffffff' }], p45: ['sun', { y: '#7bed6f' }],
+  p65: ['shield', { m: '#c3cad3', l: '#ffffff', d: '#5c6670', y: '#ffd84a' }], p85: ['hammer', { s: '#ffd84a', w: '#ffffff', d: '#b8860b' }],
 };
 const CLASS_TILE = { guerrier: '#7a2e2e', mage: '#3d2a7a', archer: '#2f5a2a', paladin: '#6b5a2a', monster: '#3a3344' };
 const BADGES = {

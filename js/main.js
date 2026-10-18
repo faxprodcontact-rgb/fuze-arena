@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018145448';
-import * as E from './engine.js?v=20261018145448';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018145448';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018145448';
-import { hashStr, makeRng } from './rng.js?v=20261018145448';
-import { APP_VERSION } from './version.js?v=20261018145448';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018145448';
-import * as NET from './net.js?v=20261018145448';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018145448';
+} from './data.js?v=20261018151034';
+import * as E from './engine.js?v=20261018151034';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018151034';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon } from './sprites.js?v=20261018151034';
+import { hashStr, makeRng } from './rng.js?v=20261018151034';
+import { APP_VERSION } from './version.js?v=20261018151034';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018151034';
+import * as NET from './net.js?v=20261018151034';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018151034';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -356,47 +356,61 @@ function viewHero() {
   const active = hero.spells.map(id => SPELLS[id]).filter(Boolean);
   const others = all.filter(s => !hero.spells.includes(s.id));
   const need = E.xpForLevel(hero.level);
+  const power = E.powerScore(snap);
+  const defender = acc.heroes.length > 1 && E.strongestHero(acc) === hero;
+  const xpPct = hero.level >= MAX_LEVEL ? 100 : Math.round((hero.xp / need) * 100);
+  const sets = E.activeSets(hero).filter(a => a.bonus);
+  const aff = E.petAffinity(eq.pet && eq.pet.itemId, hero.classId);
+  const title = titleOf(acc);
   return `
+    <section class="hero-banner cls-${hero.classId}">
+      <div class="hb-main">
+        <div class="hb-id">
+          <div class="hb-name">${nameHtml(acc.pseudo, acc)}</div>
+          <div class="hb-title">${title ? `« ${esc(title)} »` : 'Sans titre'}</div>
+          <div class="hb-class">${CLASSES[hero.classId].name}${defender ? ' · <b>défenseur</b>' : ''}${acc.war.section ? ` · <span style="color:${WAR.sections[acc.war.section].color}">${WAR.sections[acc.war.section].name}</span>` : ''}</div>
+        </div>
+        <div class="hb-lvl"><small>NIV.</small><b>${hero.level}</b></div>
+      </div>
+      <div class="hb-xp"><div style="width:${xpPct}%"></div><span>${hero.level >= MAX_LEVEL ? 'Niveau max !' : `XP ${hero.xp} / ${need}`}</span></div>
+      <div class="hb-stats">
+        <div><small>Puissance</small><b class="gold">${fmtNum(power)}</b></div>
+        <div><small>Vie</small><b>${fmtNum(hp)}</b></div>
+        <div><small>Victoires</small><b>${hero.stats.wins}<i>/${hero.stats.wins + hero.stats.losses}</i></b></div>
+      </div>
+      <div class="hb-chips">
+        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
+        <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys}</span>
+        ${E.getXpBonus() > 1 ? `<span class="pill green">Rattrapage +${Math.round((E.getXpBonus() - 1) * 100)} % XP</span>` : ''}
+        ${acc.titles.warHero ? `<span class="pill gold">⚔ Héros de guerre ×${acc.titles.warHero}</span>` : ''}
+      </div>
+    </section>
+
     <section class="card train">
-      <div class="row"><h2 style="margin:0">Entraînement</h2><span class="spacer"></span><span class="pill">Tes stats en action</span></div>
+      <h2 style="margin:0">Entraînement</h2>
+      <p class="hint" style="margin:6px 0 0">Ton perso tape l’épouvantail en boucle : regarde tes stats en action. Touche un perso en dessous pour le voir à l’entraînement.</p>
       <div class="train-wrap"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div></div>
+      <div class="hero-switch">
+        ${acc.heroes.map((h, i) => `
+          <button class="hs ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}" aria-label="${CLASSES[h.classId].name} niveau ${h.level}">
+            <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas><small>Nv.${h.level}</small>
+          </button>`).join('')}
+      </div>
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
-
-
-    <section class="card hero-card">
-      <div class="hero-stage"><canvas class="px" data-hero="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas></div>
-      <div class="hero-meta">
-        <div class="cls">${nameHtml(acc.pseudo, acc)} ${titleHtml(acc)}</div>
-        <div class="cls">${CLASSES[hero.classId].name}${acc.heroes.length > 1 && E.strongestHero(acc) === hero ? ' · <span style="color:var(--gold)">défenseur</span>' : ''}</div>
-        <div class="lvl">Nv.${hero.level}</div>
-        <div class="xp">${hero.level >= MAX_LEVEL ? 'Niveau max !' : `XP ${hero.xp} / ${need}`}</div>
-        <div class="big">❤ ${hp} PV</div>
-        <div class="row" style="flex-wrap:wrap;gap:6px">
-          <span class="pill gold">Puissance ${E.powerScore(snap)}</span>
-          <span class="pill">${hero.stats.wins} V · ${hero.stats.losses} D</span>
-          <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
-          <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys} clef${hero.keys > 1 ? 's' : ''}</span>
-          ${E.getXpBonus() > 1 ? `<span class="pill green">Rattrapage +${Math.round((E.getXpBonus() - 1) * 100)} % XP</span>` : ''}
-          ${acc.war.section ? `<span class="pill" style="color:${WAR.sections[acc.war.section].color}">${WAR.sections[acc.war.section].name}</span>` : ''}
-          ${acc.titles.warHero ? `<span class="pill gold">⚔ Héros de guerre ×${acc.titles.warHero}</span>` : ''}
-        </div>
-      </div>
-    </section>
-    ${E.activeSets(hero).filter(a => a.bonus).map(a => `
-      <section class="card set-active">
-        <b>${SETS[a.setId].name}</b> <span class="pill gold">${a.count} pièces</span>
-        <div class="set-line on">${bonusText(a.bonus)}</div>
-      </section>`).join('')}
-
     <section class="card">
-      <h2>Caractéristiques</h2>
-      <p class="hint">${pts > 0 ? `<b style="color:var(--green)">${pts} point${pts > 1 ? 's' : ''} à placer</b>. ` : ''}Tu gagnes 3 points à chaque niveau.</p>
+      <h2 style="margin:0">Caractéristiques</h2>
+      <p class="hint" style="margin:6px 0 0">${pts > 0 ? `<span class="pill green pts-pill">${pts} point${pts > 1 ? 's' : ''} à placer</span> Touche les + pour les placer.` : 'Tu gagnes 3 points à placer à chaque niveau.'}</p>
+      <div class="stat-sum">
+        <div><small>❤ Vie</small><b>${fmtNum(hp)}</b></div>
+        <div><small>💥 Critique</small><b>${Math.round(E.critChance(st.lck) * 100)} %</b></div>
+        <div><small>💨 Esquive</small><b>${Math.round(E.dodgeChance(st.lck) * 100)} %</b></div>
+      </div>
       <div class="stat-legend">
-        <span><i class="sl-base"></i>Base : ta classe et ton niveau</span>
-        <span><i class="sl-pts"></i>Points : ceux que tu as placés</span>
-        <span><i class="sl-eq"></i>Équipement : objets, panoplies et familier</span>
+        <span><i class="sl-base"></i>Base (classe + niveau)</span>
+        <span><i class="sl-pts"></i>Tes points</span>
+        <span><i class="sl-eq"></i>Équipement</span>
       </div>
       ${STAT_KEYS.map(k => `
         <div class="stat-row">
@@ -414,44 +428,68 @@ function viewHero() {
           </div>
           <button class="plus" data-act="addStat" data-k="${k}" ${pts > 0 ? '' : 'disabled'}>+</button>
         </div>`).join('')}
-      <div class="derived">
-        <span class="pill">Critique ${Math.round(E.critChance(st.lck) * 100)} %</span>
-        <span class="pill">Esquive ${Math.round(E.dodgeChance(st.lck) * 100)} %</span>
-        <span class="spacer"></span>
-        ${E.spentPoints(hero) > 0 ? `<button class="btn small" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button>` : ''}
-      </div>
+      ${sets.length || aff ? `
+        <div class="bonus-box">
+          <div class="sub" style="margin:0 0 6px">BONUS ACTIFS</div>
+          ${sets.map(a => `<div class="set-line on">${SETS[a.setId].name} (${a.count} pièces) : ${bonusText(a.bonus)}</div>`).join('')}
+          ${aff ? `<div class="set-line on">Familier ${esc(ITEMS[eq.pet.itemId].name)} : +5 % ${STATS[aff.stat].name}</div>` : ''}
+        </div>` : ''}
+      ${E.spentPoints(hero) > 0 ? `<div class="derived"><span class="spacer"></span><button class="btn small" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button></div>` : ''}
     </section>
 
-    <section class="card">
+    <section class="card spells-card">
       <h2>Sorts</h2>
-      <p class="hint">En mode <b>auto</b>, ton héros lance ses sorts actifs <b>dans cet ordre</b> dès qu’ils sont prêts (max ${MAX_ACTIVE_SPELLS}). Sinon, il fait une attaque de base. En donjon, à la tour et contre Mélenchon, tu peux passer en <b>manuel</b> pendant le combat et les lancer toi-même.</p>
-      ${active.map((s, i) => `
-        <div class="spell">
-          <div class="sp-ic"><canvas class="px" data-spell="${s.id}"></canvas><span class="num">${i + 1}</span></div>
-          <div class="sp-body">
-            <div class="sp-name">${s.name} <span class="pill">⟳ ${s.cd} tours</span></div>
-            <div class="sp-desc">${s.desc}</div>
-          </div>
-          <div class="sp-btns">
-            <button class="ic" data-act="spellUp" data-id="${s.id}" ${i === 0 ? 'disabled' : ''} aria-label="Monter">▲</button>
-            <button class="ic" data-act="spellDown" data-id="${s.id}" ${i === active.length - 1 ? 'disabled' : ''} aria-label="Descendre">▼</button>
-            <button class="ic" data-act="spellOff" data-id="${s.id}" aria-label="Retirer">✕</button>
-          </div>
-        </div>`).join('') || '<p class="empty">Aucun sort actif.</p>'}
-      ${others.length ? `<div class="sub">AUTRES SORTS</div>` : ''}
-      ${others.map(s => {
-        const locked = s.lvl > hero.level;
-        return `
-        <div class="spell ${locked ? 'locked' : ''}">
-          <div class="sp-ic"><canvas class="px" data-spell="${s.id}"></canvas>${locked ? '<span class="num">🔒</span>' : ''}</div>
-          <div class="sp-body">
-            <div class="sp-name">${s.name} ${locked ? `<span class="pill">Niveau ${s.lvl}</span>` : `<span class="pill">⟳ ${s.cd} tours</span>`}</div>
-            <div class="sp-desc">${s.desc}</div>
-          </div>
-          ${locked ? '' : `<button class="btn small green" data-act="spellOn" data-id="${s.id}" ${active.length >= MAX_ACTIVE_SPELLS ? 'disabled' : ''}>Activer</button>`}
-        </div>`;
-      }).join('')}
+      <p class="hint" style="margin:6px 0 10px">Choisis jusqu’à <b>${MAX_ACTIVE_SPELLS} sorts</b> pour combattre : ton héros les lance dès qu’ils sont prêts. Touche un sort pour l’équiper ou le retirer.</p>
+      <div class="spell-slots">
+        ${Array.from({ length: MAX_ACTIVE_SPELLS }, (_, i) => {
+          const sp = active[i];
+          return sp
+            ? `<button class="sslot filled" data-act="spellInfo" data-id="${sp.id}"><canvas class="px" data-spell="${sp.id}"></canvas><small>${esc(sp.name)}</small></button>`
+            : `<div class="sslot"><span class="sempty">Vide</span></div>`;
+        }).join('')}
+      </div>
+      <div class="sub">TA COLLECTION · ${all.filter(s => s.lvl <= hero.level).length} / ${all.length} DÉBLOQUÉS</div>
+      <div class="spell-grid">
+        ${all.map(sp => {
+          const locked = sp.lvl > hero.level;
+          const pos = hero.spells.indexOf(sp.id);
+          return `<button class="sgrid ${locked ? 'locked' : ''} ${pos >= 0 ? 'on' : ''}" data-act="spellInfo" data-id="${sp.id}">
+            <canvas class="px" data-spell="${sp.id}"></canvas>
+            ${locked ? `<span class="slock">Nv.${sp.lvl}</span>` : ''}
+            <small>${esc(sp.name)}</small>
+          </button>`;
+        }).join('')}
+      </div>
     </section>`;
+}
+
+/** Fiche d'un sort : l'équiper, le retirer ou changer sa place */
+function openSpell(id) {
+  const sp = SPELLS[id];
+  if (!sp) return;
+  const locked = sp.lvl > hero.level;
+  const pos = hero.spells.indexOf(id);
+  const active = hero.spells.map(x => SPELLS[x]).filter(Boolean);
+  const full = active.length >= MAX_ACTIVE_SPELLS;
+  openModal(`
+    <div class="item-head">
+      <div class="big-ic spell-ic"><canvas class="px" data-spell="${id}"></canvas></div>
+      <div>
+        <h3>${esc(sp.name)}</h3>
+        <div class="rar" style="color:var(--gold)">${locked ? `Débloqué au niveau ${sp.lvl}` : pos >= 0 ? 'Équipé' : 'Dans ta collection'}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:6px">Recharge : ${sp.cd} tours${sp.lvl > 1 ? ` · sort du niveau ${sp.lvl}` : ''}</div>
+      </div>
+    </div>
+    <p style="margin:0 0 6px;line-height:1.45">${esc(sp.desc)}</p>
+    ${locked ? '<p class="hint" style="margin-top:10px">Monte de niveau pour le débloquer.</p>' : pos >= 0 ? '' : full ? `
+      <div class="sub">REMPLACER UN SORT ÉQUIPÉ</div>
+      <div class="spell-replace">
+        ${active.map((o, i) => `<button class="sslot filled" data-act="spellReplace" data-id="${id}" data-i="${i}"><canvas class="px" data-spell="${o.id}"></canvas><small>${esc(o.name)}</small></button>`).join('')}
+      </div>` : ''}
+    <div class="close-row">
+      ${locked ? '' : pos >= 0 ? `<button class="btn danger" data-act="spellRemove" data-id="${id}">Retirer</button>` : full ? '' : `<button class="btn primary" data-act="spellEquip" data-id="${id}">Équiper</button>`}
+      <button class="btn" data-act="closeModal">Fermer</button>
+    </div>`);
 }
 
 // ------------------------------ Vue Coffres ------------------------------
@@ -2115,6 +2153,21 @@ const ACTIONS = {
   spellUp: (d) => { const i = hero.spells.indexOf(d.id); if (i > 0) { [hero.spells[i - 1], hero.spells[i]] = [hero.spells[i], hero.spells[i - 1]]; save(); render(); } },
   spellDown: (d) => { const i = hero.spells.indexOf(d.id); if (i >= 0 && i < hero.spells.length - 1) { [hero.spells[i + 1], hero.spells[i]] = [hero.spells[i], hero.spells[i + 1]]; save(); render(); } },
   spellOff: (d) => { hero.spells = hero.spells.filter(id => id !== d.id); save(); render(); },
+  spellInfo: (d) => openSpell(d.id),
+  spellEquip: (d) => {
+    if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id) && SPELLS[d.id].lvl <= hero.level) { hero.spells.push(d.id); save(); }
+    closeModal(); render(); SFX.click();
+  },
+  spellReplace: (d) => {
+    const i = +d.i;
+    if (!hero.spells.includes(d.id) && hero.spells[i] && SPELLS[d.id].lvl <= hero.level) { hero.spells[i] = d.id; save(); }
+    closeModal(); render(); SFX.click();
+  },
+  spellRemove: (d) => { hero.spells = hero.spells.filter(x => x !== d.id); save(); closeModal(); render(); },
+  spellMove: (d) => {
+    const i = hero.spells.indexOf(d.id), j = i + +d.d;
+    if (i >= 0 && j >= 0 && j < hero.spells.length) { [hero.spells[i], hero.spells[j]] = [hero.spells[j], hero.spells[i]]; save(); render(); openSpell(d.id); }
+  },
   spellOn: (d) => { if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id)) { hero.spells.push(d.id); save(); render(); } },
   openChest: (d) => openChestFlow(d.kind),
   openAll: () => openChestFlow('normal', true),

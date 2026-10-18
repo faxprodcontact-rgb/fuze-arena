@@ -125,6 +125,11 @@ export const SPELL_LIST = [
     { id: 'g80', lvl: 80, name: 'Rage sanguinaire', cd: 5, scale: 'atk', mult: 1.5, lifesteal: 0.5, melee: true, fx: 'slash', desc: '150 % Attaque, vole 50 % des dégâts.' },
     { id: 'g90', lvl: 90, name: 'Exécution', cd: 5, scale: 'atk', mult: 1.7, execute: 1, melee: true, fx: 'slash', desc: '170 % Attaque, double si l’ennemi a moins de 35 % PV.' },
     { id: 'g100', lvl: 100, name: 'Colère du Titan', cd: 8, scale: 'atk', mult: 3.2, melee: true, fx: 'bash', effects: [{ k: 'stun', chance: 1 }], desc: '320 % Attaque et étourdit à coup sûr.' },
+    { id: 'g15', lvl: 15, name: 'Provocation', cd: 4, scale: 'atk', mult: 0.8, melee: true, fx: 'bash', effects: [{ k: 'debuff', stat: 'atk', pct: 0.2, turns: 3 }], desc: '80 % Attaque et −20 % Attaque ennemie (3 tours).' },
+    { id: 'g35', lvl: 35, name: 'Saignée', cd: 4, scale: 'atk', mult: 0.9, melee: true, fx: 'slash', effects: [{ k: 'dot', kind: 'poison', name: 'Saignement', mult: 0.3, turns: 3 }], desc: '90 % Attaque + saignement 3 tours.' },
+    { id: 'g45', lvl: 45, name: 'Peau de fer', cd: 6, fx: 'buff', effects: [{ k: 'buff', stat: 'def', pct: 0.5, turns: 3 }], desc: '+50 % Défense pendant 3 tours.' },
+    { id: 'g65', lvl: 65, name: 'Double tranchant', cd: 4, scale: 'atk', mult: 0.95, hits: 2, crit: 0.15, melee: true, fx: 'slash', desc: '2 coups de 95 % Attaque, +15 % de critique.' },
+    { id: 'g85', lvl: 85, name: 'Cri de ralliement', cd: 6, fx: 'roar', effects: [{ k: 'heal', pctMax: 0.15 }, { k: 'buff', stat: 'atk', pct: 0.25, turns: 3 }], desc: 'Rend 15 % des PV et +25 % Attaque (3 tours).' },
   ]),
   ...S('mage', [
     { id: 'm1', lvl: 1, name: 'Boule de feu', cd: 2, scale: 'mag', mult: 1.15, fx: 'fireball', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.2, turns: 3 }], desc: '115 % Magie + brûlure 3 tours.' },
@@ -138,6 +143,11 @@ export const SPELL_LIST = [
     { id: 'm80', lvl: 80, name: 'Combustion', cd: 5, scale: 'mag', mult: 0.8, fx: 'fireball', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.45, turns: 4 }], desc: '80 % Magie + grosse brûlure 4 tours.' },
     { id: 'm90', lvl: 90, name: 'Météore', cd: 7, scale: 'mag', mult: 3, fx: 'meteor', desc: 'Un météore s’écrase (300 % Magie).' },
     { id: 'm100', lvl: 100, name: 'Apocalypse', cd: 8, scale: 'mag', mult: 1.6, hits: 3, fx: 'meteor', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.5, turns: 3 }], desc: '3 météores de 160 % Magie + brûlure.' },
+    { id: 'm15', lvl: 15, name: 'Missiles arcaniques', cd: 2, scale: 'mag', mult: 0.6, hits: 2, fx: 'bolt', desc: '2 missiles de 60 % Magie.' },
+    { id: 'm35', lvl: 35, name: 'Nova de givre', cd: 5, scale: 'mag', mult: 0.8, fx: 'ice', effects: [{ k: 'stun', chance: 0.35 }], desc: '80 % Magie, 35 % de chance de geler l’ennemi.' },
+    { id: 'm45', lvl: 45, name: 'Bouclier de mana', cd: 5, fx: 'shield', effects: [{ k: 'shield', scale: 'mag', mult: 1.6 }], desc: 'Bouclier qui absorbe 160 % de ta Magie.' },
+    { id: 'm65', lvl: 65, name: 'Chaîne d’éclairs', cd: 5, scale: 'mag', mult: 0.7, hits: 3, fx: 'lightning', desc: '3 éclairs de 70 % Magie.' },
+    { id: 'm85', lvl: 85, name: 'Embrasement', cd: 6, scale: 'mag', mult: 1.9, fx: 'fireball', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.4, turns: 3 }], desc: 'Énorme boule de feu (190 % Magie) + brûlure.' },
   ]),
   ...S('archer', [
     { id: 'a1', lvl: 1, name: 'Tir précis', cd: 2, scale: 'atk', mult: 1.5, crit: 0.2, fx: 'arrow', desc: '150 % Attaque, +20 % de critique.' },
@@ -151,6 +161,11 @@ export const SPELL_LIST = [
     { id: 'a80', lvl: 80, name: 'Flèche vampirique', cd: 4, scale: 'atk', mult: 1.3, lifesteal: 0.4, fx: 'drain', desc: '130 % Attaque, vole 40 % des dégâts.' },
     { id: 'a90', lvl: 90, name: 'Tir mortel', cd: 6, scale: 'atk', mult: 2.4, crit: 0.4, fx: 'arrow', desc: '240 % Attaque, +40 % de critique.' },
     { id: 'a100', lvl: 100, name: 'Tempête de flèches', cd: 8, scale: 'atk', mult: 0.5, hits: 8, fx: 'rain', desc: '8 flèches de 50 % Attaque.' },
+    { id: 'a15', lvl: 15, name: 'Flèche enflammée', cd: 3, scale: 'atk', mult: 1, fx: 'arrow', effects: [{ k: 'dot', kind: 'burn', name: 'Brûlure', mult: 0.25, turns: 3 }], desc: '100 % Attaque + brûlure 3 tours.' },
+    { id: 'a35', lvl: 35, name: 'Tir entravant', cd: 4, scale: 'atk', mult: 1.2, fx: 'arrow', effects: [{ k: 'debuff', stat: 'spd', pct: 0.3, turns: 3 }], desc: '120 % Attaque et −30 % Vitesse ennemie.' },
+    { id: 'a45', lvl: 45, name: 'Camouflage', cd: 6, fx: 'buff', effects: [{ k: 'buff', stat: 'lck', pct: 1, turns: 2 }], desc: '+100 % Chance pendant 2 tours (esquives et critiques).' },
+    { id: 'a65', lvl: 65, name: 'Flèche lourde', cd: 5, scale: 'atk', mult: 1.8, pierce: 0.3, fx: 'arrow', desc: '180 % Attaque, ignore 30 % de la Défense.' },
+    { id: 'a85', lvl: 85, name: 'Pluie empoisonnée', cd: 6, scale: 'atk', mult: 0.45, hits: 4, fx: 'rain', effects: [{ k: 'dot', kind: 'poison', name: 'Poison', mult: 0.3, turns: 3 }], desc: '4 flèches de 45 % Attaque + poison.' },
   ]),
   ...S('paladin', [
     { id: 'p1', lvl: 1, name: 'Frappe sacrée', cd: 2, scale: 'mix', mult: 1.4, melee: true, fx: 'bash', desc: '140 % Attaque/Magie au marteau.' },
@@ -164,6 +179,11 @@ export const SPELL_LIST = [
     { id: 'p80', lvl: 80, name: 'Renouveau', cd: 6, fx: 'heal', effects: [{ k: 'heal', pctMax: 0.3 }], desc: 'Rend 30 % des PV max.' },
     { id: 'p90', lvl: 90, name: 'Colère céleste', cd: 6, scale: 'mix', mult: 2.2, fx: 'holy', desc: 'Pilier de lumière (220 %).' },
     { id: 'p100', lvl: 100, name: 'Intervention divine', cd: 9, fx: 'heal', effects: [{ k: 'heal', pctMax: 0.3 }, { k: 'shield', scale: 'mag', mult: 1.2 }], desc: 'Rend 30 % des PV et donne un bouclier.' },
+    { id: 'p15', lvl: 15, name: 'Bénédiction', cd: 5, fx: 'heal', effects: [{ k: 'heal', scale: 'mag', mult: 1.2 }, { k: 'buff', stat: 'def', pct: 0.25, turns: 3 }], desc: 'Soigne 120 % de ta Magie et +25 % Défense.' },
+    { id: 'p35', lvl: 35, name: 'Bouclier lancé', cd: 4, scale: 'mix', mult: 1.2, fx: 'holy', effects: [{ k: 'stun', chance: 0.25 }], desc: '120 %, 25 % de chance d’étourdir.' },
+    { id: 'p45', lvl: 45, name: 'Lumière purificatrice', cd: 5, scale: 'mix', mult: 0.9, fx: 'holy', effects: [{ k: 'heal', scale: 'mag', mult: 1.2 }], desc: '90 % et te soigne de 120 % de ta Magie.' },
+    { id: 'p65', lvl: 65, name: 'Égide', cd: 6, fx: 'shield', effects: [{ k: 'shield', scale: 'def', mult: 3 }], desc: 'Bouclier qui absorbe 300 % de ta Défense.' },
+    { id: 'p85', lvl: 85, name: 'Marteau du jugement', cd: 6, scale: 'mix', mult: 2.4, melee: true, fx: 'bash', effects: [{ k: 'debuff', stat: 'def', pct: 0.3, turns: 3 }], desc: '240 % et −30 % Défense ennemie.' },
   ]),
 ];
 

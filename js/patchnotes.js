@@ -4,6 +4,25 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1510', date: '18/10/2026', time: '15h10', title: 'Nouvel onglet Héros et 20 nouveaux sorts',
+    sections: [
+      { title: 'Onglet Héros', items: [
+        'Nouveau bandeau en haut : pseudo, titre, classe, niveau dans un blason doré, puissance, vie et victoires. Sa couleur suit ta classe.',
+        'Sous l’entraînement, un petit bouton par personnage : touche-le pour en changer et le voir s’entraîner.',
+        'Caractéristiques plus claires : résumé Vie, Critique et Esquive, détail de chaque stat (base, points, équipement) et bonus actifs de panoplie et de familier.',
+        'Sorts : 4 emplacements de combat en haut, ta collection en dessous. Touche un sort pour voir sa fiche, l’équiper, le remplacer ou le retirer.',
+      ] },
+      { title: '20 nouveaux sorts', items: [
+        'Chaque classe apprend maintenant un sort de plus aux niveaux 15, 35, 45, 65 et 85 : 16 sorts par classe au total.',
+        'Guerrier : Provocation, Saignée, Peau de fer, Double tranchant, Cri de ralliement.',
+        'Mage : Missiles arcaniques, Nova de givre, Bouclier de mana, Chaîne d’éclairs, Embrasement.',
+        'Archer : Flèche enflammée, Tir entravant, Camouflage, Flèche lourde, Pluie empoisonnée.',
+        'Paladin : Bénédiction, Bouclier lancé, Lumière purificatrice, Égide, Marteau du jugement.',
+        'Si ton perso a déjà le niveau, les nouveaux sorts sont déjà dans ta collection.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1454', date: '18/10/2026', time: '14h54', title: 'Choisis ton combattant',
     sections: [
       { title: 'Interface', items: [
