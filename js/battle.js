@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018203627';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018203627';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018203627';
+import { CLASSES } from './data.js?v=20261018204606';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018204606';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018204606';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -586,7 +586,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       sfx.roar();
       await tween(nf, { offX: 0 }, 380, 'outQuad');
       const c = center(nf);
-      float(e.n ? `Monstre ${e.n}` : e.foe.name, c.x, GROUND - nf.sh * S - 22, side === 0 ? '#7fd6ff' : '#ff8a94', 8, { vy: -12, life: 900 });
+      float(e.boss ? 'BOSS !' : e.n ? `Monstre ${e.n}` : e.foe.name, c.x, GROUND - nf.sh * S - 22, side === 0 ? '#7fd6ff' : '#ff8a94', 8, { vy: -12, life: 900 });
+      if (e.heal > 0) {   // donjon : le héros reprend son souffle entre deux monstres
+        const H = F[1 - side], hc = center(H);
+        H.hp = e.hp;
+        float(`+${e.heal}`, hc.x, hc.y - 30, '#7bf09a', 10);
+        burst(hc.x, hc.y, 10, ['#7bf09a', '#b8ffb0'], { speed: 60, grav: -80 });
+      }
     } else if (e.type === 'end' && e.winner < 0) {
       // fin d'un assaut de raid : personne ne tombe
       if (!training) { stopMusic(); setQuiet(false); }

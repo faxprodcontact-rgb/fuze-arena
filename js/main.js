@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018203627';
-import * as E from './engine.js?v=20261018203627';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018203627';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018203627';
-import { hashStr, makeRng } from './rng.js?v=20261018203627';
-import { APP_VERSION } from './version.js?v=20261018203627';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018203627';
-import * as NET from './net.js?v=20261018203627';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018203627';
+} from './data.js?v=20261018204606';
+import * as E from './engine.js?v=20261018204606';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018204606';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018204606';
+import { hashStr, makeRng } from './rng.js?v=20261018204606';
+import { APP_VERSION } from './version.js?v=20261018204606';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018204606';
+import * as NET from './net.js?v=20261018204606';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018204606';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -2425,7 +2425,6 @@ const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch 
 /** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
 const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
-const WAVE_AUTO_DELAY = 1500;   // ms avant d'enchaîner tout seul sur le monstre suivant
 function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null, noBar = false }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
@@ -2477,13 +2476,11 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
       <div class="result">
         <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${pxCaps(out.headline || (won ? 'VICTOIRE' : 'DÉFAITE…')).replace(/\s*!+\s*$/, '')}</h2>
         ${out.rewardsHtml || ''}
-        ${out.next ? (out.autoNext ? `<p class="wave-hp">${out.nextLabel}…</p>` : `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>`) : '<button class="btn primary" data-act="endFight">Continuer</button>'}
+        ${out.next ? `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>` : '<button class="btn primary" data-act="endFight">Continuer</button>'}
       </div>`;
     waveNext = out.next || null;
     hydrate(slot);
     announce(out.rewards);
-    // vague de donjon : on enchaîne tout seul sur le monstre suivant, juste le temps de voir le K.O.
-    if (out.next && out.autoNext) { const go = out.next; setTimeout(() => { if (waveNext === go && ov.isConnected) ACTIONS.waveNext(); }, WAVE_AUTO_DELAY); }
   });
 }
 
@@ -2557,44 +2554,41 @@ function startDungeon(id) {
   const last = wave.length - 1;
   // petite frise de la vague : monstres battus, monstre en cours, boss
   const waveBar = (i, won) => `<div class="wave-bar">${wave.map((f, j) => `<span class="${j < i || (j === i && won) ? 'ok' : j === i ? 'ko' : ''} ${j === last ? 'boss' : ''}">${j === last ? ico('crown') : j + 1}</span>`).join('<i></i>')}</div>`;
-  const step = (i, hp) => {
-    const foe = wave[i];
-    runBattle({
-      me: { ...me, hp }, foe, seed: (Math.random() * 2 ** 31) | 0, theme: d.theme, manual: true, victory: myVictory(),
-      title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${i === last ? `BOSS : ${esc(foe.name)}` : `Monstre ${i + 1}/${last} : ${esc(foe.name)}`}`,
-      finish: (result) => {
-        const won = result.winner === 0;
-        if (won && i < last) {
-          const next = E.waveNextHp(me, result.hp[0]);
-          return {
-            headline: 'K.O. !', headClass: 'win',
-            rewardsHtml: `<p class="wave-hp"><b style="color:#fff">${esc(foe.name)}</b> est au tapis</p>${waveBar(i, true)}
-              <p class="wave-hp">Tes PV : <b style="color:#fff">${fmtNum(result.hp[0])}</b> → tu reprends ton souffle : <b style="color:#7bf09a">${fmtNum(next)} / ${fmtNum(me.maxHp)}</b></p>`,
-            nextLabel: i + 1 === last ? `${ico('crown')} Place au boss` : `${ico('play')} Monstre suivant`,
-            next: () => step(i + 1, next), autoNext: true,
-          };
-        }
-        const rw = E.dungeonRewards(h, d, won, won ? last : i);
-        if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
-        save();
-        return {
-          rewards: rw,
-          headline: won ? 'DONJON TERMINÉ !' : 'DÉFAITE…',
-          rewardsHtml: `${waveBar(i, won)}
-            <div class="rw">${xpPills(rw)}</div>
-            ${rw.key ? `
-              <div class="loot-card" style="--rc:#ffd84a">
-                <canvas class="px" data-key></canvas>
-                <div class="ln">+1 clef</div>
-                <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
-              </div>` : rw.keyCapped ? `<p style="color:var(--muted);margin:0">Tu as déjà gagné tes ${DUNGEON_KEYS_MAX} clefs : nouvelles clefs à minuit ou à midi.</p>`
-              : `<p style="color:var(--muted);margin:0">${i === last ? 'Le boss était trop fort…' : `${esc(foe.name)} t’a arrêté avant le boss…`} Améliore ton héros et reviens !</p>`}
-            <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} vague${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${fmt(E.msToNextHalf())}.</p>`,
-        };
-      },
-    });
-  };
-  step(0, me.maxHp);
+  const title = (i) => `${esc(d.name)} <span style="color:var(--gold)">·</span> ${i === last ? `BOSS : ${esc(wave[i].name)}` : `Monstre ${i + 1}/${last} : ${esc(wave[i].name)}`}`;
+  // la vague se joue d'une traite, comme la Horde : le monstre tombe et le suivant arrive aussitôt
+  const live = E.createWave(me, wave, (Math.random() * 2 ** 31) | 0);
+  let cur = 0;
+  runBattle({
+    me, foe: wave[0], live, theme: d.theme, manual: true, victory: myVictory(),
+    title: title(0),
+    onEvent: (e) => {
+      if (e.type !== 'nextFoe') return;
+      cur++;
+      const t = document.querySelector('.battle-vs');
+      if (t) t.innerHTML = title(cur);
+    },
+    finish: (result) => {
+      const won = result.winner === 0;
+      const i = won ? last : result.kills;   // monstre sur lequel la vague s'est arrêtée
+      const rw = E.dungeonRewards(h, d, won, won ? last : i);
+      if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
+      save();
+      return {
+        rewards: rw,
+        headline: won ? 'DONJON TERMINÉ !' : 'DÉFAITE…',
+        rewardsHtml: `${waveBar(i, won)}
+          <div class="rw">${xpPills(rw)}</div>
+          ${rw.key ? `
+            <div class="loot-card" style="--rc:#ffd84a">
+              <canvas class="px" data-key></canvas>
+              <div class="ln">+1 clef</div>
+              <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
+            </div>` : rw.keyCapped ? `<p style="color:var(--muted);margin:0">Tu as déjà gagné tes ${DUNGEON_KEYS_MAX} clefs : nouvelles clefs à minuit ou à midi.</p>`
+            : `<p style="color:var(--muted);margin:0">${i === last ? 'Le boss était trop fort…' : `${esc(wave[i].name)} t’a arrêté avant le boss…`} Améliore ton héros et reviens !</p>`}
+          <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} vague${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${fmt(E.msToNextHalf())}.</p>`,
+      };
+    },
+  });
 }
 
 /** Passe d'un coup les combats restants d'un donjon facile (la moitié de l'XP) */

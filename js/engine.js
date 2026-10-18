@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018203627';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018203627';
+} from './data.js?v=20261018204606';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018204606';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -961,6 +961,46 @@ export function dungeonWave(d, rng = Math.random) {
 export const waveXp = (d) => Math.round(dungeonXp(d) * (1 + MINION_XP * WAVE_MINIONS));
 /** PV du héros au début du combat suivant de la vague */
 export const waveNextHp = (snap, hpLeft) => Math.min(snap.maxHp, Math.round(hpLeft + snap.maxHp * WAVE_HEAL));
+/**
+ * Vague de donjon jouée d'une traite, comme la Horde : quand un monstre tombe, le suivant arrive aussitôt
+ * (avec le petit souffle de WAVE_HEAL), jusqu'au boss. Événements en plus : { type: 'kill' } puis { type: 'nextFoe', foe, heal, hp }.
+ */
+export function createWave(A, foes, seed, { manual = false } = {}) {
+  let i = 0, done = false, usedManual = false, manualMode = manual;
+  const pending = [], log = [];
+  let cur = createFight(A, foes[0], seed, { manual: manualMode });
+  const pull = () => {
+    if (pending.length) return pending.shift();
+    if (done) return null;
+    const e = cur.next();
+    if (!e) return null;
+    if (e.type !== 'end') return e;
+    const r = cur.result();
+    if (r.usedManual) usedManual = true;
+    if (e.winner !== 0 || i === foes.length - 1) { done = true; return { ...e, kills: e.winner === 0 ? i + 1 : i }; }
+    // monstre vaincu : le suivant arrive tout de suite, le héros reprend un peu son souffle
+    const left = Math.max(1, r.hp[0]), hp = waveNextHp(A, left);
+    i++;
+    const q = cur.queued;
+    cur = createFight({ ...A, hp, ...r.carry[0] }, foes[i], seed + i * 101, { manual: manualMode });   // recharges et bouclier gardés
+    if (q) cur.queue(q);
+    pending.push({ type: 'nextFoe', foe: foes[i], heal: hp - left, hp, boss: i === foes.length - 1 });
+    return { type: 'kill', kills: i, label: 'K.O. !', s: e.s };
+  };
+  const api = {
+    next() { const e = pull(); if (e) log.push(e); return e; },
+    queue(id) { cur.queue(id); },
+    get queued() { return cur.queued; },
+    setManual(v) { manualMode = v; cur.setManual(v); },
+    get manual() { return manualMode; },
+    result() {
+      while (api.next());
+      const end = log[log.length - 1] || {};
+      return { log, winner: end.winner ?? 1, kills: end.kills || 0, usedManual };
+    },
+  };
+  return api;
+}
 
 /** Combats de donjon de la demi-journée (remis à zéro à minuit et à midi) */
 export function dungeonRuns(hero) {
