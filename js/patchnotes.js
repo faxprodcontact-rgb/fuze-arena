@@ -2,8 +2,20 @@
 //  NOTES DE MISE À JOUR — la plus récente en premier.
 //  Pour une nouvelle mise à jour : ajouter une entrée tout en haut de la liste.
 //  gift = cadeau à récupérer une seule fois par compte (Flouze).
+//  for = liste de pseudos : la note (et son cadeau) n'est visible que par ces comptes.
 // =====================================================================
 export const PATCH_NOTES = [
+  {
+    id: '2026-10-18-2128', date: '18/10/2026', time: '21h28', title: 'Compensation : correction de niveau',
+    for: ['AlexDcr', 'Didztasoeur'],
+    gift: { id: 'compensation-niveau-2026-10-18', amount: 200, text: 'Pendant les changements d’XP, ton perso est monté plus vite que prévu à cause d’un bug, et il a été ramené au niveau 33. Désolé pour la gêne ! Voici 200 Flouze en compensation. Merci de ta compréhension et bon jeu !' },
+    sections: [
+      { title: 'Correction', items: [
+        'Ton perso monté trop vite a été remis au niveau 33. Tes points de stats en trop ont été retirés et ta barre de sorts ajustée.',
+        'Tes objets, ton Flouze et tes clefs n’ont pas bougé.',
+      ] },
+    ],
+  },
   {
     id: '2026-10-18-2103', date: '18/10/2026', time: '21h03', title: 'Podium de la Puissance',
     sections: [
