@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018202318';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018202318';
+} from './data.js?v=20261018202425';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018202425';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -44,6 +44,13 @@ export function altXpBonus(acc, hero) {
   return hero.level < top ? { mult: ALT_XP_MULT, cap: top } : null;
 }
 
+/** Clefs gagnées en atteignant ce niveau */
+export function levelKeys(lvl) {
+  const tier = LEVEL_KEYS.tiers.find(([from]) => lvl >= from);
+  const each = tier ? tier[1] : LEVEL_KEYS.each;
+  return lvl % 10 === 0 ? Math.max(LEVEL_KEYS.every10, each) : each;
+}
+
 /** Ajoute de l'XP (avec le bonus de rattrapage). Renvoie { levels, newSpells, xp, lvlKeys } (lvlKeys = clefs de montée de niveau) */
 export function gainXp(hero, amount) {
   const before = hero.level;
@@ -62,9 +69,9 @@ export function gainXp(hero, amount) {
   for (const s of newSpells) {
     if (hero.spells.length < MAX_ACTIVE_SPELLS) hero.spells.push(s.id);
   }
-  // clefs de montée de niveau : 1 par niveau, 5 aux niveaux 10, 20, 30…
+  // clefs de montée de niveau : de 1 à 5 par niveau selon le palier, 5 aux niveaux 10, 20, 30…
   let keys = 0;
-  for (let l = before + 1; l <= hero.level; l++) keys += l % 10 === 0 ? LEVEL_KEYS.every10 : LEVEL_KEYS.each;
+  for (let l = before + 1; l <= hero.level; l++) keys += levelKeys(l);
   if (keys) hero.keys = (hero.keys || 0) + keys;
   return { levels: hero.level - before, newSpells, xp: amount, lvlKeys: keys };
 }

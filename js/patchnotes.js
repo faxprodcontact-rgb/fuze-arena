@@ -5,6 +5,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2024', date: '18/10/2026', time: '20h24', title: 'Plus de clefs en montant de niveau',
+    sections: [
+      { title: 'Clefs de niveau', items: [
+        'Chaque niveau gagné donne maintenant plus de clefs à haut niveau : 1 clef jusqu’au niveau 29, 2 clefs dès le niveau 30, 3 dès le 50, 4 dès le 70 et 5 dès le 90.',
+        'Toujours 5 clefs aux niveaux 10, 20, 30, 40…',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2023', date: '18/10/2026', time: '20h23', title: 'Nouvelle courbe d’XP',
     sections: [
       { title: 'XP', items: [
