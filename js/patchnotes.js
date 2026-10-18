@@ -5,6 +5,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1945', date: '18/10/2026', time: '19h45', title: 'PvP : aucun soin entre les duels',
+    sections: [
+      { title: 'PvP et Horde', items: [
+        'Le perso qui gagne un duel garde ses PV, mais aussi ses recharges de sorts et son bouclier : il ne retrouve plus son sort de soin prêt à chaque nouveau duel. C’est vraiment l’épreuve de toute l’équipe.',
+        'Même règle dans la Horde.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1939', date: '18/10/2026', time: '19h39', title: 'Nouveau mode : PvP en direct',
     sections: [
       { title: 'PvP en direct', items: [

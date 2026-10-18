@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018193915';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018193915';
+} from './data.js?v=20261018194554';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018194554';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -205,8 +205,8 @@ function isSelfOnly(sp) { return !sp.mult; }
 export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true, manual = false } = {}) {
   const rng = makeRng(seed);
   const F = [A, B].map((s, i) => ({
-    i, s, hp: s.hp ?? s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
-    cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0, petN: 0,
+    i, s, hp: s.hp ?? s.maxHp, max: s.maxHp, shield: s.shieldLeft || 0, gauge: rng() * 200,
+    cds: { ...(s.cdsLeft || {}) }, buffs: [], dots: [], stun: 0, stunImmune: 0, petN: 0,   // cdsLeft / shieldLeft : repris d'un combat précédent (relais, horde)
     pet: (s.v || 0) >= 2 ? petSpell(s.pet) : null,
   }));
   const log = [];
@@ -399,7 +399,7 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
     setManual(v) { manualMode = v; if (!v) queued = null; },
     get manual() { return manualMode; },
     /** Termine le combat (si besoin) et renvoie { log, winner, usedManual, hp } (hp = PV restants de chacun) */
-    result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual, hp: F.map(f => Math.max(0, Math.round(f.hp))) }; },
+    result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual, hp: F.map(f => Math.max(0, Math.round(f.hp))), carry: F.map(f => ({ cdsLeft: { ...f.cds }, shieldLeft: Math.round(f.shield) })) }; },
   };
 }
 
@@ -415,9 +415,9 @@ export { PVP };
  */
 export function createRelay(teamA, teamB, seed) {
   const T = [teamA, teamB], idx = [0, 0], log = [], pending = [];
-  let hp = [teamA[0].maxHp, teamB[0].maxHp], done = false, winner = null, n = 0;
+  let hp = [teamA[0].maxHp, teamB[0].maxHp], carry = [{}, {}], done = false, winner = null, n = 0;
   const alive = () => [T[0].length - idx[0], T[1].length - idx[1]];
-  const start = () => createFight({ ...T[0][idx[0]], hp: hp[0] }, { ...T[1][idx[1]], hp: hp[1] }, seed + n * 101, {});
+  const start = () => createFight({ ...T[0][idx[0]], hp: hp[0], ...carry[0] }, { ...T[1][idx[1]], hp: hp[1], ...carry[1] }, seed + n * 101, {});
   let cur = start();
   const pull = () => {
     if (pending.length) return pending.shift();
@@ -429,8 +429,9 @@ export function createRelay(teamA, teamB, seed) {
     const w = e.winner === 0 ? 0 : 1, l = 1 - w;
     idx[l]++;
     if (idx[l] >= T[l].length) { done = true; winner = w; return { ...e, winner: w, score: alive() }; }
-    hp[w] = Math.max(1, r.hp[w]);
-    hp[l] = T[l][idx[l]].maxHp;
+    // aucun soin : le gagnant garde ses PV, ses recharges de sorts et son bouclier ; le nouvel arrivant entre frais
+    hp[w] = Math.max(1, r.hp[w]); carry[w] = r.carry[w];
+    hp[l] = T[l][idx[l]].maxHp; carry[l] = {};
     n++;
     cur = start();
     pending.push({ type: 'nextFoe', side: l, foe: T[l][idx[l]], score: alive() });
@@ -504,7 +505,7 @@ export function createHorde(A, seed, { manual = false } = {}) {
     n++;
     const foe = hordeMonster(seed, n);
     const q = cur.queued;
-    cur = createFight({ ...A, hp }, foe, seed + n * 101, { manual: manualMode });
+    cur = createFight({ ...A, hp, ...r.carry[0] }, foe, seed + n * 101, { manual: manualMode });   // aucun soin : PV, recharges et bouclier gardés
     if (q) cur.queue(q);
     pending.push({ type: 'nextFoe', foe, n: n + 1, kills });
     return { type: 'kill', kills, flouze: hordeFlouze(kills), s: e.s };
