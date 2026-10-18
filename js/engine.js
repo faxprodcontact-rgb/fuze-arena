@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018190017';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018190017';
+} from './data.js?v=20261018192242';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018192242';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -26,7 +26,8 @@ export function unlockedSpells(classId, level) {
 
 // Bonus d'XP du moment (aide aux retardataires), réglé par l'interface
 let xpBonus = 1;
-export function setXpBonus(mult) { xpBonus = Math.max(1, mult || 1); }
+let altBonus = { mult: 1, cap: 0 };   // bonus des persos secondaires : s'arrête net au niveau du perso le plus haut
+export function setXpBonus(mult, alt = null) { xpBonus = Math.max(1, mult || 1); altBonus = alt && alt.mult > 1 ? alt : { mult: 1, cap: 0 }; }
 export const getXpBonus = () => xpBonus;
 
 /** Bonus de rattrapage : +5 % d'XP par niveau de retard sur la moyenne des autres (max +100 %) */
@@ -37,23 +38,25 @@ export function catchupBonus(myLevel, otherLevels) {
   return 1 + Math.min(XP_CATCHUP.max, gap * XP_CATCHUP.perLevel);
 }
 
-/** Perso secondaire = tous les persos du compte sauf celui de plus haut niveau (le 1er en cas d'égalité) */
-export function isAltHero(acc, hero) {
-  let main = acc.heroes[0];
-  for (const h of acc.heroes) if (h.level > main.level) main = h;
-  return hero !== main;
+/** Bonus d'un perso secondaire : ×1,5 tant qu'il est sous le niveau du perso le plus haut du compte (cap = ce niveau) */
+export function altXpBonus(acc, hero) {
+  const top = Math.max(...acc.heroes.map(h => h.level));
+  return hero.level < top ? { mult: ALT_XP_MULT, cap: top } : null;
 }
-export const altXpMult = (acc, hero) => (isAltHero(acc, hero) ? ALT_XP_MULT : 1);
 
 /** Ajoute de l'XP (avec le bonus de rattrapage). Renvoie { levels, newSpells, xp, lvlKeys } (lvlKeys = clefs de montée de niveau) */
 export function gainXp(hero, amount) {
   const before = hero.level;
-  amount = Math.round(amount * xpBonus);
-  hero.xp += amount;
-  while (hero.level < MAX_LEVEL && hero.xp >= xpForLevel(hero.level)) {
-    hero.xp -= xpForLevel(hero.level);
-    hero.level++;
+  // XP de base (avec le rattrapage), multipliée en plus par le bonus secondaire tant que le perso est sous le niveau plafond
+  let raw = amount * xpBonus, gained = 0;
+  while (raw > 0.0001 && hero.level < MAX_LEVEL) {
+    const mult = hero.level < altBonus.cap ? altBonus.mult : 1;
+    const need = Math.max(0, xpForLevel(hero.level) - hero.xp);
+    if (raw * mult >= need) { raw -= need / mult; gained += need; hero.xp = 0; hero.level++; }
+    else { const g = Math.round(raw * mult); hero.xp += g; gained += g; raw = 0; }
   }
+  while (hero.level < MAX_LEVEL && hero.xp >= xpForLevel(hero.level)) { hero.xp -= xpForLevel(hero.level); hero.level++; }   // arrondi
+  amount = Math.round(gained);
   if (hero.level >= MAX_LEVEL) hero.xp = 0;
   const newSpells = classSpells(hero.classId).filter(s => s.lvl > before && s.lvl <= hero.level);
   for (const s of newSpells) {

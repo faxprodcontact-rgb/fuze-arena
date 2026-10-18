@@ -5,6 +5,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1922', date: '18/10/2026', time: '19h22', title: 'Réglage de l’XP',
+    sections: [
+      { title: 'XP', items: [
+        'Aide aux retardataires réduite : +5 % d’XP par niveau de retard (jusqu’à +100 %).',
+        'Persos secondaires : XP ×1,5 (au lieu de ×2), seulement tant qu’ils sont sous le niveau de ton perso le plus haut. Dès qu’ils l’atteignent, le bonus s’arrête net.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-1900', date: '18/10/2026', time: '19h00', title: 'Nouvelle XP, clefs de niveau et coffres toutes les 30 min',
     sections: [
       { title: 'XP', items: [

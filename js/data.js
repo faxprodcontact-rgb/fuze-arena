@@ -493,8 +493,8 @@ export const FRIENDS = [
 // =====================================================================
 //  AIDE AUX RETARDATAIRES — bonus d'XP selon le retard sur le groupe
 // =====================================================================
-export const XP_CATCHUP = { perLevel: 0.1, max: 2 };    // +10 % par niveau de retard, max +200 %
-export const ALT_XP_MULT = 2;      // tes persos secondaires (tous sauf ton plus haut niveau) : XP ×2, en plus du rattrapage
+export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de retard, max +100 %
+export const ALT_XP_MULT = 1.5;    // persos secondaires : XP ×1,5 tant qu'ils sont sous le niveau de ton perso le plus haut
 export const LEVEL_KEYS = { each: 1, every10: 5 };   // clefs gagnées à chaque niveau (5 aux niveaux 10, 20, 30…)
 // Remise à zéro exceptionnelle de tous les compteurs (une seule fois, à cette heure-là)
 export const SPECIAL_RESET = { id: '2026-10-18-20h', at: [2026, 9, 18, 20, 0] };
