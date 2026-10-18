@@ -507,7 +507,8 @@ export const HORDE = {
   step: 4,        // niveau du monstre n = 1 + step × (n − 1)
   power: 1,       // stats des monstres par rapport à un boss de donjon du même niveau
   hp: 0.6,        // et leurs PV
-  flouzePer: 0.22, // Flouze = 1 + 0.22 par monstre battu (arrondi)
+  flouzeBase: 3,   // Flouze = 3 + 0.22 par monstre battu (arrondi), dès le 1er monstre battu
+  flouzePer: 0.22,
 };
 export const TOWER = { clatPerFloor: 1, clatEvery10: 10 };   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné
 

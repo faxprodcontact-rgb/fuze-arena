@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018171857';
-import * as E from './engine.js?v=20261018171857';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018171857';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018171857';
-import { hashStr, makeRng } from './rng.js?v=20261018171857';
-import { APP_VERSION } from './version.js?v=20261018171857';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018171857';
-import * as NET from './net.js?v=20261018171857';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018171857';
+} from './data.js?v=20261018173120';
+import * as E from './engine.js?v=20261018173120';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018173120';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018173120';
+import { hashStr, makeRng } from './rng.js?v=20261018173120';
+import { APP_VERSION } from './version.js?v=20261018173120';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018173120';
+import * as NET from './net.js?v=20261018173120';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018173120';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -856,43 +856,53 @@ function viewDungeons() {
 }
 
 // ------------------------------ Vue Classement ------------------------------
-function rankingEntries() {
+/** Le familier équipé d'un perso (pour l'afficher) */
+const petOf = (h) => { const uid = h.equipped && h.equipped.pet; const it = uid && h.inventory.find(i => i.uid === uid); return it ? it.itemId : ''; };
+
+function rankingEntries(key = rankMode) {
   ensureDay();
   const wins = (a) => a.heroes.reduce((t, h) => t + h.stats.wins, 0);
   const tow = (a) => Math.max(0, ...a.heroes.map(h => (h.tower && h.tower.best) || 0));
   const sh = E.strongestHero(acc);
-  const me = { id: myId(), name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, level: sh.level, wins: wins(acc), tower: tow(acc), me: true };
+  const hor = (a) => (a.horde && a.horde.best) || 0;
+  const me = { id: myId(), name: acc.pseudo, data: acc, classId: sh.classId, dye: sh.dye, pet: petOf(sh), level: sh.level, wins: wins(acc), tower: tow(acc), horde: hor(acc), me: true };
   let rest;
   if (NET.online) {
-    rest = players.map(p => { const h = E.strongestHero(p.data); return { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, level: h.level, wins: wins(p.data), tower: tow(p.data) }; });
+    rest = players.map(p => { const h = E.strongestHero(p.data); return { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, pet: petOf(h), level: h.level, wins: wins(p.data), tower: tow(p.data), horde: hor(p.data) }; });
   } else {
     const totalMine = hero.stats.wins + hero.stats.losses;
     rest = opponents().map(o => {
       const r = makeRng(hashStr('rank' + o.id));
-      return { name: o.name, classId: o.classId, level: o.level, wins: Math.round(totalMine * (0.3 + r() * 0.6)), tower: Math.round(o.level * 0.75) };
+      return { name: o.name, classId: o.classId, level: o.level, wins: Math.round(totalMine * (0.3 + r() * 0.6)), tower: Math.round(o.level * 0.75), horde: Math.max(1, Math.round(o.level / 4)) };
     });
   }
-  const key = rankMode;
-  return [me, ...rest].sort((a, b) => b[key] - a[key] || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+  return [me, ...rest].sort((a, b) => b[key] - a[key] || b.wins - a.wins || (b.me ? 1 : 0) - (a.me ? 1 : 0));
 }
+
+const RANK_MODES = [['level', 'Niveau'], ['wins', 'Victoires'], ['tower', 'Tour'], ['horde', 'Horde']];
+const rankScore = (key) => (e) => (key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : key === 'tower' ? `Étage ${e.tower}` : `${e.horde} monstres`);
 
 function viewRanking() {
   const list = rankingEntries();
   const key = rankMode;
   const medal = [ico('medal1'), ico('medal2'), ico('medal3')];
-  const scoreOf = (e) => (key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : `Étage ${e.tower}`);
-  return `
-    <section class="card">
-      <h2>Classement</h2>
-      <div class="seg seg3">
-        <button class="${rankMode === 'level' ? 'on' : ''}" data-act="rank" data-mode="level">Niveau</button>
-        <button class="${rankMode === 'wins' ? 'on' : ''}" data-act="rank" data-mode="wins">Victoires</button>
-        <button class="${rankMode === 'tower' ? 'on' : ''}" data-act="rank" data-mode="tower">Tour</button>
-      </div>
-      <p class="hint" style="margin-top:12px">${NET.online ? 'Niveau du personnage le plus fort · victoires de tous les personnages · meilleur étage de la tour.' : 'Hors ligne : tes amis sont des bots.'}</p>
+  const scoreOf = rankScore(key);
+  const myPos = list.findIndex(e => e.me) + 1;
+  return modeHead({
+    id: 'ranking', c: '#ffd84a', art: '<canvas class="px" data-emblem="ranking"></canvas>',
+    title: 'Classement', sub: 'Qui est le plus fort du groupe ?',
+    chips: [
+      mchip(ico('trophy'), 'Ta place', `${myPos} / ${list.length}`, myPos <= 3 ? 'hot' : ''),
+      mchip(ico('medal1'), 'En tête', esc(list[0].name)),
+      mchip(ico('star'), 'Ton score', scoreOf(list[myPos - 1])),
+    ],
+    info: `<b>Niveau</b> : ton perso le plus fort. <b>Victoires</b> : celles de tous tes persos. <b>Tour</b> : ton meilleur étage. <b>Horde</b> : ton record de monstres battus.<br><br>Touche un joueur pour voir sa carte.${NET.online ? '' : '<br><br>Hors ligne : tes amis sont des bots.'}`,
+  }) + `
+    <section class="card hx" style="--hc:#ffd84a">
+      <div class="seg seg4">${RANK_MODES.map(([k, n]) => `<button class="${key === k ? 'on' : ''}" data-act="rank" data-mode="${k}">${n}</button>`).join('')}</div>
       ${podium(list, scoreOf)}
       ${list.slice(3).map((e, j) => ({ e, i: j + 3 })).map(({ e, i }) => `
-        <div class="opp rank ${e.me ? 'me' : ''}">
+        <button class="opp rank ${e.me ? 'me' : ''}" ${e.id ? `data-act="playerCard" data-id="${e.id}"` : ''}>
           <div class="pos">${medal[i] || i + 1}</div>
           <div class="av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
           <div class="o-body">
@@ -900,24 +910,29 @@ function viewRanking() {
             <div class="o-sub">${CLASSES[e.classId].name} ${titleHtml(e.data)}</div>
           </div>
           <div class="score">${scoreOf(e)}</div>
-        </div>`).join('')}
+        </button>`).join('')}
     </section>`;
 }
 
-/** Podium des 3 premiers (2e à gauche, 1er au milieu, 3e à droite) */
-function podium(list, scoreOf) {
+/** Message de podium d'un joueur (les 3 premiers peuvent en écrire un) */
+const podMsg = (e) => (e.data && e.data.podiumMsg && e.data.podiumMsg.text) || '';
+
+/** Podium des 3 premiers (2e à gauche, 1er au milieu, 3e à droite), avec leur message au-dessus de la tête */
+function podium(list, scoreOf, { bubbles = false } = {}) {
   const top = list.slice(0, 3);
   if (!top.length) return '';
   const order = [1, 0, 2].filter(i => top[i]);
-  return `<div class="podium">${order.map(i => {
-    const e = top[i];
+  return `<div class="podium ${bubbles ? 'big' : ''}">${order.map(i => {
+    const e = top[i], msg = bubbles ? podMsg(e) : '';
     return `
-    <div class="pod p${i + 1} ${e.me ? 'me' : ''}">
-      <div class="pod-av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
+    <button class="pod p${i + 1} ${e.me ? 'me' : ''}" ${e.id ? `data-act="playerCard" data-id="${e.id}"` : ''}>
+      ${msg ? `<span class="pod-bubble">${esc(msg)}</span>` : ''}
+      ${i === 0 ? `<span class="pod-crown">${ico('crown')}</span>` : ''}
+      <div class="pod-av">${bubbles ? `<canvas class="px" data-hero="${e.classId}" data-pet="${e.pet || ''}" data-dye="${e.dye || ''}"></canvas>` : `<canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas>`}</div>
       <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
       <div class="pod-score">${scoreOf(e)}</div>
       <div class="pod-step"><span>${ico(['medal1', 'medal2', 'medal3'][i])}</span><b>${i + 1}</b></div>
-    </div>`;
+    </button>`;
   }).join('')}</div>`;
 }
 
@@ -1082,10 +1097,18 @@ const msgHtml = (m) => {
 };
 
 function viewChat() {
-  if (!NET.online) return '<section class="card"><h2>Tchat</h2><p class="hint">Le tchat marche seulement dans la version en ligne.</p></section>';
-  return `
-    <section class="card chat">
-      <h2>Tchat</h2>
+  if (!NET.online) return offlineCard('Tchat', 'Le tchat marche seulement dans la version en ligne.');
+  return modeHead({
+    id: 'chat', c: '#3d9bff', art: '<canvas class="px" data-emblem="talk"></canvas>',
+    title: 'Tchat', sub: 'Chambrer les potes',
+    chips: [
+      mchip('<i class="dot-on"></i>', 'En ligne', `${onlineCount()} / ${players.length + 1}`),
+      mchip(ico('chat'), 'Messages', chatMsgs.length),
+      mchip(ico('swords'), 'Combats partagés', chatMsgs.filter(m => /\[\[combat:/.test(m.text)).length),
+    ],
+    info: 'Écris en bas de l’écran. Depuis le Journal, tu peux partager un combat : il apparaît ici avec un bouton pour le revoir.',
+  }) + `
+    <section class="card hx chat" style="--hc:#3d9bff">
       <div class="chat-list" id="chat-list">${chatMsgs.length ? chatMsgs.map(msgHtml).join('') : '<p class="empty" id="chat-empty">Aucun message. Lance la discussion !</p>'}</div>
     </section>
     <div class="chat-bar">
@@ -1293,22 +1316,43 @@ function viewCombat() {
 // ------------------------------ Hub Social ------------------------------
 function viewSocial() {
   const tiles = [
-    { id: 'journal', name: 'Journal', sub: 'Revois tes combats, venge-toi', icon: 'loic_weapon', badge: journalUnseen },
-    { id: 'chat', name: 'Tchat', sub: 'Chambrer les potes', icon: 'tom_weapon', badge: chatUnread },
-    { id: 'ranking', name: 'Classement', sub: 'Niveau, victoires, tour', icon: 'guillaume_hat', badge: 0 },
-    { id: 'players', name: 'Joueurs', sub: NET.online ? `${onlineCount()} en ligne` : 'En ligne seulement', icon: 'thomas_hat', badge: 0, online: true },
+    { id: 'journal', name: 'Journal', sub: 'Revois tes combats', emblem: 'journal', badge: journalUnseen, c: '#ff8a3d' },
+    { id: 'chat', name: 'Tchat', sub: 'Chambrer les potes', emblem: 'talk', badge: chatUnread, c: '#3d9bff' },
+    { id: 'ranking', name: 'Classement', sub: 'Qui est le plus fort ?', emblem: 'ranking', badge: 0, c: '#ffd84a' },
+    { id: 'players', name: 'Joueurs', sub: NET.online ? `<i class="dot-on"></i>${onlineCount()} en ligne` : 'En ligne seulement', emblem: 'players', badge: 0, c: '#4cd964' },
   ];
+  const list = rankingEntries('level');
+  const meTop = list.slice(0, 3).some(e => e.me);
+  const myMsg = (acc.podiumMsg && acc.podiumMsg.text) || '';
   return `
-    <section class="card">
-      <div class="tiles">
-        ${tiles.map(t => `
-          <button class="tile" data-act="tab" data-id="${t.id}">
-            <canvas class="px" data-icon="${t.icon}"></canvas>
-            <b>${t.name}</b><small>${t.online ? '<i class="dot-on"></i>' : ''}${t.sub}</small>
-            ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
-          </button>`).join('')}
-      </div>
+    <section class="modes">
+      ${tiles.map(t => `
+        <button class="mode" data-act="tab" data-id="${t.id}" style="--tc:${t.c}">
+          <span class="m-art"><canvas class="px" data-emblem="${t.emblem}"></canvas></span>
+          <span class="m-txt"><b>${t.name}</b><small>${t.sub}</small></span>
+          ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
+        </button>`).join('')}
+    </section>
+    <section class="card hx podium-card ${infoCls('podium')}" data-info="podium" style="--hc:#ffd84a">
+      ${secHead(ico('crown'), 'Podium des champions', 'Les 3 plus hauts niveaux du groupe')}
+      ${podium(list, rankScore('level'), { bubbles: true })}
+      ${meTop ? `<button class="btn block pod-edit" data-act="podiumMsg">${ico('chat')} ${myMsg ? 'Changer mon message' : 'Écrire mon message de champion'}</button>` : ''}
+      <div class="more-txt">Les 3 joueurs du podium (classés au niveau de leur perso le plus fort) peuvent afficher un petit message dans une bulle au-dessus de leur héros. Tout le monde le voit ici. Si tu sors du podium, ton message disparaît.</div>
+      ${moreBtn('podium')}
     </section>`;
+}
+
+function openPodiumMsg() {
+  const cur = (acc.podiumMsg && acc.podiumMsg.text) || '';
+  openModal(`
+    <h3>${ico('crown')} Ton message de champion</h3>
+    <p class="hint" style="margin-top:8px">Il s’affiche dans une bulle au-dessus de ton héros, sur le podium. 60 caractères maximum.</p>
+    <input id="pod-msg" class="pod-input" maxlength="60" value="${esc(cur)}" placeholder="Ex. : Venez me chercher !" autocomplete="off">
+    <div class="row" style="gap:8px;margin-top:12px">
+      ${cur ? '<button class="btn block" data-act="podiumMsgSave" data-clear="1">Effacer</button>' : '<button class="btn block" data-act="closeModal">Annuler</button>'}
+      <button class="btn primary block" data-act="podiumMsgSave">Enregistrer</button>
+    </div>`, { center: true });
+  setTimeout(() => document.getElementById('pod-msg')?.focus(), 50);
 }
 
 // ------------------------------ Joueurs en ligne ------------------------------
@@ -1333,29 +1377,90 @@ function onPresence(ids) {
 }
 
 function viewPlayers() {
-  if (!NET.online) return offlineCard('Joueurs', 'La liste des joueurs en ligne marche seulement dans la version en ligne.');
+  if (!NET.online) return offlineCard('Joueurs', 'La liste des joueurs marche seulement dans la version en ligne.');
   const me = NET.myId();
   const rows = [{ id: me, name: acc.pseudo, data: acc, me: true }, ...players.map(p => ({ id: p.id, name: p.pseudo, data: p.data, seen: p.updated_at }))];
   rows.sort((a, b) => (isOnline(b.id) ? 1 : 0) - (isOnline(a.id) ? 1 : 0) || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(b.seen || '').localeCompare(String(a.seen || '')));
   const n = rows.filter(r => isOnline(r.id)).length;
-  return `
-    <section class="card">
-      <h2>Joueurs</h2>
-      <p class="hint">${n} joueur${n > 1 ? 's' : ''} en ligne sur ${rows.length}. Le voyant passe au vert dès qu’un pote ouvre l’appli.</p>
+  const strongest = rows.map(r => ({ r, p: E.powerScore(snapOf(r.data, E.strongestHero(r.data), r.name)) })).sort((a, b) => b.p - a.p)[0];
+  return modeHead({
+    id: 'players', c: '#4cd964', art: '<canvas class="px" data-emblem="players"></canvas>',
+    title: 'Joueurs', sub: 'Touche un joueur pour voir sa carte',
+    chips: [
+      mchip('<i class="dot-on"></i>', 'En ligne', `${n} / ${rows.length}`, n > 1 ? 'hot' : ''),
+      mchip(ico('bolt'), 'Le plus puissant', esc(strongest.r.name)),
+      mchip('<canvas class="px" data-emblem="players"></canvas>', 'Joueurs', rows.length),
+    ],
+    info: 'Le voyant passe au vert dès qu’un pote ouvre l’appli. Touche un joueur pour voir sa carte : son héros, son équipement, sa puissance et ses records.',
+  }) + `
+    <section class="card hx" style="--hc:#4cd964">
       ${rows.map(r => {
         const h = E.strongestHero(r.data);
         const sec = r.data.war && r.data.war.section;
+        const pow = E.powerScore(snapOf(r.data, h, r.name));
         return `
-        <div class="opp ${isOnline(r.id) ? '' : 'away'}">
-          <div class="av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></div>
-          <div class="o-body">
-            <div class="o-name">${dotHtml(r.id)}${nameHtml(r.name, r.data)}${r.me ? ' <span class="pill gold">toi</span>' : ''}</div>
-            <div class="o-sub">${CLASSES[h.classId].name} Nv.${h.level}${sec ? ` · <span style="color:${WAR.sections[sec].color}">${WAR.sections[sec].name}</span>` : ''}</div>
+        <button class="foe player-row ${isOnline(r.id) ? 'on' : 'away'}" data-act="playerCard" data-id="${r.id}">
+          <span class="foe-av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
+          <div class="foe-body">
+            <div class="foe-name">${dotHtml(r.id)}${nameHtml(r.name, r.data)}${r.me ? ' <span class="pill gold">toi</span>' : ''}</div>
+            <div class="foe-sub">${CLASSES[h.classId].name} · Nv.${h.level} · ${ico('bolt')}${pow}${sec ? ` · <span style="color:${WAR.sections[sec].color}">${WAR.sections[sec].name}</span>` : ''}</div>
+            <span class="cmp ${isOnline(r.id) ? 'easy' : 'off'}">${isOnline(r.id) ? 'En ligne' : esc(agoText(r.seen))}</span>
           </div>
-          <span class="pill ${isOnline(r.id) ? 'green' : ''}">${isOnline(r.id) ? 'En ligne' : agoText(r.seen)}</span>
-        </div>`;
+          <span class="pr-go">›</span>
+        </button>`;
       }).join('')}
     </section>`;
+}
+
+const CLASS_COLOR = { guerrier: '#ff5d6c', mage: '#a77bff', archer: '#4cd964', paladin: '#ffd84a' };
+
+/** Carte d'identité d'un joueur : son héros le plus fort, son équipement, sa puissance, ses records */
+function openPlayerCard(id, heroIdx = null) {
+  const isMe = id === myId();
+  const p = isMe ? null : players.find(x => String(x.id) === String(id));
+  if (!isMe && !p) return;
+  const data = isMe ? acc : p.data, name = isMe ? acc.pseudo : p.pseudo;
+  const strong = E.strongestHero(data);
+  const h = heroIdx !== null && data.heroes[heroIdx] ? data.heroes[heroIdx] : strong;
+  const snap = snapOf(data, h, name);
+  const st = E.computeStats(h);
+  const hp = E.maxHp(st, h.level);
+  const itemOf = (slot) => { const uid = h.equipped && h.equipped[slot]; return uid ? h.inventory.find(i => i.uid === uid) : null; };
+  const cell = (slot) => {
+    const it = itemOf(slot);
+    return it
+      ? `<div class="idc-slot it r${it.rarity}" style="--rc:${RARITIES[it.rarity].color}"><canvas class="px" data-icon="${it.itemId}"></canvas><small>${esc(ITEMS[it.itemId].name)}</small></div>`
+      : `<div class="idc-slot empty"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><small>${SLOTS[slot].name}</small></div>`;
+  };
+  const wins = data.heroes.reduce((t, x) => t + x.stats.wins, 0);
+  const tower = Math.max(0, ...data.heroes.map(x => (x.tower && x.tower.best) || 0));
+  const sec = data.war && data.war.section;
+  const online = isMe || isOnline(id);
+  const msg = data.podiumMsg && data.podiumMsg.text;
+  openModal(`
+    <div class="idcard" style="--cc:${CLASS_COLOR[h.classId]}">
+      <div class="idc-head">
+        <div class="idc-name">${dotHtml(id)}${nameHtml(name, data)}</div>
+        ${titleHtml(data)}
+        <div class="idc-sub">${CLASSES[h.classId].name} · Nv.${h.level} · ${online ? '<span class="good">En ligne</span>' : esc(agoText(p && p.updated_at))}</div>
+        ${msg ? `<div class="idc-msg">« ${esc(msg)} »</div>` : ''}
+      </div>
+      <div class="idc-doll">
+        <div class="idc-col">${['hat', 'armor', 'boots'].map(cell).join('')}</div>
+        <div class="idc-hero"><canvas class="px" data-hero="${h.classId}" data-pet="${petOf(h)}" data-dye="${h.dye || ''}"></canvas></div>
+        <div class="idc-col">${['weapon', 'amulet', 'pet'].map(cell).join('')}</div>
+      </div>
+      <div class="idc-power"><div><small>Puissance</small><b>${fmtNum(E.powerScore(snap))}</b></div><div><small>Vie</small><b>${fmtNum(hp)}</b></div></div>
+      <div class="idc-stats">${STAT_KEYS.map(k => `<div style="--sc:${STATS[k].color}"><small>${STATS[k].name}</small><b>${fmtNum(st[k])}</b></div>`).join('')}</div>
+      <div class="idc-rec">
+        <span>${ico('trophy')} <b>${wins}</b> victoires</span>
+        <span>${ico('up')} Tour <b>${tower}</b></span>
+        <span>${ico('skull')} Horde <b>${(data.horde && data.horde.best) || 0}</b></span>
+        ${sec ? `<span style="color:${WAR.sections[sec].color}">${ico('shield')} ${WAR.sections[sec].name}</span>` : ''}
+      </div>
+      ${data.heroes.length > 1 ? `<div class="idc-heroes">${data.heroes.map((x, i) => `<button class="${x === h ? 'on' : ''}" data-act="playerCard" data-id="${id}" data-h="${i}"><canvas class="px" data-portrait="${x.classId}" data-dye="${x.dye || ''}"></canvas><small>Nv.${x.level}</small></button>`).join('')}</div>` : ''}
+    </div>
+    <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>`, { center: true });
 }
 
 // ------------------------------ Notes de mise à jour ------------------------------
@@ -1419,25 +1524,39 @@ function replayFight(row) {
 function viewJournal() {
   if (!NET.online) return offlineCard('Journal', 'Le journal des combats marche seulement en ligne.');
   const me = NET.myId();
-  return `
-    <section class="card">
-      <h2>Journal des combats</h2>
-      <p class="hint">Les combats où on t’a attaqué et ceux que tu as lancés. ${ico('play')} pour revoir, ${ico('chat')} pour partager dans le tchat.</p>
-      ${journal.length ? journal.map(f => {
+  const res = journal.map(f => { const attacked = f.defender_id === me; return attacked ? f.winner === 1 : f.winner === 0; });
+  const nWin = res.filter(Boolean).length;
+  const nAtt = journal.filter(f => f.defender_id === me).length;
+  return modeHead({
+    id: 'journal', c: '#ff8a3d', art: '<canvas class="px" data-emblem="journal"></canvas>',
+    title: 'Journal', sub: 'Tes derniers combats contre les potes',
+    chips: [
+      mchip(ico('check'), 'Gagnés', nWin, nWin ? 'hot' : ''),
+      mchip(ico('cross'), 'Perdus', journal.length - nWin),
+      mchip(ico('swords'), 'On t’a attaqué', nAtt),
+    ],
+    info: `${ico('play')} <b>Revoir</b> le combat. ${ico('chat')} <b>Partager</b> dans le tchat. <b>Vengeance</b> : quand on t’a attaqué, tu peux répondre tout de suite (pour le fun).`,
+  }) + `
+    <section class="card hx" style="--hc:#ff8a3d">
+      ${journal.length ? journal.map((f, i) => {
         const attacked = f.defender_id === me;
-        const youWon = attacked ? f.winner === 1 : f.winner === 0;
+        const youWon = res[i];
         const other = attacked ? f.attacker_name : f.defender_name;
         const otherId = attacked ? f.attacker_id : f.defender_id;
+        const o = players.find(x => x.id === otherId);
+        const oh = o ? E.strongestHero(o.data) : null;
         return `
-        <div class="jrow ${youWon ? 'win' : 'lose'}">
-          <div class="j-body">
-            <div class="j-title">${attacked ? `${ico('swords')} <b>${esc(other)}</b> t’a attaqué` : `Tu as attaqué <b>${esc(other)}</b>`}</div>
-            <div class="o-sub">${KIND_NAME[f.kind] || f.kind} · ${timeOf(f.created_at)} · ${youWon ? '<span class="good">gagné</span>' : '<span class="bad">perdu</span>'}</div>
+        <div class="foe jrow2 ${youWon ? 'win' : 'loss'}">
+          <span class="foe-av">${oh ? `<canvas class="px" data-portrait="${oh.classId}" data-dye="${oh.dye || ''}"></canvas>` : ico('swords')}</span>
+          <span class="foe-res">${youWon ? 'GAGNÉ' : 'PERDU'}</span>
+          <div class="foe-body">
+            <div class="foe-name">${attacked ? `${ico('swords')} ${esc(other)} t’a attaqué` : `Tu as attaqué ${esc(other)}`}</div>
+            <div class="foe-sub">${KIND_NAME[f.kind] || f.kind} · ${timeOf(f.created_at)}</div>
           </div>
           <div class="j-btns">
-            <button class="btn small" data-act="replayLog" data-id="${f.id}" aria-label="Revoir">${ico('play')}</button>
-            <button class="btn small" data-act="shareLog" data-id="${f.id}" aria-label="Partager">${ico('chat')}</button>
-            ${attacked && players.some(p => p.id === otherId) ? `<button class="btn small danger" data-act="revenge" data-id="${otherId}">Vengeance</button>` : ''}
+            <button class="ibtn" data-act="replayLog" data-id="${f.id}" aria-label="Revoir">${ico('play')}</button>
+            <button class="ibtn" data-act="shareLog" data-id="${f.id}" aria-label="Partager">${ico('chat')}</button>
+            ${attacked && o ? `<button class="ibtn red" data-act="revenge" data-id="${otherId}" aria-label="Vengeance">${ico('fist')}</button>` : ''}
           </div>
         </div>`;
       }).join('') : '<p class="empty">Aucun combat pour l’instant.</p>'}
@@ -2347,6 +2466,14 @@ const ACTIONS = {
     el.textContent = on ? '−' : '+';
   },
   skipDungeon: (d) => skipDungeonFlow(d.id),
+  playerCard: (d) => openPlayerCard(d.id, d.h !== undefined ? +d.h : null),
+  podiumMsg: () => openPodiumMsg(),
+  podiumMsgSave: (d) => {
+    const v = d.clear ? '' : (document.getElementById('pod-msg')?.value || '').trim().slice(0, 60);
+    acc.podiumMsg = v ? { text: v, at: Date.now() } : null;
+    save(); closeModal(); render();
+    toast(v ? 'Message enregistré !' : 'Message effacé.');
+  },
   startHorde: () => startHorde(),
   skipDungeonGo: (d) => skipDungeonFlow(d.id, true),
   switchHero: (d) => {

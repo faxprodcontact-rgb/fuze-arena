@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018171857';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018173120';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -763,6 +763,41 @@ const EMBLEMS = {
       rr(g, x - 0.5, 15, 2, 5, '#6b4226'); rr(g, x - 1, 14, 3, 1.5, '#3a2a1a');
       ellipse(g, x + 0.5, 11.5, 1.8, 2.6, '#ff8a2a'); ellipse(g, x + 0.5, 12.2, 0.9, 1.4, '#ffe08a');
     }
+    return g;
+  },
+  journal() {   // livre ouvert avec un marque-page rouge et une épée gravée
+    const g = grid(28, 26), P = '#f3dfb0', L = '#c9a46a';
+    rr(g, 2, 19, 24, 4, '#7a4e2a'); rr(g, 3, 5, 10, 15, P); rr(g, 15, 5, 10, 15, P);
+    rr(g, 13, 5, 2, 16, '#8a6a3a');
+    for (const y of [8, 11, 14, 17]) { rr(g, 5, y, 6, 1, L); }
+    for (const y of [8, 11, 14, 17]) { rr(g, 16, y, 3, 1, L); rr(g, 23, y, 1, 1, L); }
+    rr(g, 20, 3, 2, 22, '#e8364a'); set(g, 20, 25, null); set(g, 21, 24, null);
+    return g;
+  },
+  talk() {   // deux bulles de discussion
+    const g = grid(28, 25);
+    ellipse(g, 11, 9, 9.5, 7, '#f4f8fc'); tri(g, [[5, 13], [10, 15], [3, 19]], '#f4f8fc');
+    for (const x of [7, 11, 15]) rr(g, x, 8, 2, 2, '#1b1530');
+    ellipse(g, 19, 16, 8, 6, '#3d9bff'); tri(g, [[22, 19], [26, 18], [26, 24]], '#3d9bff');
+    for (const x of [16, 19, 22]) rr(g, x, 15, 2, 2, '#f4f8fc');
+    return g;
+  },
+  ranking() {   // podium 1-2-3 et coupe dorée
+    const g = grid(28, 27);
+    rr(g, 1, 17, 9, 10, '#aeb6c4'); rr(g, 18, 20, 9, 7, '#cd7f32'); rr(g, 10, 13, 8, 14, '#ffd84a');
+    rr(g, 13, 16, 2, 6, '#c98a1a'); rr(g, 4, 20, 3, 1, '#6e7684'); rr(g, 21, 22, 3, 1, '#8a5320');
+    rr(g, 10, 1, 8, 5, '#ffd84a'); ellipse(g, 14, 5.5, 4, 3, '#ffd84a'); rr(g, 8, 2, 2, 3, '#e5b33a'); rr(g, 18, 2, 2, 3, '#e5b33a');
+    rr(g, 13, 8, 2, 3, '#e5b33a'); rr(g, 11, 11, 6, 2, '#c98a1a'); rr(g, 12, 2, 2, 3, '#fff3b0');
+    return g;
+  },
+  players() {   // trois combattants : bleu, rouge, et le chef doré au milieu
+    const g = grid(28, 25);
+    const head = (cx, cy, r, c, d) => {
+      ellipse(g, cx, cy + r * 2.3, r * 1.3, r * 1.05, d);
+      ellipse(g, cx, cy, r, r, c); rr(g, cx - r + 1, cy, r * 2 - 2, 1, '#1b1530'); rr(g, cx - 0.5, cy - r, 1, r - 1, d);
+    };
+    head(6.5, 11, 3.6, '#3d9bff', '#2a6fc4'); head(21.5, 11, 3.6, '#e8364a', '#a8182c'); head(14, 8, 4.5, '#ffd84a', '#c98a1a');
+    rr(g, 13, 1, 2, 3, '#e8364a');
     return g;
   },
   horde() {   // trois crânes empilés aux yeux rouges : la horde

@@ -4,6 +4,18 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1731', date: '18/10/2026', time: '17h31', title: 'Nouveau Social et podium des champions',
+    sections: [
+      { title: 'Social', items: [
+        'Nouvelles cartes avec un dessin pour chaque partie : Journal, Tchat, Classement, Joueurs.',
+        'Podium des champions sous les cartes : les 3 plus hauts niveaux du groupe. Ceux du podium peuvent écrire un message qui s’affiche dans une bulle au-dessus de leur héros.',
+        'Joueurs : touche un joueur pour voir sa carte d’identité (héros, équipement, puissance, vie, stats, victoires, records).',
+        'Journal, Tchat, Classement et Joueurs simplifiés, avec un bandeau et 3 compteurs. Le Classement a un nouvel onglet Horde.',
+      ] },
+      { title: 'La Horde', items: ['Chaque palier rapporte 2 Flouze de plus.'] },
+    ],
+  },
+  {
     id: '2026-10-18-1718', date: '18/10/2026', time: '17h18', title: 'Nouveau mode : La Horde',
     sections: [
       { title: 'La Horde', items: [

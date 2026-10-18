@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018171857';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018171857';
+} from './data.js?v=20261018173120';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018173120';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -409,7 +409,7 @@ export function hordeMonster(seed, n) {
   return m;
 }
 /** Flouze gagné selon le nombre de monstres battus */
-export const hordeFlouze = (kills) => (kills > 0 ? Math.round(1 + kills * HORDE.flouzePer) : 0);
+export const hordeFlouze = (kills) => (kills > 0 ? Math.round(HORDE.flouzeBase + kills * HORDE.flouzePer) : 0);
 
 /**
  * Combat de la horde : même interface qu'un combat normal (next, queue, manual, result),
