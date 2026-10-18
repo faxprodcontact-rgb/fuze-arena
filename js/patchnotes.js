@@ -5,6 +5,14 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-2036', date: '18/10/2026', time: '20h36', title: 'Donjons : enchaînement automatique',
+    sections: [
+      { title: 'Donjons', items: [
+        'Plus besoin d’appuyer sur « Monstre suivant » : après chaque K.O., le combat suivant démarre tout seul, jusqu’au boss.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2024', date: '18/10/2026', time: '20h24', title: 'Plus de clefs en montant de niveau',
     sections: [
       { title: 'Clefs de niveau', items: [

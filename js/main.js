@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018202425';
-import * as E from './engine.js?v=20261018202425';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018202425';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018202425';
-import { hashStr, makeRng } from './rng.js?v=20261018202425';
-import { APP_VERSION } from './version.js?v=20261018202425';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018202425';
-import * as NET from './net.js?v=20261018202425';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018202425';
+} from './data.js?v=20261018203627';
+import * as E from './engine.js?v=20261018203627';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018203627';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018203627';
+import { hashStr, makeRng } from './rng.js?v=20261018203627';
+import { APP_VERSION } from './version.js?v=20261018203627';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018203627';
+import * as NET from './net.js?v=20261018203627';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018203627';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -2425,6 +2425,7 @@ const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch 
 /** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
 const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
+const WAVE_AUTO_DELAY = 1500;   // ms avant d'enchaîner tout seul sur le monstre suivant
 function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null, noBar = false }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
@@ -2476,11 +2477,13 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
       <div class="result">
         <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${pxCaps(out.headline || (won ? 'VICTOIRE' : 'DÉFAITE…')).replace(/\s*!+\s*$/, '')}</h2>
         ${out.rewardsHtml || ''}
-        ${out.next ? `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>` : '<button class="btn primary" data-act="endFight">Continuer</button>'}
+        ${out.next ? (out.autoNext ? `<p class="wave-hp">${out.nextLabel}…</p>` : `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>`) : '<button class="btn primary" data-act="endFight">Continuer</button>'}
       </div>`;
     waveNext = out.next || null;
     hydrate(slot);
     announce(out.rewards);
+    // vague de donjon : on enchaîne tout seul sur le monstre suivant, juste le temps de voir le K.O.
+    if (out.next && out.autoNext) { const go = out.next; setTimeout(() => { if (waveNext === go && ov.isConnected) ACTIONS.waveNext(); }, WAVE_AUTO_DELAY); }
   });
 }
 
@@ -2567,8 +2570,8 @@ function startDungeon(id) {
             headline: 'K.O. !', headClass: 'win',
             rewardsHtml: `<p class="wave-hp"><b style="color:#fff">${esc(foe.name)}</b> est au tapis</p>${waveBar(i, true)}
               <p class="wave-hp">Tes PV : <b style="color:#fff">${fmtNum(result.hp[0])}</b> → tu reprends ton souffle : <b style="color:#7bf09a">${fmtNum(next)} / ${fmtNum(me.maxHp)}</b></p>`,
-            nextLabel: i + 1 === last ? `${ico('crown')} Affronter le boss` : `${ico('play')} Monstre suivant`,
-            next: () => step(i + 1, next),
+            nextLabel: i + 1 === last ? `${ico('crown')} Place au boss` : `${ico('play')} Monstre suivant`,
+            next: () => step(i + 1, next), autoNext: true,
           };
         }
         const rw = E.dungeonRewards(h, d, won, won ? last : i);
