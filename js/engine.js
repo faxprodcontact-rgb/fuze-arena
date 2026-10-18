@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018154004';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018154004';
+} from './data.js?v=20261018154140';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018154140';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;

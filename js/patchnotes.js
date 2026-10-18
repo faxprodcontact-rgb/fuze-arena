@@ -4,6 +4,12 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1541', date: '18/10/2026', time: '15h41', title: 'Correctif : visage de l’archère',
+    sections: [
+      { title: 'Correctif', items: ['Le visage de l’archère est redessiné : la capuche ne mord plus sur le côté droit et l’œil n’est plus écrasé.'] },
+    ],
+  },
+  {
     id: '2026-10-18-1540', date: '18/10/2026', time: '15h40', title: 'Héros redessinés à la main',
     sections: [
       { title: 'Héros', items: [
