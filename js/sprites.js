@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018160405';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261018163316';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -765,6 +765,15 @@ const EMBLEMS = {
     }
     return g;
   },
+  skull() {   // le crâne aux yeux verts du donjon, seul (bouton « Entrer »)
+    const g = grid(12, 13);
+    ellipse(g, 6, 6, 4.2, 3.8, '#e8e2d0'); rr(g, 3, 8, 6, 3.5, '#e8e2d0');
+    rr(g, 3, 5, 2, 2, '#1b1530'); rr(g, 7, 5, 2, 2, '#1b1530');
+    set(g, 4, 5, '#4cff7a'); set(g, 7, 5, '#4cff7a');
+    set(g, 5, 8, '#1b1530'); set(g, 6, 8, '#1b1530');
+    for (const x of [4, 7]) rr(g, x, 10, 1, 2, '#9a937e');
+    return g;
+  },
   tower() {
     const g = grid(28, 28), S = '#8a84a0', D = '#5d5776';
     rr(g, 9, 9, 10, 17, S); rr(g, 7, 23, 14, 5, S); rr(g, 8, 6, 12, 3, S);
@@ -819,6 +828,68 @@ const EMBLEMS = {
 };
 export function modeEmblem(id) {
   return cached('emblem:' + id, () => renderHi(EMBLEMS[id]()));
+}
+
+// =====================================================================
+//  PETITES ICÔNES DE L'INTERFACE (à la place des emojis), en pixel art
+// =====================================================================
+const UI_PAL = {
+  y: '#ffd84a', Y: '#fff3b0', d: '#c98a1a', w: '#f4f8fc', g: '#c9d1dc', G: '#8a93a3', k: '#1b1530',
+  r: '#e8364a', R: '#ff8a94', b: '#3d9bff', B: '#9fd0ff', n: '#7a4e2a', N: '#b07a48', e: '#4cd964', E: '#a8f0c0',
+  o: '#ff8a2a', p: '#a77bff', P: '#e0c8ff', s: '#f1c08f', S: '#c98f62', q: '#f3dfb0', Q: '#c9a46a', l: '#8a6a3a',
+};
+const MEDAL = ['r....b', '.r..b.', '..rb..', '.MMMM.', 'MLLLLM', 'MLMMLM', 'MLMMLM', 'MLLLLM', '.MMMM.'].map(r => r.replace(/^(.*)$/, '..$1..'));
+const SPARK = ['....y....', '....y....', '...yYy...', 'yyyYYYyyy', '...yYy...', '....y....', '....y....'];
+const UI_ICONS = {
+  trophy: [['..yYYYYYYd..', 'dyyYyyyyyydd', 'd.yYyyyyyd.d', 'd.yYyyyyyd.d', '.dyYyyyyydd.', '...yYyyyd...', '....yyyd....', '.....yd.....', '.....yd.....', '....yyyd....', '...nnnnnn...', '...nNNNNn...']],
+  medal1: [MEDAL, { M: '#ffd84a', L: '#fff3b0' }],
+  medal2: [MEDAL, { M: '#aeb6c4', L: '#eef2f7' }],
+  medal3: [MEDAL, { M: '#cd7f32', L: '#f0b27a' }],
+  chat: [['.wwwwwwwwww.', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'wwkkwkkwkkww', 'wwkkwkkwkkww', 'wwwwwwwwwwww', 'gwwwwwwwwwwg', '.ggggggggggg', '..gg........', '.gg.........', 'g...........']],
+  skip: [['w...w...ww', 'ww..ww..ww', 'www.www.ww', 'wwwwwwwwww', 'www.www.ww', 'ww..ww..ww', 'w...w...ww']],
+  play: [['w.....', 'ww....', 'www...', 'wwww..', 'wwwww.', 'wwww..', 'www...', 'ww....', 'w.....']],
+  boom: [['.....o.....', '.o...oo..o.', '..oo.oooo..', '..ooyyyyo..', 'ooooyYYyooo', '.ooyYYYYyo.', '..oyYYYYyoo', '.ooyyYYyyo.', 'oooyyyyyooo', '..oo.oo.oo.', '.o...o...o.']],
+  wind: [['......BBBB..', '.....B....B.', '..........B.', 'BBBBBBBBBB..', '............', '.BBBBBBBBBB.', '...........B', 'BBBBBBB...B.', '........BB..']],
+  shield: [['ggggggggggg', 'gbbbbYbbbbg', 'gbbbbYbbbbg', 'gYYYYYYYYYg', 'gbbbbYbbbbg', 'gbbbbYbbbbg', '.gbbbYbbbg.', '.gbbbYbbbg.', '..gbbYbbg..', '...gbYbg...', '....ggg....']],
+  clock: [['....yy....', '...gggg...', '.gwwwwwwg.', 'gwwwwkwwwg', 'gwwwwkwwwg', 'gwwwwkwwwg', 'gwwwwkkkwg', 'gwwwwwwwwg', '.gwwwwwwg.', '..gggggg..']],
+  dice: [['.wwwwwwww.', 'wwwwwwwwww', 'wkkwwwwkkw', 'wkkwwwwkkw', 'wwwwkkwwww', 'wwwwkkwwww', 'wkkwwwwkkw', 'wkkwwwwkkw', 'wwwwwwwwww', '.gggggggg.']],
+  bolt: [['....yyyy', '...yyyy.', '..yyyy..', '.yyyyyyy', 'yyyyyyy.', '...yyy..', '..yyy...', '..yy....', '.yy.....', '.y......']],
+  heart: [['.rrr.rrr.', 'rRRrrrrrr', 'rRrrrrrrr', 'rrrrrrrrr', '.rrrrrrr.', '..rrrrr..', '...rrr...', '....r....']],
+  paw: [['...NN..NN...', '...NN..NN...', 'NN........NN', 'NN........NN', '....NNNN....', '...NNNNNN...', '..NNNNNNNN..', '..NNNNNNNN..', '...NN..NN...']],
+  lock: [['...gggg...', '..g....g..', '..g....g..', '..g....g..', '.yyyyyyyy.', '.yYYYYYYy.', '.yyykkyyy.', '.yyykkyyy.', '.yyyyyyyy.', '.dddddddd.']],
+  hourglass: [['nnnnnnnnnn', '.gyyyyyyg.', '..gyyyyg..', '...gyyg...', '....gg....', '....yg....', '...gBBg...', '..gByyBg..', '.gyyyyyyg.', 'nnnnnnnnnn']],
+  fist: [['..sssssss..', '.sSsSsSsSs.', '.sSsSsSsSs.', '.sssssssss.', 'ssSsssssss.', 'sssSssssss.', '.sssssssss.', '..sssssss..', '..nnnnnnn..', '..nnnnnnn..']],
+  speaker: [['....ww.....', '...www..B..', 'wwwwww...B.', 'wwwwww.B.B.', 'wwwwww.B.B.', 'wwwwww...B.', '...www..B..', '....ww.....']],
+  mute: [['....ww.....', '...www.....', 'wwwwww.r..r', 'wwwwww..rr.', 'wwwwww..rr.', 'wwwwww.r..r', '...www.....', '....ww.....']],
+  crown: [['Y....Y....Y', 'yy..yyy..yy', 'yyy.yyy.yyy', 'yyyyyyyyyyy', 'yyryybyyryy', 'yyyyyyyyyyy', 'ddddddddddd']],
+  scroll: [['.QQQQQQQQ.', 'QqqqqqqqqQ', '.QQQQQQQQ.', '.qqqqqqqq.', '.qllllllq.', '.qqqqqqqq.', '.qlllllqq.', '.qqqqqqqq.', '.qllllllq.', '.QQQQQQQQ.', 'QqqqqqqqqQ', '.QQQQQQQQ.']],
+  gear: [['....gg....', '.gg.gg.gg.', '.gggggggg.', '..gg..gg..', 'gggg..gggg', 'gggg..gggg', '..gg..gg..', '.gggggggg.', '.gg.gg.gg.', '....gg....']],
+  helmet: [['...gggg...', '..ggGGgg..', '.gggGGggg.', '.gggGGggg.', '.gkkkkkkg.', '.gggGGggg.', '.gkgGGgkg.', '.gggGGggg.', '..yyyyyy..']],
+  boot: [['..nnnn....', '..nNNn....', '..nNNn....', '..nNNn....', '..nNNnn...', '..nNNNnnn.', '.nnNNNNNnn', '.nnnnnnnnn', '.kkkkkkkkk']],
+  amulet: [['g........g', '.g......g.', '..g....g..', '...gyyg...', '...yppy...', '..ypPPpy..', '..yppppy..', '...yppy...', '....yy....']],
+  bag: [['...nnnn...', '..n....n..', '.NNNNNNNN.', 'NNNNNNNNNN', 'NNnnnnnnNN', 'NNnyyyynNN', 'NNnnnnnnNN', 'NNNNNNNNNN', '.NNNNNNNN.']],
+  check: [['.........ee', '........eee', '.......eee.', 'ee....eee..', 'eee..eee...', '.eeeeee....', '..eeee.....', '...ee......']],
+  cross: [['rr......rr', 'rrr....rrr', '.rrr..rrr.', '..rrrrrr..', '...rrrr...', '...rrrr...', '..rrrrrr..', '.rrr..rrr.', 'rrr....rrr', 'rr......rr']],
+  target: [['...rrrr...', '.rrwwwwrr.', '.rwwrrwwr.', 'rwwrwwrwwr', 'rwrwrrwrwr', 'rwrwrrwrwr', 'rwwrwwrwwr', '.rwwrrwwr.', '.rrwwwwrr.', '...rrrr...']],
+  flag: [['nwkwkwkwk', 'nkwkwkwkw', 'nwkwkwkwk', 'nkwkwkwkw', 'nwkwkwkwk', 'n........', 'n........', 'n........', 'n........']],
+  fire: [['....r.....', '...rr.....', '...ror..r.', '..rooo.rr.', '..rooyoor.', '.rooyyoor.', '.rooyyyyor', 'roooyYYyor', 'rooyYYYYyr', 'rooyYYYYyr', '.rooyYYyr.', '..rrrrrr..']],
+  up: [['....ee....', '...eeee...', '..eeeeee..', '.eeeeeeee.', 'eeeeeeeeee', '...eeee...', '...eeee...', '...eeee...', '...eeee...']],
+  plus: [['...ee...', '...ee...', '...ee...', 'eeeeeeee', 'eeeeeeee', '...ee...', '...ee...', '...ee...']],
+  sparkle: [SPARK],
+  magic: [SPARK, { y: '#a77bff', Y: '#e0c8ff' }],
+  star: [['....y....', '....y....', '...yYy...', 'yyyyYyyyy', '.yyYYYyy.', '..yyyyy..', '..yy.yy..', '.yy...yy.', '.y.....y.']],
+};
+export function uiIcon(name) {
+  return cached('ui:' + name, () => {
+    if (name === 'skull') return modeEmblem('skull');
+    if (name === 'swords') {
+      const g = grid(16, 16);
+      sword(g, 2, 14, 14, 1.5); sword(g, 14, 14, 2, 1.5);
+      return renderHi(g);
+    }
+    const [rows, pal] = UI_ICONS[name] || UI_ICONS.star;
+    return renderHi(fromMap(rows, { ...UI_PAL, ...(pal || {}) }));
+  });
 }
 
 // =====================================================================

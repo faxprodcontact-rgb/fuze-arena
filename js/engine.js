@@ -5,11 +5,11 @@
 import {
   CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
-  DUNGEON_RUNS, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261018160405';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018160405';
+} from './data.js?v=20261018163316';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261018163316';
 
 // ----------------------------- Progression -----------------------------
 export const xpForLevel = (lvl) => 50 + 15 * lvl;
@@ -383,8 +383,8 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
     get queued() { return queued; },
     setManual(v) { manualMode = v; if (!v) queued = null; },
     get manual() { return manualMode; },
-    /** Termine le combat (si besoin) et renvoie { log, winner, usedManual } */
-    result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual }; },
+    /** Termine le combat (si besoin) et renvoie { log, winner, usedManual, hp } (hp = PV restants de chacun) */
+    result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual, hp: F.map(f => Math.max(0, Math.round(f.hp))) }; },
   };
 }
 
@@ -767,11 +767,51 @@ export function buildMonster(d) {
   };
 }
 
+// ------------------------------ Vagues de donjon ------------------------------
+// Chaque entrée en donjon = une vague : 2 monstres différents puis le boss. Les PV du héros ne remontent pas entre les combats
+// (juste un petit souffle de WAVE_HEAL entre deux monstres). Si on tombe, la vague s'arrête.
+export const WAVE_MINIONS = 2;
+export const MINION_POWER = 0.65;   // stats des monstres de la vague par rapport à un boss du même niveau
+export const MINION_HP = 0.4;     // et leurs PV
+export const WAVE_BOSS_HP = 0.95;  // le boss d'une vague a un peu moins de PV (on arrive déjà blessé)
+export const MINION_XP = 0.15;    // chaque monstre battu rapporte 15 % de l'XP du boss en plus
+export const WAVE_HEAL = 0.25;     // PV rendus (en part des PV max) avant le monstre suivant
+
+/** Les monstres de la vague (tirés parmi les boss des autres donjons, jamais deux fois le même), puis le boss */
+export function dungeonWave(d, rng = Math.random) {
+  const pool = DUNGEONS.filter(x => x.id !== d.id).flatMap(dungeonFoes);
+  const picks = [];
+  while (picks.length < WAVE_MINIONS && pool.length) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+  const minions = picks.map(src => {
+    const m = buildMonster({ ...src, lvl: d.lvl });
+    for (const k in m.stats) m.stats[k] = Math.max(1, Math.round(m.stats[k] * MINION_POWER));
+    m.maxHp = Math.round(m.maxHp * MINION_HP);
+    m.minion = true;
+    return m;
+  });
+  const boss = buildMonster(pickDungeonFoe(d, rng));
+  boss.maxHp = Math.round(boss.maxHp * WAVE_BOSS_HP);
+  return [...minions, boss];
+}
+/** XP d'une vague complète (les monstres + le boss) */
+export const waveXp = (d) => Math.round(dungeonXp(d) * (1 + MINION_XP * WAVE_MINIONS));
+/** PV du héros au début du combat suivant de la vague */
+export const waveNextHp = (snap, hpLeft) => Math.min(snap.maxHp, Math.round(hpLeft + snap.maxHp * WAVE_HEAL));
+
 /** Combats de donjon de la demi-journée (remis à zéro à minuit et à midi) */
 export function dungeonRuns(hero) {
   const k = halfKey();
-  if (hero.runs.half !== k) hero.runs = { half: k, used: {} };
+  if (hero.runs.half !== k) hero.runs = { half: k, used: {}, keys: 0 };
   return hero.runs;
+}
+/** Clefs encore gagnables en donjon d'ici la prochaine remise à zéro (minuit ou midi) */
+export const keysEarned = (hero) => dungeonRuns(hero).keys || 0;
+export const keysLeftToEarn = (hero) => Math.max(0, DUNGEON_KEYS_MAX - keysEarned(hero));
+/** Les donjons débloqués, sauf les 2 plus durs, peuvent être passés */
+export function canSkipDungeon(hero, d) {
+  const open = DUNGEONS.filter(x => hero.level >= x.lvl);
+  const i = open.findIndex(x => x.id === d.id);
+  return i >= 0 && i < open.length - DUNGEON_SKIP_KEEP;
 }
 export const runsLeft = (hero, d) => Math.max(0, DUNGEON_RUNS - (dungeonRuns(hero).used[d.id] || 0));
 /** Combats encore possibles dans tous les donjons débloqués */
@@ -794,15 +834,33 @@ export function useDungeonRun(hero, d) {
 }
 
 /** Récompenses de donjon : XP selon le niveau du donjon + 1 clef si victoire */
-export function dungeonRewards(hero, d, won) {
-  const xp = won ? dungeonXp(d) : Math.round(dungeonXp(d) * 0.4);
+/** Récompenses d'une vague de donjon : XP (boss + monstres battus) + 1 clef si le boss tombe (5 clefs max toutes les 12 h) */
+export function dungeonRewards(hero, d, won, minionsBeaten = 0) {
+  const xp = (won ? dungeonXp(d) : Math.round(dungeonXp(d) * 0.4)) + Math.round(dungeonXp(d) * MINION_XP * minionsBeaten);
   const lv = gainXp(hero, xp);
+  const key = won && keysLeftToEarn(hero) > 0;
+  if (key) { hero.keys = (hero.keys || 0) + 1; dungeonRuns(hero).keys = keysEarned(hero) + 1; }
   if (won) {
-    hero.keys = (hero.keys || 0) + 1;
     hero.stats.dungeons++;
     hero.dungeonClears[d.id] = (hero.dungeonClears[d.id] || 0) + 1;
   }
-  return { xp, key: won, ...lv };
+  return { xp, key, keyCapped: won && !key, ...lv };
+}
+
+/** Passe tous les combats restants d'un donjon facile : comptés comme gagnés, mais avec la moitié de l'XP */
+export function skipDungeon(hero, d) {
+  if (!canSkipDungeon(hero, d)) return null;
+  const n = runsLeft(hero, d);
+  if (n <= 0) return null;
+  let keys = 0;
+  for (let i = 0; i < n; i++) {
+    useDungeonRun(hero, d);
+    if (keysLeftToEarn(hero) > 0) { hero.keys = (hero.keys || 0) + 1; dungeonRuns(hero).keys = keysEarned(hero) + 1; keys++; }
+  }
+  hero.stats.dungeons += n;
+  hero.dungeonClears[d.id] = (hero.dungeonClears[d.id] || 0) + n;
+  const lv = gainXp(hero, n * Math.round(waveXp(d) / 2));
+  return { runs: n, keys, ...lv };
 }
 
 // ------------------------------ Guerre des sections --------------------

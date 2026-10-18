@@ -9,6 +9,8 @@ export const CHEST_MAX = 5;                          // cumulables jusqu'à 5
 export const WINS_PER_COMBAT_CHEST = 3;              // 3 victoires = 1 coffre de combat
 export const MAX_ACTIVE_SPELLS = 4;
 export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h (remise à zéro à minuit et à midi), par personnage
+export const DUNGEON_KEYS_MAX = 5;  // clefs gagnées au maximum en donjon toutes les 12 h, par personnage (ensuite : XP seulement)
+export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
 export const KEY_PRICE = 100;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
 export const SELL_PRICE = [1, 3, 7, 16, 40];   // revente d'un objet selon sa rareté (en Flouze)
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze

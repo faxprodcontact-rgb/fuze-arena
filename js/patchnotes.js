@@ -4,6 +4,23 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-18-1633', date: '18/10/2026', time: '16h33', title: 'Modes de combat refaits et donjons en vagues',
+    sections: [
+      { title: 'Donjons', items: [
+        'Chaque entrée est une vague : 2 monstres différents d’affilée, puis le boss. Tes PV ne remontent qu’un peu entre deux combats : si tu tombes, la vague s’arrête.',
+        'Chaque monstre battu rapporte un peu d’XP en plus. La difficulté a été réglée pour que la vague complète soit à peu près aussi dure qu’avant le boss seul.',
+        'Tu gagnes au maximum 5 clefs toutes les 12 h par perso (remise à zéro avec les donjons). Ensuite, seulement de l’XP.',
+        'Nouveau bouton « Passer » : tous tes donjons sauf les 2 plus durs peuvent être passés d’un coup, avec la moitié de l’XP.',
+      ] },
+      { title: 'Combats', items: [
+        'Arène, Donjons, Tour, Raid, Guerre et Paris : nouveau bandeau avec 3 compteurs, et les règles cachées derrière le « + » jaune.',
+        'Arène : « À combattre » et « Déjà affrontés » sont séparés. Chaque pote est noté Facile, Serré ou Costaud selon sa puissance.',
+        'Les titres de fin de combat sont centrés.',
+      ] },
+      { title: 'Interface', items: ['Tous les emojis sont remplacés par des icônes en pixel art dans le style du jeu.'] },
+    ],
+  },
+  {
     id: '2026-10-18-1604', date: '18/10/2026', time: '16h04', title: 'Nouvel onglet Combats',
     sections: [
       { title: 'Combats', items: [
@@ -158,7 +175,7 @@ export const PATCH_NOTES = [
     id: '2026-10-18-1429', date: '18/10/2026', time: '14h29', title: 'Notes de mise à jour et joueurs en ligne',
     sections: [
       { title: 'Nouveau', items: [
-        'Bouton 📜 en haut de l’écran : les notes de chaque mise à jour, datées, la plus récente en premier. Un point rouge apparaît quand il y a du nouveau.',
+        'Bouton parchemin en haut de l’écran : les notes de chaque mise à jour, datées, la plus récente en premier. Un point rouge apparaît quand il y a du nouveau.',
         'Voyant en ligne / hors ligne : écran « Joueurs » dans Social, avec qui est connecté et depuis quand les autres ne sont pas venus.',
         'Petit voyant vert à côté des joueurs connectés dans l’Arène et le Classement.',
       ] },

@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261018160405';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018160405';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018160405';
+import { CLASSES } from './data.js?v=20261018163316';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261018163316';
+import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261018163316';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -558,12 +558,12 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     } else if (e.type === 'stunned') {
       const T = F[e.target], c = center(T);
       T.stars = 1;
-      float('Étourdi…', c.x, c.y - 50, '#feca57', 8);
+      float('Etourdi…', c.x, c.y - 50, '#feca57', 8);
       await wait(700);
       T.stars = 0;
     } else if (e.type === 'rage') {
       sfx.rage();
-      banner = { text: 'RAGE DE L’ARÈNE !', sub: 'Les dégâts augmentent', life: 1600, max: 1600 };
+      banner = { text: 'RAGE DE L’ARENE !', sub: 'Les dégâts augmentent', life: 1600, max: 1600 };
       shake = 6;
       await wait(1200);
     } else if (e.type === 'end' && e.winner < 0) {

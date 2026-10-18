@@ -4,17 +4,17 @@
 import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
-  DUNGEONS, DUNGEON_RUNS, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
+  DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261018160405';
-import * as E from './engine.js?v=20261018160405';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018160405';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem } from './sprites.js?v=20261018160405';
-import { hashStr, makeRng } from './rng.js?v=20261018160405';
-import { APP_VERSION } from './version.js?v=20261018160405';
-import { PATCH_NOTES } from './patchnotes.js?v=20261018160405';
-import * as NET from './net.js?v=20261018160405';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018160405';
+} from './data.js?v=20261018163316';
+import * as E from './engine.js?v=20261018163316';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261018163316';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261018163316';
+import { hashStr, makeRng } from './rng.js?v=20261018163316';
+import { APP_VERSION } from './version.js?v=20261018163316';
+import { PATCH_NOTES } from './patchnotes.js?v=20261018163316';
+import * as NET from './net.js?v=20261018163316';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261018163316';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -85,6 +85,8 @@ async function refreshPlayers() {
 }
 
 // ------------------------------ Rendu ------------------------------
+/** Petite icône en pixel art (à la place d'un emoji) */
+const ico = (name, cls = '') => `<canvas class="px ico ${cls}" data-ico="${name}"></canvas>`;
 function hydrate(root = document) {
   root.querySelectorAll('canvas[data-icon]').forEach(c => paint(c, itemIcon(c.dataset.icon), { scale: 4 }));
   root.querySelectorAll('canvas[data-portrait]').forEach(c => paint(c, heroPortrait(c.dataset.portrait, CLASSES[c.dataset.portrait].weapon, c.dataset.dye || null), { scale: 4 }));
@@ -92,6 +94,7 @@ function hydrate(root = document) {
   root.querySelectorAll('canvas[data-clat]').forEach(c => paint(c, clatCanvas(), { scale: 3 }));
   root.querySelectorAll('canvas[data-key]').forEach(c => paint(c, keyCanvas(), { scale: 3 }));
   root.querySelectorAll('canvas[data-emblem]').forEach(c => paint(c, modeEmblem(c.dataset.emblem), { scale: 4 }));
+  root.querySelectorAll('canvas[data-ico]').forEach(c => paint(c, uiIcon(c.dataset.ico), { scale: 4 }));
   root.querySelectorAll('canvas[data-spell]').forEach(c => paint(c, spellIcon(c.dataset.spell), { scale: 3 }));
   root.querySelectorAll('canvas[data-chest]').forEach(c => paint(c, chestCanvas(c.dataset.chest, c.dataset.open === '1'), { scale: 6 }));
   root.querySelectorAll('canvas[data-hero]').forEach(c => stopPreviews.push(idlePreview(c, c.dataset.hero, c.dataset.pet || null, c.dataset.dye || null)));
@@ -123,9 +126,9 @@ function render() {
         <div class="tb-name">${esc(acc.pseudo)}<span>${CLASSES[hero.classId].name} Nv.${hero.level}</span></div>
         <div class="xpbar"><div style="width:${xpPct}%"></div></div>
       </div>
-      <button class="tb-gear" data-act="patchNotes" aria-label="Notes de mise à jour">📜<span class="badge dot" id="patch-badge" ${patchUnseen() ? '' : 'hidden'}>!</span></button>
-      <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">💬<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
-      <button class="tb-gear" data-act="settings" aria-label="Réglages">⚙︎</button>
+      <button class="tb-gear" data-act="patchNotes" aria-label="Notes de mise à jour">${ico('scroll')}<span class="badge dot" id="patch-badge" ${patchUnseen() ? '' : 'hidden'}>!</span></button>
+      <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">${ico('chat')}<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
+      <button class="tb-gear" data-act="settings" aria-label="Réglages">${ico('gear')}</button>
     </header>
     <main id="view">${PARENT[tab] ? `<button class="backbar" data-act="tab" data-id="${PARENT[tab]}">‹ ${PARENT_NAME[PARENT[tab]]}</button>` : ''}${VIEWS[tab]()}</main>
     <nav class="tabs">
@@ -168,12 +171,12 @@ function trainingStatsHtml() {
   const box = (ico, label, val, sub) => `<div class="ts"><span><i class="ts-ico">${ico}</i>${label}</span><b>${val}</b><small>${sub}</small></div>`;
   const speedRatio = T.foeActs ? (T.acts / T.foeActs).toFixed(1) : '—';
   return [
-    box('⚔', 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
-    box('💥', 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %`),
-    box('💨', 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %`),
-    box('🛡', 'Défense', `−${Math.round((1 - 100 / (100 + st.def)) * 100)} %`, `dégâts reçus ${T.foeHits ? Math.round(T.taken / T.foeHits) : '—'}`),
-    box('⚡', 'Vitesse', `×${speedRatio}`, 'actions par coup reçu'),
-    box('❤', 'Soins', T.heal, `PV max ${E.maxHp(st, hero.level)}`),
+    box(ico('swords'), 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
+    box(ico('boom'), 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %`),
+    box(ico('wind'), 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %`),
+    box(ico('shield'), 'Défense', `−${Math.round((1 - 100 / (100 + st.def)) * 100)} %`, `dégâts reçus ${T.foeHits ? Math.round(T.taken / T.foeHits) : '—'}`),
+    box(ico('bolt'), 'Vitesse', `×${speedRatio}`, 'actions par coup reçu'),
+    box(ico('heart'), 'Soins', T.heal, `PV max ${E.maxHp(st, hero.level)}`),
   ].join('');
 }
 
@@ -183,7 +186,7 @@ function trainingBest() {
   if (NET.online) for (const p of players) { const r = p.data.trainRecord; if (r && r.dmg > best.dmg) best = { dmg: r.dmg, name: p.pseudo, data: p.data }; }
   return best;
 }
-const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `🏆 <b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : '🏆 Pas encore de record'; };
+const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `${ico('trophy')} <b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : `${ico('trophy')} Pas encore de record`; };
 
 function onTrainingEntry(e) {
   if (!T || e.type !== 'action' || e.pet) return;
@@ -201,7 +204,7 @@ function onTrainingEntry(e) {
     }
   }
   const el = document.getElementById('train-stats');
-  if (el) el.innerHTML = trainingStatsHtml();
+  if (el) { el.innerHTML = trainingStatsHtml(); hydrate(el); }
   // nouveau record personnel ?
   if (T.maxHit > ((acc.trainRecord && acc.trainRecord.dmg) || 0)) {
     const isTop = T.maxHit > trainingBest().dmg;
@@ -209,7 +212,7 @@ function onTrainingEntry(e) {
     E.missionEvent(acc, 'train_rec');
     save();
     const r = document.getElementById('train-rec');
-    if (r) { r.innerHTML = trainRecHtml(); if (isTop) { r.classList.remove('pop'); void r.offsetWidth; r.classList.add('pop'); } }
+    if (r) { r.innerHTML = trainRecHtml(); hydrate(r); if (isTop) { r.classList.remove('pop'); void r.offsetWidth; r.classList.add('pop'); } }
   }
 }
 
@@ -385,12 +388,12 @@ function viewHero() {
         <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat}</span>
         <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys}</span>
         ${E.getXpBonus() > 1 ? `<span class="pill green">Rattrapage +${Math.round((E.getXpBonus() - 1) * 100)} % XP</span>` : ''}
-        ${acc.titles.warHero ? `<span class="pill gold">⚔ Héros de guerre ×${acc.titles.warHero}</span>` : ''}
+        ${acc.titles.warHero ? `<span class="pill gold">${ico('swords')} Héros de guerre ×${acc.titles.warHero}</span>` : ''}
       </div>
     </section>
 
     <section class="card train hx hx-gold">
-      <div class="hx-head"><span class="hx-ico">⚔</span><div><h2>Entraînement</h2><small>Tes stats en action contre l’épouvantail</small></div></div>
+      <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Entraînement</h2><small>Tes stats en action contre l’épouvantail</small></div></div>
       <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
       <div class="hero-switch">
         ${acc.heroes.map((h, i) => `
@@ -402,12 +405,12 @@ function viewHero() {
     </section>
 
     <section class="card hx hx-blue">
-      <div class="hx-head"><span class="hx-ico">✦</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche les + pour placer tes points' : 'Tu gagnes 3 points à chaque niveau'}</small></div>
+      <div class="hx-head"><span class="hx-ico">${ico('sparkle')}</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche les + pour placer tes points' : 'Tu gagnes 3 points à chaque niveau'}</small></div>
         ${pts > 0 ? `<span class="pts-badge">${pts}<small>point${pts > 1 ? 's' : ''}</small></span>` : ''}</div>
       <div class="stat-sum">
-        <div><small>❤ Vie</small><b>${fmtNum(hp)}</b></div>
-        <div><small>💥 Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} équip.` : 'max 40 %'}</i></div>
-        <div><small>💨 Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} équip.` : 'max 25 %'}</i></div>
+        <div><small>${ico('heart')} Vie</small><b>${fmtNum(hp)}</b></div>
+        <div><small>${ico('boom')} Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} équip.` : 'max 40 %'}</i></div>
+        <div><small>${ico('wind')} Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} équip.` : 'max 25 %'}</i></div>
       </div>
       <div class="stat-legend">
         <span><i class="sl-base"></i>Base (classe + niveau)</span>
@@ -441,7 +444,7 @@ function viewHero() {
     </section>
 
     <section class="card spells-card hx cls-${hero.classId}">
-      <div class="hx-head"><span class="hx-ico">✧</span><div><h2>Sorts</h2><small>${MAX_ACTIVE_SPELLS} sorts en combat · touche un sort pour l’équiper ou le retirer</small></div></div>
+      <div class="hx-head"><span class="hx-ico">${ico('magic')}</span><div><h2>Sorts</h2><small>${MAX_ACTIVE_SPELLS} sorts en combat · touche un sort pour l’équiper ou le retirer</small></div></div>
       <div class="spell-slots">
         ${Array.from({ length: MAX_ACTIVE_SPELLS }, (_, i) => {
           const sp = active[i];
@@ -558,7 +561,7 @@ function stacks() {
 
 const groupOf = (itemId) => ITEMS[itemId].set || 'pet';
 const STAT_ICO = { vit: 'VIE', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT', lck: 'CHA' };
-const SLOT_GLYPH = { hat: '⛑', weapon: '⚔', armor: '🛡', boots: '👢', amulet: '📿', pet: '🐾' };
+const SLOT_GLYPH = { hat: ico('helmet'), weapon: ico('swords'), armor: ico('shield'), boots: ico('boot'), amulet: ico('amulet'), pet: ico('paw') };
 const groupName = (g) => (g === 'pet' ? 'Familiers' : SETS[g].name.replace(/^Panoplie (de |d’|du )?/, ''));
 
 function invGrid(list) {
@@ -620,8 +623,8 @@ function viewBag() {
         <div class="at-power"><small>PUISSANCE</small><b>${fmtNum(power)}</b></div>
       </div>
       <div class="at-chips">
-        <span class="pill ${filled === 6 ? 'gold' : ''}">⚔ ${filled}/6 équipés</span>
-        <span class="pill">🎒 ${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}</span>
+        <span class="pill ${filled === 6 ? 'gold' : ''}">${ico('swords')} ${filled}/6 équipés</span>
+        <span class="pill">${ico('bag')} ${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}</span>
         ${setsOn.length ? setsOn.map(a => `<span class="pill green">${groupName(a.setId)} ${a.count}/5</span>`).join('') : '<span class="pill">Aucune panoplie active</span>'}
       </div>
     </section>
@@ -741,67 +744,112 @@ function petBox(itemId, rarity) {
 }
 
 // ------------------------------ Vue Combats ------------------------------
+// ------------------------------ En-tête commun des modes de combat ------------------------------
+/** Bandeau d'un mode : dessin, titre, 3 compteurs, et les règles cachées derrière le « + » jaune */
+function modeHead({ id, c, art, title, sub, chips = [], extra = '', info }) {
+  return `
+    <section class="card mhead ${infoCls(id)}" data-info="${id}" style="--tc:${c}">
+      <div class="mh-top">
+        <span class="mh-art">${art}</span>
+        <div class="mh-txt"><h2>${title}</h2><small>${sub}</small></div>
+      </div>
+      ${chips.length ? `<div class="mh-chips">${chips.join('')}</div>` : ''}
+      ${extra}
+      <div class="more-txt">${info}</div>
+      ${moreBtn(id)}
+    </section>`;
+}
+const mchip = (ico, label, val, cls = '') => `<div class="mchip ${cls}"><span class="mc-ico">${ico}</span><small>${label}</small><b>${val}</b></div>`;
+const secHead = (ico, title, sub = '', right = '') => `<div class="hx-head"><span class="hx-ico">${ico}</span><div><h2>${title}</h2>${sub ? `<small>${sub}</small>` : ''}</div>${right}</div>`;
+/** Sa puissance comparée à la tienne */
+function powerCmp(foeSnap) {
+  const r = E.powerScore(foeSnap) / Math.max(1, E.powerScore(E.snapshot(hero)));
+  if (r > 1.12) return '<span class="cmp hard">Costaud</span>';
+  if (r < 0.88) return '<span class="cmp easy">Facile</span>';
+  return '<span class="cmp even">Serré</span>';
+}
+const foeAv = (o) => `<span class="foe-av"><canvas class="px" data-portrait="${o.classId}" data-dye="${o.dye || ''}"></canvas></span>`;
+const foeInfo = (o, data = o.data) => `
+  <div class="foe-body">
+    <div class="foe-name">${dotHtml(o.id)}${nameHtml(o.name, data)}</div>
+    <div class="foe-sub">${CLASSES[o.classId].name} · Nv.${o.level} · ${ico('bolt')}${E.powerScore(o.snap)}</div>
+    ${powerCmp(o.snap)}
+  </div>`;
+
 function viewFights() {
   const list = opponents();
-  const left = list.filter(o => !o.done).length;
-  return `
-    <section class="card">
-      <h2>Arène du jour</h2>
-      <p class="hint">Un combat classé par adversaire et par jour. ${WINS_PER_COMBAT_CHEST} victoires = 1 coffre de combat. Tout repart à zéro à minuit. Ensuite, tu peux faire des <b>revanches</b> pour le fun : la 1ʳᵉ revanche gagnée contre chaque adversaire rapporte 1 Flouze par jour.</p>
-      <div class="row" style="flex-wrap:wrap;gap:6px">
-        <span class="pill gold">${left} combat${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</span>
-        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span>
-        <span class="pill">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>
-        <span class="pill" data-timer="day">Nouveaux combats dans ${fmt(msToMidnight())}</span>
-      </div>
-    </section>
-    <section class="card">
-      <h2>Adversaires</h2>
-      ${list.length ? '' : `<p class="empty">${NET.online ? 'Personne d’autre n’est encore inscrit. Invite tes potes !' : 'Aucun adversaire.'}</p>`}
-      ${list.map(o => `
-        <div class="opp ${o.done ? 'done' : ''}">
-          <div class="av"><canvas class="px" data-portrait="${o.classId}" data-dye="${o.dye || ''}"></canvas></div>
-          <div class="o-body">
-            <div class="o-name">${dotHtml(o.id)}${nameHtml(o.name, o.data)} ${titleHtml(o.data)}</div>
-            <div class="o-sub">${CLASSES[o.classId].name} · Nv.${o.level} · Puissance ${E.powerScore(o.snap)}</div>
-          </div>
-          ${o.done
-            ? `<div class="done-col"><span class="pill ${o.done === 'win' ? 'green' : 'red'}">${o.done === 'win' ? 'VICTOIRE' : 'DÉFAITE'}</span>
-               <button class="btn small" data-act="friendly" data-id="${o.id}">Revanche</button></div>`
-            : `<button class="btn small primary" data-act="fight" data-id="${o.id}">Combattre</button>`}
+  const todo = list.filter(o => !o.done), done = list.filter(o => o.done);
+  const clatGot = acc.fights.clat || {};
+  return modeHead({
+    id: 'arena', c: '#ff5d6c', art: '<canvas class="px" data-emblem="arena"></canvas>',
+    title: 'Arène', sub: 'Affronte chacun de tes potes une fois par jour',
+    chips: [
+      mchip(ico('swords'), 'Combats classés', `${todo.length} / ${list.length}`, todo.length ? 'hot' : ''),
+      mchip('<canvas class="px" data-chest="combat"></canvas>', 'Coffre de combat', `${acc.winProgress} / ${WINS_PER_COMBAT_CHEST}`),
+      mchip(ico('clock'), 'Remise à zéro', `<span data-timer="day3">${fmt(msToMidnight())}</span>`),
+    ],
+    info: `<b>${ico('swords')} Combat classé</b> : un par pote et par jour. Tu gagnes de l’XP, et chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit.<br><br>
+      <b>↻ Revanche</b> : une fois le combat classé fait, rejoue autant que tu veux, pour le fun. La 1ʳᵉ revanche gagnée contre chaque pote rapporte <b>1 Flouze</b> par jour.<br><br>
+      <b>Costaud · Serré · Facile</b> : sa puissance comparée à la tienne.`,
+  }) + `
+    <section class="card hx" style="--hc:#ff5d6c">
+      ${secHead(ico('swords'), 'À combattre', 'Combat classé : XP + coffre de combat', `<span class="pill ${todo.length ? 'red' : 'green'}">${todo.length}</span>`)}
+      ${!list.length ? `<p class="empty">${NET.online ? 'Personne d’autre n’est encore inscrit. Invite tes potes !' : 'Aucun adversaire.'}</p>`
+        : !todo.length ? '<div class="all-done">✓ Tous tes combats classés sont faits !<small>Nouveaux combats à minuit. En attendant, fais des revanches.</small></div>' : ''}
+      ${todo.map(o => `
+        <div class="foe todo">${foeAv(o)}${foeInfo(o)}
+          <button class="foe-btn fight" data-act="fight" data-id="${o.id}"><i>${ico('swords')}</i>Combattre</button>
         </div>`).join('')}
-    </section>`;
+    </section>
+    ${done.length ? `
+    <section class="card hx" style="--hc:#8f86b0">
+      ${secHead('↻', 'Déjà affrontés', 'Revanches illimitées, pour le fun')}
+      ${done.map(o => {
+        const won = o.done === 'win';
+        return `
+        <div class="foe ${won ? 'win' : 'loss'}">${foeAv(o)}<span class="foe-res">${won ? 'GAGNÉ' : 'PERDU'}</span>${foeInfo(o)}
+          <button class="foe-btn re" data-act="friendly" data-id="${o.id}"><i>↻</i>Revanche<small>${clatGot[o.id] ? 'pour le fun' : '+1 Flouze'}</small></button>
+        </div>`;
+      }).join('')}
+    </section>` : ''}`;
 }
 
 // ------------------------------ Vue Donjons ------------------------------
 function viewDungeons() {
   const left = E.totalRunsLeft(hero);
-  return `
-    <section class="card">
-      <h2>Donjons</h2>
-      <p class="hint">Chaque donjon a <b>2 boss possibles</b>, tirés au hasard à chaque entrée. Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (remise à zéro à minuit et à midi), pour chacun de tes personnages. Bats le boss pour gagner de l’XP et <b>1 clef</b> (1 clef = 1 coffre). Même en cas de défaite, tu gagnes un peu d’XP.</p>
-      <div class="row" style="flex-wrap:wrap;gap:6px">
-        <span class="pill gold">${left} combat${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''}</span>
-        <span class="pill gold"><canvas class="px" data-key></canvas>${hero.keys} clef${hero.keys > 1 ? 's' : ''}</span>
-        <span class="pill" data-timer="half">Remise à zéro dans ${fmt(E.msToNextHalf())}</span>
-      </div>
-    </section>
-    <section class="card">
+  return modeHead({
+    id: 'dungeons', c: '#4cd964', art: '<canvas class="px" data-emblem="dungeons"></canvas>',
+    title: 'Donjons', sub: 'Bats les boss pour gagner des clefs',
+    chips: [
+      mchip(ico('swords'), 'Combats dispo', left, left ? 'hot' : ''),
+      mchip('<canvas class="px" data-key></canvas>', 'Clefs gagnées', `${E.keysEarned(hero)} / ${DUNGEON_KEYS_MAX}`, E.keysLeftToEarn(hero) ? '' : 'full'),
+      mchip(ico('clock'), 'Remise à zéro', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+    ],
+    info: `Chaque entrée est une <b>vague</b> : 2 monstres différents d’affilée, puis le boss. Tes PV ne remontent presque pas entre deux combats : si tu tombes, la vague s’arrête. Chaque donjon a <b>2 boss possibles</b>, tirés au hasard.<br><br>
+      Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (minuit et midi), pour chacun de tes persos.<br><br>
+      Bats le boss : de l’XP et <b>1 clef</b> (1 clef = 1 coffre), jusqu’à <b>${DUNGEON_KEYS_MAX} clefs toutes les 12 h</b>. Ensuite, tu gagnes seulement l’XP. Chaque monstre battu rapporte un peu d’XP en plus, et même en cas de défaite tu gagnes un peu d’XP.<br><br>
+      <b>${ico('skip')} Passer</b> : tes ${DUNGEON_SKIP_KEEP} donjons débloqués les plus durs se font en vrai. Les autres peuvent être passés d’un coup : tu reçois les récompenses de tes vagues restantes, mais avec <b>la moitié de l’XP</b>.`,
+  }) + `
+    <section class="card hx" style="--hc:#4cd964">
+      ${secHead(ico('skull'), 'Choisis ton donjon', `${DUNGEONS.filter(d => hero.level >= d.lvl).length} / ${DUNGEONS.length} débloqués`)}
       ${DUNGEONS.map(d => {
-        const locked = hero.level < d.lvl;
-        const clears = hero.dungeonClears[d.id] || 0;
-        const n = E.runsLeft(hero, d);
+        const locked = hero.level < d.lvl, n = E.runsLeft(hero, d), clears = hero.dungeonClears[d.id] || 0;
+        const skip = !locked && n > 0 && E.canSkipDungeon(hero, d), keyOk = E.keysLeftToEarn(hero) > 0;
         return `
-        <div class="opp dj ${locked ? 'locked' : ''}">
-          <div class="av duo"><canvas class="px" data-monster="${d.sprite}"></canvas>${d.alt ? `<canvas class="px alt" data-monster="${d.alt.sprite}"></canvas>` : ''}</div>
-          <div class="o-body">
-            <div class="o-name">${d.name}</div>
-            <div class="o-sub">${d.boss}${d.alt ? ` ou ${d.alt.boss}` : ''} · Nv.${d.lvl}${clears ? ` · vaincu ${clears}×` : ''}</div>
-            ${locked ? '' : `<div class="o-sub" style="color:var(--gold)">+${E.dungeonXp(d)} XP · 1 clef</div>`}
+        <div class="dgn ${locked ? 'locked' : n ? '' : 'empty'}">
+          <div class="dgn-art"><canvas class="px" data-monster="${d.sprite}"></canvas>${d.alt ? `<canvas class="px alt" data-monster="${d.alt.sprite}"></canvas>` : ''}</div>
+          <div class="dgn-body">
+            <div class="dgn-name">${d.name}</div>
+            <div class="dgn-sub">${d.boss}${d.alt ? ` ou ${d.alt.boss}` : ''}</div>
+            ${locked ? `<div class="dgn-lock">${ico('lock')} Niveau ${d.lvl} requis</div>`
+              : `<div class="dgn-rw"><span>+${E.waveXp(d)} XP</span><span class="${keyOk ? '' : 'off'}"><canvas class="px" data-key></canvas>+1</span>${clears ? `<em>vaincu ${clears}×</em>` : ''}</div>`}
           </div>
-          ${locked
-            ? `<span class="pill">🔒 Nv.${d.lvl}</span>`
-            : `<div class="done-col"><button class="btn small danger" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}>Entrer</button><span class="runs">${'●'.repeat(n)}${'○'.repeat(DUNGEON_RUNS - n)}</span></div>`}
+          ${locked ? '' : `
+          <div class="dgn-go">
+            <button class="foe-btn fight" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}><i class="emo"><canvas class="px" data-emblem="skull"></canvas></i>${n > 0 ? 'Entrer' : 'Fini'}</button>
+            ${skip ? `<button class="skip-btn" data-act="skipDungeon" data-id="${d.id}">${ico('skip')} Passer ×${n}</button>`
+              : `<span class="runs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(DUNGEON_RUNS - n)}</span>`}
+          </div>`}
         </div>`;
       }).join('')}
     </section>`;
@@ -831,7 +879,7 @@ function rankingEntries() {
 function viewRanking() {
   const list = rankingEntries();
   const key = rankMode;
-  const medal = ['🥇', '🥈', '🥉'];
+  const medal = [ico('medal1'), ico('medal2'), ico('medal3')];
   const scoreOf = (e) => (key === 'level' ? `Nv.${e.level}` : key === 'wins' ? `${e.wins} V` : `Étage ${e.tower}`);
   return `
     <section class="card">
@@ -868,7 +916,7 @@ function podium(list, scoreOf) {
       <div class="pod-av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
       <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
       <div class="pod-score">${scoreOf(e)}</div>
-      <div class="pod-step"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${i + 1}</b></div>
+      <div class="pod-step"><span>${ico(['medal1', 'medal2', 'medal3'][i])}</span><b>${i + 1}</b></div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -877,10 +925,9 @@ function podium(list, scoreOf) {
 const fmtLong = (ms) => { const d = Math.floor(ms / 86400000); return (d > 0 ? `${d} j ` : '') + fmt(ms % 86400000); };
 const secTag = (sec) => `<b style="color:${WAR.sections[sec].color}">${WAR.sections[sec].name}</b>`;
 
-const WAR_RULES = () => `
-  <details class="rules">
-    <summary>Règles de la guerre</summary>
-    <ul>
+const WAR_RULES = () => `<details class="rules"><summary>Règles de la guerre</summary>${WAR_RULES_UL()}</details>`;
+const WAR_RULES_UL = () => `
+    <ul class="rules-ul">
       <li>2 sections de ${WAR.maxPerSection} joueurs maximum. Chacun choisit la sienne. Un changement possible par mois.</li>
       <li>Une guerre dure 7 jours complets, puis la suivante commence aussitôt.</li>
       <li>Chaque jour, tu peux attaquer <b>une fois chaque combattant</b> de l’autre section. Tout repart à zéro à minuit.</li>
@@ -889,25 +936,23 @@ const WAR_RULES = () => `
       <li>Fin de semaine : la section avec le plus de points gagne. Ses membres ayant fait au moins ${WAR.minAttacks} attaques reçoivent un <b>Coffre de guerre</b> (${WAR.warChestItems} objets, jamais de Commun).</li>
       <li>La section perdante (${WAR.minAttacks} attaques minimum) reçoit 1 coffre de combat. En cas d’égalité, tout le monde a un coffre de combat.</li>
       <li>Le meilleur marqueur de la semaine devient <b>Héros de guerre</b> et reçoit un coffre de guerre en plus.</li>
-    </ul>
-  </details>`;
+    </ul>`;
 
 function viewWar() {
   const war = acc.war;
+  const head = (sub, chips, extra = '') => modeHead({
+    id: 'war', c: '#3d9bff', art: '<canvas class="px" data-emblem="war"></canvas>',
+    title: 'Guerre', sub, chips, extra, info: WAR_RULES_UL(),
+  });
   if (!war.section) {
-    return `
-      <section class="card">
-        <h2>Guerre des sections</h2>
-        <p class="hint">Choisis ton camp ! Chaque semaine, les deux sections s’affrontent. La section gagnante remporte un coffre de guerre, le meilleur coffre du jeu.</p>
-        <div class="sec-pick">
-          ${Object.entries(WAR.sections).map(([id, s]) => `
-            <button class="sec-card" style="--sc:${s.color}" data-act="joinSection" data-sec="${id}">
-              <span class="flag"></span><b>${s.name}</b>
-              <small>${NET.online ? `${E.sectionCount(acc, id, players)} / ${WAR.maxPerSection} joueurs` : 'Rejoindre'}</small>
-            </button>`).join('')}
-        </div>
-        ${WAR_RULES()}
-      </section>`;
+    return head('Choisis ton camp pour la guerre', [], `
+      <div class="sec-pick" style="margin-top:12px">
+        ${Object.entries(WAR.sections).map(([id, s]) => `
+          <button class="sec-card" style="--sc:${s.color}" data-act="joinSection" data-sec="${id}">
+            <span class="flag"></span><b>${s.name}</b>
+            <small>${NET.online ? `${E.sectionCount(acc, id, players)} / ${WAR.maxPerSection} joueurs` : 'Rejoindre'}</small>
+          </button>`).join('')}
+      </div>`);
   }
   const mine = war.section, other = E.otherSide(mine);
   const { score, members } = E.warStandings(acc, E.weekKey(), others());
@@ -919,6 +964,7 @@ function viewWar() {
   const left = enemies.filter(o => !war.done[o.id]).length;
   const p = war.pending;
   const outcomeTxt = p && ({ win: 'Victoire de ta section !', loss: 'Défaite de ta section…', tie: 'Égalité !' }[p.outcome]);
+  const lead = score[mine] - score[other];
   return `
     ${p ? `
       <section class="card war-reward">
@@ -932,50 +978,42 @@ function viewWar() {
         </div>
         <button class="btn primary block" data-act="claimWar">${p.warChests || p.combatChests ? 'Récupérer' : 'OK'}</button>
       </section>` : ''}
-    <section class="card">
-      <h2>Guerre de la semaine</h2>
+    ${head(`Ton camp : ${secTag(mine)}`, [
+      mchip(ico('swords'), 'Attaques du jour', `${left} / ${enemies.length}`, left ? 'hot' : ''),
+      mchip(ico('star'), 'Tes points', wk.points),
+      mchip(ico('hourglass'), 'Fin de la guerre', `<span data-endlong="${Date.now() + E.msToWeekEnd()}">${fmtLong(E.msToWeekEnd())}</span>`),
+    ])}
+    <section class="card hx" style="--hc:#3d9bff">
+      ${secHead(ico('crown'), 'Score de la semaine', lead > 0 ? 'Ta section mène !' : lead < 0 ? 'Ta section est derrière : attaque !' : 'Égalité parfaite')}
       <div class="train-wrap war-wrap"><canvas id="war-cv"></canvas></div>
       <div class="score-row">
         <div>${secTag(mine)}<div class="sc">${score[mine]}</div></div>
         <div class="vs">VS</div>
         <div style="text-align:right">${secTag(other)}<div class="sc">${score[other]}</div></div>
       </div>
-      <div class="score-bar"><div style="width:${(score[mine] / total) * 100}%;background:${WAR.sections[mine].color}"></div><div style="flex:1;background:${WAR.sections[other].color}"></div></div>
-      <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:12px">
-        <span class="pill" data-timer="week">Fin dans ${fmtLong(E.msToWeekEnd())}</span>
-        <span class="pill gold">Tes points : ${wk.points}</span>
-        <span class="pill ${wk.attacks >= WAR.minAttacks ? 'green' : ''}">Attaques : ${wk.attacks}/${WAR.minAttacks} min.</span>
-      </div>
+      <div class="score-bar"><div style="width:${score[mine] + score[other] ? (score[mine] / total) * 100 : 50}%;background:${WAR.sections[mine].color}"></div><div style="flex:1;background:${WAR.sections[other].color}"></div></div>
+      <div class="war-min ${wk.attacks >= WAR.minAttacks ? 'ok' : ''}">${wk.attacks >= WAR.minAttacks ? '✓' : '!'} Tes attaques cette semaine : <b>${wk.attacks} / ${WAR.minAttacks}</b> minimum pour la récompense</div>
     </section>
-    <section class="card">
-      <h2>Attaquer · ${left} restante${left > 1 ? 's' : ''} aujourd’hui</h2>
-      <p class="hint">Une attaque par adversaire et par jour. Nouvelles attaques dans <span data-timer="day3">${fmt(msToMidnight())}</span>.</p>
+    <section class="card hx" style="--hc:#ff5d6c">
+      ${secHead(ico('swords'), 'Attaquer', `1 attaque par adversaire et par jour · nouvelles dans <span data-timer="day3">${fmt(msToMidnight())}</span>`, `<span class="pill ${left ? 'red' : 'green'}">${left}</span>`)}
       ${enemies.length ? '' : '<p class="empty">Personne dans l’autre section pour l’instant.</p>'}
       ${enemies.map(o => {
         const done = war.done[o.id];
         const pts = E.warPoints(myPower, E.powerScore(o.snap));
         return `
-        <div class="opp ${done ? 'done' : ''}">
-          <div class="av"><canvas class="px" data-portrait="${o.classId}"></canvas></div>
-          <div class="o-body">
-            <div class="o-name">${esc(o.name)}</div>
-            <div class="o-sub">${CLASSES[o.classId].name} · Nv.${o.level} · Puissance ${E.powerScore(o.snap)}</div>
-          </div>
-          ${done
-            ? `<span class="pill ${done === 'win' ? 'green' : 'red'}">${done === 'win' ? 'GAGNÉ' : 'PERDU'}</span>`
-            : `<button class="btn small danger" data-act="warAttack" data-id="${o.id}">+${pts} pts</button>`}
+        <div class="foe ${done ? (done === 'win' ? 'win' : 'loss') : 'todo'}">${foeAv(o)}${done ? `<span class="foe-res">${done === 'win' ? 'GAGNÉ' : 'PERDU'}</span>` : ''}${foeInfo(o)}
+          ${done ? '<span class="foe-wait">Demain</span>' : `<button class="foe-btn fight" data-act="warAttack" data-id="${o.id}"><i>${ico('swords')}</i>Attaquer<small>+${pts} pts</small></button>`}
         </div>`;
       }).join('')}
     </section>
-    <section class="card">
-      <h2>Ta section</h2>
+    <section class="card hx" style="--hc:${WAR.sections[mine].color}">
+      ${secHead(ico('shield'), 'Ta section', WAR.sections[mine].name)}
       <div class="opp rank me"><div class="o-body"><div class="o-name">${esc(acc.pseudo)} <span class="pill gold">toi</span></div></div><div class="score">${wk.points} pts</div></div>
       ${allies.map(m => `
         <div class="opp rank"><div class="av"><canvas class="px" data-portrait="${m.classId}"></canvas></div>
           <div class="o-body"><div class="o-name">${nameHtml(m.name, m.data)}</div><div class="o-sub">${CLASSES[m.classId].name}</div></div>
           <div class="score">${m.points} pts</div></div>`).join('')}
-      ${war.log.length ? `<div class="sub">TES ATTAQUES</div>${war.log.map(l => `<div class="log-line">${l.won ? '✅' : '❌'} ${esc(l.name)} ${l.won ? `<b>+${l.pts}</b>` : '(+1 pour eux)'}</div>`).join('')}` : ''}
-      ${WAR_RULES()}
+      ${war.log.length ? `<div class="sub">TES ATTAQUES</div>${war.log.map(l => `<div class="log-line">${l.won ? ico('check') : ico('cross')} ${esc(l.name)} ${l.won ? `<b>+${l.pts}</b>` : '(+1 pour eux)'}</div>`).join('')}` : ''}
       <button class="btn small" style="margin-top:12px" data-act="changeSection">Changer de section</button>
     </section>`;
 }
@@ -1010,7 +1048,7 @@ function startWarAttack(foeId) {
   const seed = hashStr(war.day + foeId + 'guerre' + acc.pseudo);
   runBattle({
     me, foe: opp.snap, seed, theme: 'castle', victory: myVictory(),
-    title: `⚔ ${secTag(war.section)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
+    title: `${ico('swords')} ${secTag(war.section)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
     finish: (result) => {
       const won = result.winner === 0;
       E.missionEvent(acc, 'war');
@@ -1039,7 +1077,7 @@ const timeOf = (iso) => {
 };
 const msgHtml = (m) => {
   const mine = m.user_id === NET.myId();
-  const txt = esc(m.text).replace(/\[\[combat:(\d+)\]\]/g, '<button class="btn small" data-act="replayId" data-id="$1">▶ Revoir le combat</button>');
+  const txt = esc(m.text).replace(/\[\[combat:(\d+)\]\]/g, '<button class="btn small" data-act="replayId" data-id="$1">' + ico('play') + ' Revoir le combat</button>').replace(/⚔️?/g, ico('swords'));
   return `<div class="msg ${mine ? 'me' : ''}">${mine ? '' : `<b>${nameHtml(m.pseudo, dataOfPseudo(m.pseudo))}</b>`}<span class="txt">${txt}</span><small>${timeOf(m.created_at)}</small></div>`;
 };
 
@@ -1071,7 +1109,9 @@ function onChatMessage(m) {
   chatMsgs = chatMsgs.slice(-100);
   if (tab === 'chat' && document.getElementById('chat-list')) {
     document.getElementById('chat-empty')?.remove();
-    document.getElementById('chat-list').insertAdjacentHTML('beforeend', msgHtml(m));
+    const list = document.getElementById('chat-list');
+    list.insertAdjacentHTML('beforeend', msgHtml(m));
+    hydrate(list.lastElementChild);
     scrollChat();
     markChatSeen();
   } else if (m.user_id !== NET.myId()) {
@@ -1080,7 +1120,7 @@ function onChatMessage(m) {
     if (b) { b.hidden = false; b.textContent = chatUnread; }
     setBadge('social', chatUnread + journalUnseen);
     SFX.message();
-    toast(`💬 ${m.pseudo} : ${m.text.length > 40 ? m.text.slice(0, 40) + '…' : m.text}`);
+    toast(`${m.pseudo} : ${m.text.length > 40 ? m.text.slice(0, 40) + '…' : m.text}`);
   }
 }
 
@@ -1158,11 +1198,12 @@ const MISSION_ICO = {
   dungeon_win: 'e:dungeons', dungeon: 'e:dungeons', dungeon_kinds: 'e:dungeons', tower: 'e:tower', tower_try: 'e:tower',
   raid: 'm:melenchon', raid_dmg: 'm:melenchon', war: 'e:war', war_win: 'e:war', bet: 'e:bets',
   chest: 'c', key_use: 'k', sell: 'f',
-  fuse: '✦', equip: '🛡', stat: '✚', level: '⬆', spell: '✧', crit: '💥', dodge: '💨', pet: '🐾', chat: '💬', share: '💬', train_rec: '🏆',
+  fuse: 'i:sparkle', equip: 'i:shield', stat: 'i:plus', level: 'i:up', spell: 'i:magic', crit: 'i:boom', dodge: 'i:wind', pet: 'i:paw', chat: 'i:chat', share: 'i:chat', train_rec: 'i:trophy',
 };
 function missionIco(ev) {
-  const k = MISSION_ICO[ev] || '★';
+  const k = MISSION_ICO[ev] || 'i:star';
   if (k.startsWith('e:')) return `<canvas class="px" data-emblem="${k.slice(2)}"></canvas>`;
+  if (k.startsWith('i:')) return ico(k.slice(2));
   if (k.startsWith('m:')) return `<canvas class="px" data-monster="${k.slice(2)}"></canvas>`;
   if (k === 'c') return '<canvas class="px" data-chest="normal"></canvas>';
   if (k === 'k') return '<canvas class="px" data-key></canvas>';
@@ -1176,7 +1217,7 @@ function missionsCard() {
   const nClaimed = list.filter(m => M.claimed[m.id]).length;
   return `
     <section class="card hx hx-green cbt-missions ${infoCls('missions')}" data-info="missions">
-      <div class="hx-head"><span class="hx-ico">🎯</span><div><h2>Missions</h2><small data-timer="half">Nouvelles missions dans ${fmt(E.msToNextHalf())}</small></div></div>
+      <div class="hx-head"><span class="hx-ico">${ico('target')}</span><div><h2>Missions</h2><small data-timer="half">Nouvelles missions dans ${fmt(E.msToNextHalf())}</small></div></div>
       <div class="mgrid">
         ${list.map(m => {
           const p = Math.min(m.n, E.missionProgress(acc, m));
@@ -1206,7 +1247,7 @@ function missionsCard() {
 function charsCard() {
   return `
     <section class="card hx hx-gold cbt-chars ${infoCls('chars')}" data-info="chars">
-      <div class="hx-head"><span class="hx-ico">⚔</span><div><h2>Ton combattant</h2><small>${CLASSES[hero.classId].name} Nv.${hero.level} part au combat</small></div><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
+      <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Ton combattant</h2><small>${CLASSES[hero.classId].name} Nv.${hero.level} part au combat</small></div><span class="pill">${acc.heroes.length} / ${E.MAX_HEROES}</span></div>
       <div class="fighters">
         ${acc.heroes.map((h, i) => `
           <button class="fighter cls-${h.classId} ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}">
@@ -1380,7 +1421,7 @@ function viewJournal() {
   return `
     <section class="card">
       <h2>Journal des combats</h2>
-      <p class="hint">Les combats où on t’a attaqué et ceux que tu as lancés. ▶ pour revoir, 💬 pour partager dans le tchat.</p>
+      <p class="hint">Les combats où on t’a attaqué et ceux que tu as lancés. ${ico('play')} pour revoir, ${ico('chat')} pour partager dans le tchat.</p>
       ${journal.length ? journal.map(f => {
         const attacked = f.defender_id === me;
         const youWon = attacked ? f.winner === 1 : f.winner === 0;
@@ -1389,12 +1430,12 @@ function viewJournal() {
         return `
         <div class="jrow ${youWon ? 'win' : 'lose'}">
           <div class="j-body">
-            <div class="j-title">${attacked ? `⚔ <b>${esc(other)}</b> t’a attaqué` : `Tu as attaqué <b>${esc(other)}</b>`}</div>
+            <div class="j-title">${attacked ? `${ico('swords')} <b>${esc(other)}</b> t’a attaqué` : `Tu as attaqué <b>${esc(other)}</b>`}</div>
             <div class="o-sub">${KIND_NAME[f.kind] || f.kind} · ${timeOf(f.created_at)} · ${youWon ? '<span class="good">gagné</span>' : '<span class="bad">perdu</span>'}</div>
           </div>
           <div class="j-btns">
-            <button class="btn small" data-act="replayLog" data-id="${f.id}" aria-label="Revoir">▶</button>
-            <button class="btn small" data-act="shareLog" data-id="${f.id}" aria-label="Partager">💬</button>
+            <button class="btn small" data-act="replayLog" data-id="${f.id}" aria-label="Revoir">${ico('play')}</button>
+            <button class="btn small" data-act="shareLog" data-id="${f.id}" aria-label="Partager">${ico('chat')}</button>
             ${attacked && players.some(p => p.id === otherId) ? `<button class="btn small danger" data-act="revenge" data-id="${otherId}">Vengeance</button>` : ''}
           </div>
         </div>`;
@@ -1475,28 +1516,29 @@ function viewBets() {
   const gains = pendingWinnings();
   const pot = (c, side) => bets.wagers.filter(w => w.challenge_id === c.id && w.side === side).reduce((t, w) => t + w.amount, 0);
   const myBets = (c) => bets.wagers.filter(w => w.challenge_id === c.id && w.user_id === me);
-  return `
-    <section class="card">
-      <h2>Paris & duels</h2>
-      <p class="hint">Défie un pote. S’il accepte, tout le monde a <b>24 h</b> pour miser du Flouze. Ensuite le combat se joue (avec le perso le plus fort de chacun) et les gagnants touchent leur mise × la cote.</p>
-      <div class="row" style="flex-wrap:wrap;gap:6px">
-        <span class="pill clat"><canvas class="px" data-clat></canvas>${acc.clat} Flouze</span>
-        ${gains.ids.length ? `<button class="btn small ${gains.total ? 'green' : ''}" data-act="claimBets">${gains.total ? `Récupérer ${gains.total} Flouze` : 'Voir mes paris perdus'}</button>` : ''}
-      </div>
-    </section>
+  return modeHead({
+    id: 'bets', c: '#ffd84a', art: '<canvas class="px" data-emblem="bets"></canvas>',
+    title: 'Paris & duels', sub: 'Défie un pote, tout le monde parie',
+    chips: [
+      mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', acc.clat),
+      mchip(ico('swords'), 'Défis reçus', received.length, received.length ? 'hot' : ''),
+      mchip(ico('dice'), 'Paris ouverts', open.length),
+    ],
+    extra: gains.ids.length ? `<button class="btn block ${gains.total ? 'green' : ''}" style="margin-top:12px" data-act="claimBets">${gains.total ? `Récupérer ${gains.total} Flouze` : 'Voir mes paris perdus'}</button>` : '',
+    info: `<b>1.</b> Défie un pote.<br><b>2.</b> S’il accepte, tout le monde a <b>24 h</b> pour miser du Flouze sur le gagnant.<br><b>3.</b> Le combat se joue tout seul, avec le perso le plus fort de chacun.<br><b>4.</b> Les gagnants touchent leur mise × la cote. Plus un combattant est donné perdant, plus sa cote est haute.`,
+  }) + `
+    ${received.length ? `<section class="card hx" style="--hc:#ff5d6c">${secHead(ico('swords'), 'Défis reçus', 'On te provoque : réponds !')}${received.map(c => `
+      <div class="foe todo"><span class="foe-av big-ico">${ico('swords')}</span><div class="foe-body"><div class="foe-name">${esc(c.from_name)} te défie !</div><div class="foe-sub">${timeOf(c.created_at)}</div></div>
+        <div class="foe-col"><button class="btn small green" data-act="acceptDuel" data-id="${c.id}">Accepter</button><button class="btn small" data-act="declineDuel" data-id="${c.id}">Refuser</button></div></div>`).join('')}</section>` : ''}
 
-    ${received.length ? `<section class="card"><h2>Défis reçus</h2>${received.map(c => `
-      <div class="opp"><div class="o-body"><div class="o-name">${esc(c.from_name)} te défie !</div><div class="o-sub">${timeOf(c.created_at)}</div></div>
-        <div class="done-col"><button class="btn small green" data-act="acceptDuel" data-id="${c.id}">Accepter</button><button class="btn small" data-act="declineDuel" data-id="${c.id}">Refuser</button></div></div>`).join('')}</section>` : ''}
-
-    ${open.length ? `<section class="card"><h2>Paris ouverts</h2>${open.map(c => {
+    ${open.length ? `<section class="card hx" style="--hc:#ffd84a">${secHead(ico('dice'), 'Paris ouverts', 'Mise sur le gagnant avant le combat')}${open.map(c => {
       const [oA, oB] = duelOdds(c);
       const mine = myBets(c);
       return `
       <div class="duel">
         <div class="d-vs">${duelSide(c.from_snap, oA, c.from_name)}<span class="vs">VS</span>${duelSide(c.to_snap, oB, c.to_name)}</div>
-        <div class="o-sub" style="text-align:center">Mises : ${pot(c, 0)} – ${pot(c, 1)} · combat dans <b data-countdown="${fightAt(c)}">${fmt(fightAt(c) - now)}</b></div>
-        ${mine.length ? `<div class="o-sub" style="text-align:center">Tes paris : ${mine.map(w => `${w.amount} sur ${esc(w.side === 0 ? c.from_name : c.to_name)} (×${w.odds})`).join(', ')}</div>` : ''}
+        <div class="d-info">Mises : <b>${pot(c, 0)}</b> – <b>${pot(c, 1)}</b> · combat dans <b data-countdown="${fightAt(c)}">${fmt(fightAt(c) - now)}</b></div>
+        ${mine.length ? `<div class="d-info">Tes paris : ${mine.map(w => `${w.amount} sur ${esc(w.side === 0 ? c.from_name : c.to_name)} (×${w.odds})`).join(', ')}</div>` : ''}
         <div class="bet-row">
           <input id="bet-${c.id}" type="number" min="1" max="1000" value="5" inputmode="numeric">
           <button class="btn small primary" data-act="placeBet" data-id="${c.id}" data-side="0">${esc(c.from_name)} ×${oA}</button>
@@ -1505,24 +1547,23 @@ function viewBets() {
       </div>`;
     }).join('')}</section>` : ''}
 
-    <section class="card">
-      <h2>Lancer un défi</h2>
+    <section class="card hx" style="--hc:#ffd84a">
+      ${secHead(ico('fist'), 'Lancer un défi', 'Choisis ton adversaire')}
       ${players.length ? players.map(p => {
         const h = E.strongestHero(p.data);
+        const o = { id: p.id, name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, level: h.level, snap: snapOf(p.data, h, p.pseudo) };
         return `
-        <div class="opp">
-          <div class="av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></div>
-          <div class="o-body"><div class="o-name">${nameHtml(p.pseudo, p.data)}</div><div class="o-sub">${CLASSES[h.classId].name} · Nv.${h.level}</div></div>
-          <button class="btn small danger" data-act="challenge" data-id="${p.id}" ${busy.has(p.id) ? 'disabled' : ''}>${busy.has(p.id) ? 'En cours' : 'Défier'}</button>
+        <div class="foe ${busy.has(p.id) ? 'busy' : 'todo'}">${foeAv(o)}${foeInfo(o)}
+          ${busy.has(p.id) ? '<span class="foe-wait">En cours</span>' : `<button class="foe-btn fight gold" data-act="challenge" data-id="${p.id}"><i>${ico('fist')}</i>Défier</button>`}
         </div>`;
       }).join('') : '<p class="empty">Personne d’autre n’est inscrit.</p>'}
-      ${sent.map(c => `<div class="log-line">⏳ En attente de ${esc(c.to_name)} <button class="btn small" data-act="cancelDuel" data-id="${c.id}">Annuler</button></div>`).join('')}
+      ${sent.map(c => `<div class="log-line">${ico('hourglass')} En attente de ${esc(c.to_name)} <button class="btn small" data-act="cancelDuel" data-id="${c.id}">Annuler</button></div>`).join('')}
     </section>
 
-    ${done.length ? `<section class="card"><h2>Derniers résultats</h2>${done.map(c => {
+    ${done.length ? `<section class="card hx" style="--hc:#8f86b0">${secHead(ico('flag'), 'Derniers résultats')}${done.map(c => {
       const win = duelResult(c).winner;
-      return `<div class="opp"><div class="o-body"><div class="o-name">${esc(win === 0 ? c.from_name : c.to_name)} a gagné</div><div class="o-sub">${esc(c.from_name)} vs ${esc(c.to_name)}</div></div>
-        <button class="btn small" data-act="replayDuel" data-id="${c.id}">▶ Revoir</button></div>`;
+      return `<div class="opp"><div class="o-body"><div class="o-name">${ico('trophy')} ${esc(win === 0 ? c.from_name : c.to_name)} a gagné</div><div class="o-sub">${esc(c.from_name)} vs ${esc(c.to_name)}</div></div>
+        <button class="btn small" data-act="replayDuel" data-id="${c.id}">${ico('play')} Revoir</button></div>`;
     }).join('')}</section>` : ''}`;
 }
 
@@ -1638,28 +1679,30 @@ function viewRaid() {
       </section>`;
   }
   const R = RAID.rewards;
-  return `
-    ${prevCard}
-    <section class="card raid">
-      <h2>Raid en cours</h2>
-      <div class="raid-boss"><canvas class="px" data-monster="${RAID.boss.sprite}"></canvas></div>
-      <div class="raid-name">${RAID.boss.name} <span class="pill">Nv.${raidInfo.raid.level}</span></div>
-      <div class="score-bar raid-bar"><div style="width:${(S.remaining / raidInfo.raid.hp) * 100}%;background:#ff5d6c"></div><div style="flex:1;background:#3a2f45"></div></div>
-      <div class="o-sub" style="text-align:center;margin-top:6px">${S.killed ? '<b style="color:var(--green)">VAINCU !</b>' : `${fmtNum(S.remaining)} / ${fmtNum(raidInfo.raid.hp)} PV`}</div>
-      <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px">
-        <span class="pill gold">Assauts : ${left} / ${RAID.attemptsPerHalf}</span>
-        <span class="pill" data-timer="half">Nouveaux assauts dans ${fmt(E.msToNextHalf())}</span>
-        <span class="pill">Fin dans <b data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</b></span>
-      </div>
+  const hp = raidInfo.raid.hp;
+  return prevCard + modeHead({
+    id: 'raid', c: '#ff8a3d', art: `<span class="mh-fire">${ico('fire')}</span>`,
+    title: `Raid : ${RAID.boss.name}`, sub: 'Tout le groupe tape le même boss',
+    chips: [
+      mchip(ico('swords'), 'Tes assauts', `${left} / ${RAID.attemptsPerHalf}`, left && !S.killed ? 'hot' : ''),
+      mchip(ico('clock'), 'Nouveaux assauts', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+      mchip(ico('hourglass'), 'Fin du raid', `<span data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</span>`),
+    ],
+    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.`,
+  }) + `
+    <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
+      <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
+      <div class="bs-art"><canvas class="px" data-monster="${RAID.boss.sprite}"></canvas></div>
+      <div class="bs-name">${RAID.boss.name}</div>
+      <div class="hp-bar"><i style="width:${(S.remaining / hp) * 100}%"></i><span>${S.killed ? 'VAINCU !' : `${fmtNum(S.remaining)} / ${fmtNum(hp)} PV`}</span></div>
       ${canClaim
-        ? `<button class="btn primary block" style="margin-top:12px" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
-        : `<button class="btn danger block" style="margin-top:12px" data-act="attackRaid" ${left > 0 && !S.killed ? '' : 'disabled'}>${S.killed ? 'Boss vaincu' : 'Attaquer'}</button>`}
-      <p class="hint" style="margin:12px 0 0">Tout le groupe tape le même boss. ${RAID.attemptsPerHalf} assauts par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours. S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour le meilleur. Sinon, ${R.failClat} Flouze de consolation.</p>
+        ? `<button class="btn primary block big-go" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
+        : `<button class="btn danger block big-go" data-act="attackRaid" ${left > 0 && !S.killed ? '' : 'disabled'}>${S.killed ? 'Boss vaincu' : left > 0 ? `${ico('swords')} Attaquer` : 'Plus d’assaut : reviens plus tard'}</button>`}
     </section>
-    <section class="card">
-      <h2>Dégâts du raid</h2>
+    <section class="card hx" style="--hc:#ff8a3d">
+      ${secHead(ico('trophy'), 'Dégâts du raid', `${fmtNum(S.total)} dégâts au total`)}
       ${S.board.length ? S.board.map((b, i) => `
-        <div class="opp rank ${b.id === me ? 'me' : ''}"><div class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</div>
+        <div class="opp rank ${b.id === me ? 'me' : ''}"><div class="pos">${[ico('medal1'), ico('medal2'), ico('medal3')][i] || i + 1}</div>
           <div class="o-body"><div class="o-name">${nameHtml(b.pseudo, dataOfPseudo(b.pseudo))}</div></div><div class="score">${fmtNum(b.dmg)}</div></div>`).join('')
         : '<p class="empty">Personne ne l’a encore attaqué.</p>'}
     </section>`;
@@ -1720,21 +1763,27 @@ function viewTower() {
   const t = E.towerState(hero);
   const next = t.best + 1;
   const m = E.towerMonster(next);
-  return `
-    <section class="card raid">
-      <h2>Tour infinie</h2>
-      <p class="hint">Chaque étage est plus dur que le précédent, et la tour ne s’arrête jamais. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner. +${TOWER.clatPerFloor} Flouze par nouvel étage, +${TOWER.clatEvery10} tous les 10 étages.</p>
-      <div class="raid-boss"><canvas class="px" data-monster="${m.dungeon.sprite}"></canvas></div>
-      <div class="raid-name">Étage ${next} · ${m.snap.name} <span class="pill">Nv.${m.snap.level}</span></div>
-      <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px">
-        <span class="pill gold">Record de ton ${CLASSES[hero.classId].name} : étage ${t.best}</span>
-      </div>
-      <button class="btn danger block" style="margin-top:12px" data-act="attackTower">Attaquer l’étage ${next}</button>
+  const prize = TOWER.clatPerFloor + (next % 10 === 0 ? TOWER.clatEvery10 : 0);
+  return modeHead({
+    id: 'tower', c: '#a77bff', art: '<canvas class="px" data-emblem="tower"></canvas>',
+    title: 'Tour infinie', sub: 'Monte le plus haut possible : elle ne s’arrête jamais',
+    chips: [
+      mchip('▲', 'Prochain étage', next, 'hot'),
+      mchip(ico('trophy'), `Record ${CLASSES[hero.classId].name}`, t.best),
+      mchip('<canvas class="px" data-clat></canvas>', 'Récompense', `+${prize}`),
+    ],
+    info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br><b>+${TOWER.clatPerFloor} Flouze</b> par nouvel étage, et <b>+${TOWER.clatEvery10}</b> en plus tous les 10 étages. Chaque perso a son propre record.`,
+  }) + `
+    <section class="card hx boss-stage" style="--hc:#a77bff">
+      <div class="bs-tag">ETAGE ${next}</div>
+      <div class="bs-art"><canvas class="px" data-monster="${m.dungeon.sprite}"></canvas></div>
+      <div class="bs-name">${m.snap.name} <span class="pill">Nv.${m.snap.level}</span></div>
+      <button class="btn danger block big-go" data-act="attackTower">${ico('swords')} Attaquer l’étage ${next}</button>
     </section>
-    <section class="card">
-      <h2>Classement de la tour</h2>
+    <section class="card hx" style="--hc:#a77bff">
+      ${secHead(ico('trophy'), 'Classement', 'Le meilleur étage de chaque joueur')}
       ${towerBoard().map((r, i) => `
-        <div class="opp rank ${r.me ? 'me' : ''}"><div class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</div>
+        <div class="opp rank ${r.me ? 'me' : ''}"><div class="pos">${[ico('medal1'), ico('medal2'), ico('medal3')][i] || i + 1}</div>
           <div class="av"><canvas class="px" data-portrait="${r.classId}"></canvas></div>
           <div class="o-body"><div class="o-name">${nameHtml(r.name, r.data)}</div><div class="o-sub">${CLASSES[r.classId].name}</div></div>
           <div class="score">Étage ${r.floor}</div></div>`).join('')}
@@ -1816,10 +1865,10 @@ function onLive(kind, row) {
     setBadge('social', journalUnseen + chatUnread);
     const won = row.winner === 0;
     SFX.message();
-    toast(`⚔ ${row.attacker_name} t’a attaqué (${KIND_NAME[row.kind] || ''}) : ${won ? 'il a gagné' : 'tu as gagné'} !`);
+    toast(`${row.attacker_name} t’a attaqué (${KIND_NAME[row.kind] || ''}) : ${won ? 'il a gagné' : 'tu as gagné'} !`);
     if (tab === 'journal') { markJournalSeen(); softRender(); }
   } else if (kind === 'challenge') {
-    if (row.to_id === NET.myId() && row.status === 'pending') { SFX.message(); toast(`🎲 ${row.from_name} te défie en duel !`); }
+    if (row.to_id === NET.myId() && row.status === 'pending') { SFX.message(); toast(`${row.from_name} te défie en duel !`); }
     refreshBets().then(() => { if (tab === 'bets' || tab === 'combat') softRender(); });
   } else if (kind === 'wager') {
     if (tab === 'bets') refreshBets().then(softRender);
@@ -1953,6 +2002,10 @@ function updateSpellBar(e) {
  * - En donjon, à la tour et au raid (manual = true) : combat en direct, on peut passer en manuel ;
  *   finish(result) est appelé à la fin. finish renvoie { rewardsHtml, rewards, headline, headClass }.
  */
+// La police pixel dessine les majuscules accentuées (É, À…) plus petites : on enlève l'accent des majuscules dans les gros titres
+const PX_CAPS = { À: 'A', Â: 'A', Ä: 'A', É: 'E', È: 'E', Ê: 'E', Ë: 'E', Î: 'I', Ï: 'I', Ô: 'O', Ö: 'O', Ù: 'U', Û: 'U', Ü: 'U', Ç: 'C' };
+const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch => PX_CAPS[ch]);
+let waveNext = null;   // combat suivant d'une vague de donjon
 function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
@@ -1975,12 +2028,12 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
       ${spells.length ? `<div class="spellbar" id="spellbar">
         ${spells.map((id, i) => `<button class="sb ready" data-act="cast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
         ${fight ? `<button class="sb-mode ${fight.manual ? 'man' : ''}" data-act="toggleManual" id="mode-btn">${fight.manual ? 'MANUEL' : 'AUTO'}</button>`
-          : '<span class="sb-mode lock">AUTO 🔒</span>'}
+          : `<span class="sb-mode lock">AUTO ${ico('lock')}</span>`}
       </div>` : ''}
       <div class="ctrl-row">
         <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-        <button class="btn small" data-act="skip">Passer ⏭</button>
-        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${getPref('sfx') || getPref('music') ? '🔊' : '🔇'}</button>
+        <button class="btn small" data-act="skip">Passer ${ico('skip')}</button>
+        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
       </div>
     </div>
     <div class="battle-after" id="result-slot"></div>`;
@@ -2001,10 +2054,11 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
     const slot = ov.querySelector('#result-slot');
     slot.innerHTML = `
       <div class="result">
-        <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${out.headline || (won ? 'VICTOIRE !' : 'DÉFAITE…')}</h2>
+        <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${pxCaps(out.headline || (won ? 'VICTOIRE' : 'DÉFAITE…')).replace(/\s*!+\s*$/, '')}</h2>
         ${out.rewardsHtml || ''}
-        <button class="btn primary" data-act="endFight">Continuer</button>
+        ${out.next ? `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>` : '<button class="btn primary" data-act="endFight">Continuer</button>'}
       </div>`;
+    waveNext = out.next || null;
     hydrate(slot);
     announce(out.rewards);
   });
@@ -2077,30 +2131,78 @@ function startDungeon(id) {
   save();
   const h = hero;
   const me = mySnap();
-  const foe = E.pickDungeonFoe(d);      // l'un des 2 boss du donjon, au hasard
-  const boss = E.buildMonster(foe);
-  runBattle({
-    me, foe: boss, seed: (Math.random() * 2 ** 31) | 0, theme: d.theme, manual: true, victory: myVictory(),
-    title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${esc(foe.boss)}`,
-    finish: (result) => {
-      const won = result.winner === 0;
-      const rw = E.dungeonRewards(h, d, won);
-      if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
-      save();
-      return {
-        rewards: rw,
-        rewardsHtml: `
-          <div class="rw"><span class="pill gold">+${rw.xp} XP</span></div>
-          ${won ? `
-            <div class="loot-card" style="--rc:#ffd84a">
-              <canvas class="px" data-key></canvas>
-              <div class="ln">+1 clef</div>
-              <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
-            </div>` : '<p style="color:var(--muted);margin:0">Le boss était trop fort… Améliore ton héros et reviens !</p>'}
-          <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} combat${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${E.msToNextHalf() > 0 ? fmt(E.msToNextHalf()) : ''}.</p>`,
-      };
-    },
-  });
+  const wave = E.dungeonWave(d);           // 2 monstres différents, puis l'un des 2 boss du donjon
+  const last = wave.length - 1;
+  // petite frise de la vague : monstres battus, monstre en cours, boss
+  const waveBar = (i, won) => `<div class="wave-bar">${wave.map((f, j) => `<span class="${j < i || (j === i && won) ? 'ok' : j === i ? 'ko' : ''} ${j === last ? 'boss' : ''}">${j === last ? ico('crown') : j + 1}</span>`).join('<i></i>')}</div>`;
+  const step = (i, hp) => {
+    const foe = wave[i];
+    runBattle({
+      me: { ...me, hp }, foe, seed: (Math.random() * 2 ** 31) | 0, theme: d.theme, manual: true, victory: myVictory(),
+      title: `${esc(d.name)} <span style="color:var(--gold)">·</span> ${i === last ? `BOSS : ${esc(foe.name)}` : `Monstre ${i + 1}/${last} : ${esc(foe.name)}`}`,
+      finish: (result) => {
+        const won = result.winner === 0;
+        if (won && i < last) {
+          const next = E.waveNextHp(me, result.hp[0]);
+          return {
+            headline: 'K.O. !', headClass: 'win',
+            rewardsHtml: `<p class="wave-hp"><b style="color:#fff">${esc(foe.name)}</b> est au tapis</p>${waveBar(i, true)}
+              <p class="wave-hp">Tes PV : <b style="color:#fff">${fmtNum(result.hp[0])}</b> → tu reprends ton souffle : <b style="color:#7bf09a">${fmtNum(next)} / ${fmtNum(me.maxHp)}</b></p>`,
+            nextLabel: i + 1 === last ? `${ico('crown')} Affronter le boss` : `${ico('play')} Monstre suivant`,
+            next: () => step(i + 1, next),
+          };
+        }
+        const rw = E.dungeonRewards(h, d, won, won ? last : i);
+        if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
+        save();
+        return {
+          rewards: rw,
+          headline: won ? 'DONJON TERMINÉ !' : 'DÉFAITE…',
+          rewardsHtml: `${waveBar(i, won)}
+            <div class="rw"><span class="pill gold">+${rw.xp} XP</span></div>
+            ${rw.key ? `
+              <div class="loot-card" style="--rc:#ffd84a">
+                <canvas class="px" data-key></canvas>
+                <div class="ln">+1 clef</div>
+                <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
+              </div>` : rw.keyCapped ? `<p style="color:var(--muted);margin:0">Tu as déjà gagné tes ${DUNGEON_KEYS_MAX} clefs : nouvelles clefs à minuit ou à midi.</p>`
+              : `<p style="color:var(--muted);margin:0">${i === last ? 'Le boss était trop fort…' : `${esc(foe.name)} t’a arrêté avant le boss…`} Améliore ton héros et reviens !</p>`}
+            <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} vague${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${fmt(E.msToNextHalf())}.</p>`,
+        };
+      },
+    });
+  };
+  step(0, me.maxHp);
+}
+
+/** Passe d'un coup les combats restants d'un donjon facile (la moitié de l'XP) */
+function skipDungeonFlow(id, sure = false) {
+  const d = DUNGEONS.find(x => x.id === id);
+  if (!d || !E.canSkipDungeon(hero, d)) return;
+  const n = E.runsLeft(hero, d);
+  if (!n) return;
+  if (!sure) {
+    const keys = Math.min(n, E.keysLeftToEarn(hero));
+    openModal(`
+      <h3>${ico('skip')} Passer « ${esc(d.name)} » ?</h3>
+      <p class="hint" style="margin-top:8px">Tes <b>${n} vague${n > 1 ? 's' : ''}</b> restante${n > 1 ? 's' : ''} compte${n > 1 ? 'nt' : ''} comme gagnée${n > 1 ? 's' : ''}, mais avec <b>la moitié de l’XP</b>.</p>
+      <div class="rw" style="justify-content:center;margin:12px 0">
+        <span class="pill gold">+${n * Math.round(E.waveXp(d) / 2)} XP</span>
+        <span class="pill gold"><canvas class="px" data-key></canvas>+${keys} clef${keys > 1 ? 's' : ''}</span>
+      </div>
+      <div class="row" style="gap:8px"><button class="btn block" data-act="closeModal">Annuler</button><button class="btn primary block" data-act="skipDungeonGo" data-id="${d.id}">${ico('skip')} Passer</button></div>`, { center: true });
+    return;
+  }
+  closeModal();
+  const rw = E.skipDungeon(hero, d);
+  if (!rw) return;
+  E.missionEvent(acc, 'dungeon', rw.runs);
+  E.missionEvent(acc, 'dungeon_win', rw.runs);
+  E.missionEvent(acc, 'dungeon_kinds', 1, d.id);
+  save(); render();
+  SFX.loot(1);
+  toast(`${d.name} passé : +${rw.xp} XP${rw.keys ? ` · +${rw.keys} clef${rw.keys > 1 ? 's' : ''}` : ''}`);
+  announce(rw);
 }
 
 // ------------------------------ Réglages ------------------------------
@@ -2164,7 +2266,7 @@ const ACTIONS = {
     setPref('sfx', on); setPref('music', on);
     if (on) startMusic(); else stopMusic();
     const b = document.getElementById('snd-btn');
-    if (b) b.textContent = on ? '🔊' : '🔇';
+    if (b) { b.innerHTML = ico(on ? 'speaker' : 'mute'); hydrate(b); }
   },
   sendChat: () => sendChat(),
   info: (d, el) => {
@@ -2173,6 +2275,8 @@ const ACTIONS = {
     if (on) infoOpen.add(d.id); else infoOpen.delete(d.id);
     el.textContent = on ? '−' : '+';
   },
+  skipDungeon: (d) => skipDungeonFlow(d.id),
+  skipDungeonGo: (d) => skipDungeonFlow(d.id, true),
   switchHero: (d) => {
     const i = +d.i;
     if (i === acc.active) return;
@@ -2428,6 +2532,14 @@ const ACTIONS = {
     document.getElementById('speed-btn').textContent = `Vitesse x${speeds[battleCtl.speedIdx]}`;
   },
   skip: () => { if (battleFight) battleFight.setManual(false); if (battleCtl) battleCtl.skip(); },
+  waveNext: () => {
+    const go = waveNext;
+    waveNext = null;
+    if (battleCtl) battleCtl.destroy();
+    battleCtl = null;
+    document.querySelector('.battle')?.remove();
+    if (go) go(); else render();
+  },
   endFight: () => {
     if (battleCtl) battleCtl.destroy();
     battleCtl = null;
