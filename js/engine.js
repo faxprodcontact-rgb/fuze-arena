@@ -4,8 +4,8 @@
 // =====================================================================
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
-  MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
-  DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
+  CHAMP, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -638,6 +638,7 @@ export function autoResolve(acc, team) {
   st.n++;
   let reward = false;
   if (won) {
+    st.bank.wins = (st.bank.wins || 0) + 1;   // pour l'XP
     if (g % 10 === 0 && g > (st.paid || 0)) { st.bank.chests++; st.paid = g; reward = true; }   // jamais deux fois le même coffre
     st.g = Math.min(AUTO_LAST + 1, g + 1);   // AUTO_LAST + 1 = tout est fini
   } else {
@@ -658,14 +659,28 @@ export function autoCatchUp(acc, team, max = 40, now = Date.now()) {
   }
   return out;
 }
-/** Récupère la réserve : les coffres normaux vont au perso actif (dans son stock de coffres à ouvrir) */
+/** XP en réserve (en part d'un niveau du perso), limitée par le plafond du jour */
+export function autoXpFrac(acc) {
+  const st = autoState(acc), day = dayKey();
+  const used = st.xpDay && st.xpDay.day === day ? st.xpDay.frac : 0;
+  return Math.max(0, Math.min((st.bank.wins || 0) * AUTO.xpPerWin, AUTO.xpDayCap - used));
+}
+/** Récupère la réserve : les coffres normaux vont au perso actif (dans son stock de coffres à ouvrir), l'XP aussi */
 export function autoClaim(acc, hero) {
-  const b = autoState(acc).bank;
+  const st = autoState(acc), b = st.bank, day = dayKey();
   const got = b.chests;
   refreshChests(hero);
   hero.chest.stored += got;
   b.chests = 0;
-  return got;
+  const frac = autoXpFrac(acc);
+  let xp = 0, lv = null;
+  if (frac > 0 && hero.level < MAX_LEVEL) {
+    xp = Math.max(1, Math.round(xpForLevel(hero.level) * frac));
+    st.xpDay = { day, frac: (st.xpDay && st.xpDay.day === day ? st.xpDay.frac : 0) + frac };
+    lv = gainXp(hero, xp);
+  }
+  b.wins = 0;
+  return { chests: got, xp, lv };
 }
 
 // ------------------------------ Le trône ------------------------------
@@ -766,6 +781,72 @@ export function pvpReward(acc, matchId) {
   return PVP.reward;
 }
 export const pvpRewardsLeft = (acc) => (acc.pvp && acc.pvp.day === dayKey() ? Math.max(0, PVP.rewardsPerDay - acc.pvp.rewarded) : PVP.rewardsPerDay);
+
+// ------------------------------ Championnat ------------------------------
+export { CHAMP };
+/** Heure (ms) du tour r (0 = quarts, 1 = demies, 2 = finale) de la semaine qui commence le lundi weekStart (ms) */
+export function champRoundAt(weekStart, r) {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() + CHAMP.days[r]);
+  d.setHours(CHAMP.hour, CHAMP.minute, 0, 0);
+  return d.getTime();
+}
+/** Tableau de départ : les joueurs tirés au hasard (graine = la semaine) sur 8 places ; null = place vide (l'adversaire passe) */
+export function champSlots(ids, week) {
+  const rng = makeRng(hashStr('champ:' + week)), list = ids.slice(0, CHAMP.size);
+  for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+  // un joueur par match d'abord, puis les deuxièmes : les places vides tombent toujours face à quelqu'un
+  const order = [0, 2, 4, 6, 1, 3, 5, 7], slots = Array(CHAMP.size).fill(null);
+  list.forEach((id, k) => { slots[order[k]] = id; });
+  return slots;
+}
+export const champSeed = (week, r, m) => hashStr(`champ:${week}:${r}:${m}`);
+/** Un match en 3 manches (2 manches gagnées suffisent) entre deux équipes ; renvoie les manches et le vainqueur (0 ou 1) */
+export function champMatch(teamA, teamB, seed) {
+  const games = [], wins = [0, 0];
+  for (let g = 0; g < CHAMP.bestOf && wins[0] < 2 && wins[1] < 2; g++) {
+    const s = (seed + g * 7919) | 0, w = simulateRelay(teamA, teamB, s).winner === 1 ? 1 : 0;
+    games.push({ seed: s, winner: w });
+    wins[w]++;
+  }
+  return { games, wins, winner: wins[0] > wins[1] ? 0 : 1 };
+}
+/**
+ * Le tableau complet : rounds[r][m] = { a, b, winner } (ids ; winner = undefined tant que le match n'est pas joué).
+ * res = { 'r-m': id du gagnant } pour les matchs joués. Une place vide fait passer l'autre directement.
+ */
+export function champTree(slots, res = {}) {
+  const rounds = [];
+  let entrants = slots;
+  for (let r = 0; r < CHAMP.days.length; r++) {
+    const ms = [];
+    for (let m = 0; m < entrants.length / 2; m++) {
+      const a = entrants[2 * m], b = entrants[2 * m + 1];
+      let winner;
+      if (a === undefined || b === undefined) winner = undefined;          // on attend le tour d'avant
+      else if (a === null || b === null) winner = a ?? b;                  // place vide : l'autre passe (null si les deux sont vides)
+      else winner = res[`${r}-${m}`];
+      ms.push({ a, b, winner, bye: a === null || b === null });
+    }
+    rounds.push(ms);
+    entrants = ms.map(x => x.winner);
+  }
+  return rounds;
+}
+/** Place finale d'un joueur : 'win' (champion), 'second' (finaliste), 'other' (participant) ; null si pas fini ou absent */
+export function champPlace(tree, id) {
+  const fin = tree[tree.length - 1][0];
+  if (fin.winner === undefined || !tree[0].some(m => m.a === id || m.b === id)) return null;
+  if (fin.winner === id) return 'win';
+  if (fin.a === id || fin.b === id) return 'second';
+  return 'other';
+}
+/** Récompense : coffre de guerre au champion, coffre de combat au finaliste, 1 coffre normal (perso actif) aux autres */
+export function champReward(acc, hero, place) {
+  if (place === 'win') acc.warChests++;
+  else if (place === 'second') acc.combatChests++;
+  else { refreshChests(hero); hero.chest.stored++; }
+}
 
 // ------------------------------ La Horde ------------------------------
 export { HORDE };
@@ -898,6 +979,25 @@ export function addItem(hero, itemId, rarity) {
   return it;
 }
 
+/** Chances de rareté d'un coffre pour ce compte, avec le bonus des coffres déjà ouverts */
+export function chestOdds(acc, kind) {
+  const odds = CHEST_ODDS[kind].slice();
+  const steps = Math.floor(((acc.chestCount || {})[kind] || 0) / CHEST_LUCK.step[kind]);
+  const src = odds[0] > 0 ? 0 : 1, g = CHEST_LUCK.gain;
+  for (let s = 0; s < steps; s++) {
+    if (odds[src] - g * 3 + (src ? g : 0) < CHEST_LUCK.floor) break;
+    odds[src] -= g * 3; odds[1] += g; odds[2] += g; odds[3] += g;
+  }
+  return odds;
+}
+/** Compteur d'ouvertures d'un coffre : total, bonus actuel (points par rareté), coffres avant le prochain bonus */
+export function chestLuck(acc, kind) {
+  const count = (acc.chestCount || {})[kind] || 0, step = CHEST_LUCK.step[kind];
+  const bonus = chestOdds(acc, kind)[3] - CHEST_ODDS[kind][3];
+  const maxed = chestOdds({ chestCount: { [kind]: count + step } }, kind)[3] === chestOdds(acc, kind)[3];
+  return { count, bonus, step, next: maxed ? 0 : step - (count % step) };
+}
+
 /**
  * Ouvre un coffre. kind = 'normal' | 'combat' | 'war'.
  * Les coffres « normaux » se rechargent pour chaque personnage ; les coffres de combat
@@ -923,8 +1023,11 @@ export function openChest(acc, hero, kind, rng = Math.random) {
   }
   const n = kind === 'war' ? WAR.warChestItems : kind === 'combat' ? 2 : 1;
   const items = [];
+  const odds = chestOdds(acc, kind);
+  if (!acc.chestCount) acc.chestCount = { normal: 0, combat: 0, war: 0 };
+  acc.chestCount[kind] = (acc.chestCount[kind] || 0) + 1;
   for (let i = 0; i < n; i++) {
-    const r = rollItem(rng, kind);
+    const r = rollItem(rng, odds);
     items.push(addItem(hero, r.itemId, r.rarity));
   }
   const xp = kind === 'war' ? 120 : kind === 'combat' ? 60 : 20;
@@ -935,11 +1038,11 @@ export function openChest(acc, hero, kind, rng = Math.random) {
 /** Coffres normaux qu'on peut ouvrir tout de suite : le stock + les clefs */
 export const openableChests = (hero) => hero.chest.stored + (hero.keys || 0);
 
-/** Ouvre tous les coffres normaux d'un coup (stock + clefs) */
+/** Ouvre les coffres normaux d'un coup (stock + clefs), 10 au maximum */
 export function openAllChests(acc, hero, rng = Math.random) {
   const out = { items: [], xp: 0, levels: 0, newSpells: [], keys: 0, lvlKeys: 0, count: 0 };
   let r;
-  while ((r = openChest(acc, hero, 'normal', rng))) {
+  while (out.count < OPEN_MAX && (r = openChest(acc, hero, 'normal', rng))) {
     out.items.push(...r.items);
     out.xp += r.xp; out.levels += r.levels; out.newSpells.push(...r.newSpells); out.lvlKeys += r.lvlKeys || 0;
     if (r.key) out.keys++;
@@ -1092,6 +1195,7 @@ export function newAccount(pseudo, classId) {
     nextHeroId: 2,
     heroes: [newHero(pseudo, classId, 'h1')],
     combatChests: 0,
+    chestCount: { normal: 0, combat: 0, war: 0 },
     warChests: 0,
     winProgress: 0,
     fights: { day: '', done: {}, lvl: 1 },
@@ -1109,8 +1213,15 @@ export function newAccount(pseudo, classId) {
 
 export const activeHero = (acc) => acc.heroes[acc.active] || acc.heroes[0];
 
+// Personnages débloqués par le niveau du perso le plus haut : 1 au départ, puis aux niveaux 15, 30 et 50
+export const HERO_UNLOCK = [1, 15, 30, 50];
+export const topLevel = (acc) => Math.max(1, ...acc.heroes.map(h => h.level));
+export const heroSlots = (acc) => HERO_UNLOCK.filter(l => topLevel(acc) >= l).length;
+// niveau à atteindre pour le prochain personnage (null si tout est débloqué)
+export const nextHeroLevel = (acc) => HERO_UNLOCK[acc.heroes.length] ?? null;
+
 export function addCharacter(acc, classId) {
-  if (acc.heroes.length >= MAX_HEROES) return null;
+  if (acc.heroes.length >= MAX_HEROES || acc.heroes.length >= heroSlots(acc)) return null;
   const h = newHero(acc.pseudo, classId, `h${acc.nextHeroId++}`);
   acc.heroes.push(h);
   acc.active = acc.heroes.length - 1;
@@ -1167,6 +1278,7 @@ export function migrate(save) {
   if (!acc.missions) acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
   if (!acc.raid) acc.raid = { day: '', used: 0, claimed: {}, local: {} };
   if (!acc.paidWagers) acc.paidWagers = [];
+  if (!acc.chestCount) acc.chestCount = { normal: 0, combat: 0, war: 0 };
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
   if (acc.clat === undefined) acc.clat = 0;
@@ -1804,11 +1916,14 @@ export function applyLevelFixes(acc) {
 export function dailyShop(acc) {
   const day = dayKey();
   if (!acc.shop || acc.shop.day !== day) acc.shop = { day, bought: {} };
-  const rng = makeRng(hashStr('marchand' + day));
-  const pool = ITEM_LIST.filter(i => i.slot !== 'pet');
-  const items = [];
-  while (items.length < SHOP_DAILY.count && pool.length) items.push(pool.splice(Math.floor(rng() * pool.length), 1)[0].id);
-  return items.map((itemId, i) => ({ i, itemId, rarity: SHOP_DAILY.rarity, price: SHOP_DAILY.price, bought: !!acc.shop.bought[i] }));
+  const rng = makeRng(hashStr('marchand2' + day));
+  const pool = ITEM_LIST.slice();
+  const out = [];
+  while (out.length < SHOP_DAILY.count && pool.length) {
+    const itemId = pool.splice(Math.floor(rng() * pool.length), 1)[0].id, rarity = pickWeighted(rng, SHOP_DAILY.odds);
+    out.push({ i: out.length, itemId, rarity, price: SHOP_DAILY.prices[rarity], bought: !!acc.shop.bought[out.length] });
+  }
+  return out;
 }
 export function buyDaily(acc, hero, i) {
   const it = dailyShop(acc)[i];

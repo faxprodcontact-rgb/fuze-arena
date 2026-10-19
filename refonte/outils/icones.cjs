@@ -238,6 +238,13 @@ def('emb-war', 'guerre', I => {
   I.vol(E(15, 6, 3.5), 'gold', { hl: false, k: 1 }); I.vol(E(49, 6, 3.5), 'gold', { hl: false, k: 1 });
   I.embed('bouclier', 'translate(19 26) scale(0.42)');
 });
+def('emb-champ', 'championnat', I => {
+  I.embed('trophy', 'translate(6 2) scale(0.82)');
+  I.rope('M10 22C4 32 6 46 16 54', '#4ea83c', 3.5, '#8edc5e'); I.rope('M54 22C60 32 58 46 48 54', '#4ea83c', 3.5, '#8edc5e');
+  for (const [x, y, a] of [[7, 30, -30], [7, 40, -10], [10, 49, 15], [57, 30, 30], [57, 40, 10], [54, 49, -15]]) I.raw(`<ellipse cx="${x}" cy="${y}" rx="3.2" ry="6" transform="rotate(${a} ${x} ${y})" fill="#4ea83c" stroke="#1b1530" stroke-width="1.4"/>`);
+  I.vol(RR(18, 54, 28, 8, 3), 'red', { hl: false, k: 1.4 });
+  I.spark(52, 8, 5); I.spark(12, 10, 3.5);
+});
 def('emb-bets', 'paris et duels', I => { I.embed('flouze', 'translate(-6 -4) rotate(-14 32 32) scale(0.92)'); I.embed('flouze', 'translate(10 10) rotate(8 32 32) scale(0.92)'); I.spark(54, 10, 4.5); });
 
 // ---------------------------------------------------------------- coffres : normal / combat, fermé / ouvert

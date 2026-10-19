@@ -3,9 +3,9 @@
 // =====================================================================
 import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
-  CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
+  CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -223,12 +223,38 @@ function onTrainingEntry(e) {
   }
 }
 
+// Sorts testés à l'entraînement : 4 places, indépendantes des sorts de combat
+const trainSpells = () => (hero.trainSpells || hero.spells).filter(id => SPELLS[id] && SPELLS[id].lvl <= hero.level).slice(0, MAX_ACTIVE_SPELLS);
+function trainSpellsHtml() {
+  const list = trainSpells();
+  return `<div class="train-spells"><span class="tsp-l">${ico('magic')} Sorts testés</span>
+    ${Array.from({ length: MAX_ACTIVE_SPELLS }, (_, i) => list[i]
+      ? `<button class="tsp filled" data-act="trainSlot" data-i="${i}" aria-label="${esc(SPELLS[list[i]].name)}"><canvas class="px" data-spell="${list[i]}"></canvas></button>`
+      : `<button class="tsp" data-act="trainSlot" data-i="${i}" aria-label="Placer un sort">+</button>`).join('')}</div>`;
+}
+function openTrainSlot(i) {
+  const list = trainSpells(), cur = list[i];
+  const all = Object.values(SPELLS).filter(s => s.cls === hero.classId && s.lvl <= hero.level).sort((a, b) => a.lvl - b.lvl);
+  openModal(`
+    <h3>Sort à tester (place ${i + 1})</h3>
+    <p class="hint" style="margin-top:6px">Teste n’importe quel sort débloqué contre l’épouvantail. Tes sorts de combat ne changent pas.</p>
+    <div class="spell-grid">
+      ${all.map(sp => `<button class="sgrid ${sp.id === cur ? 'on' : ''}" data-act="trainPick" data-i="${i}" data-id="${sp.id}"><canvas class="px" data-spell="${sp.id}"></canvas><small>${esc(sp.name)}</small></button>`).join('')}
+    </div>
+    <div class="close-row">
+      ${cur ? `<button class="btn danger" data-act="trainPick" data-i="${i}" data-id="">Vider</button>` : ''}
+      <button class="btn" data-act="trainReset">Mes sorts de combat</button>
+      <button class="btn" data-act="closeModal">Fermer</button>
+    </div>`);
+}
+
 function startTraining() {
   const cv = document.getElementById('train-cv');
   if (!cv) return;
   resetTraining();
   stopPreviews.push(playTraining(cv, () => {
     const me = mySnap();
+    me.spells = trainSpells();   // les sorts placés dans l'entraînement (au départ, ceux de combat)
     const foe = dummySnap(hero.level);
     return { me, foe, result: E.simulate(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false }) };
   }, { onEntry: onTrainingEntry }));
@@ -409,6 +435,7 @@ function viewHero() {
             <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas><small>Nv.${h.level}</small>
           </button>`).join('')}
       </div>
+      ${trainSpellsHtml()}
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
@@ -516,6 +543,11 @@ function viewChests() {
   const oddsBar = (odds) => `
     <div class="odds-bar">${odds.map((p, r) => p > 0 ? `<i style="flex:${p};background:${RARITIES[r].color}"></i>` : '').join('')}</div>
     <div class="odds-legend">${odds.map((p, r) => p > 0 ? `<span><b style="background:${RARITIES[r].color}"></b>${RARITIES[r].name} ${p} %</span>` : '').join('')}</div>`;
+  // compteur d'ouvertures depuis le début et bonus de chance
+  const luckLine = (kind) => {
+    const L = E.chestLuck(acc, kind);
+    return `<div class="v-luck"><span><b>${L.count}</b> ouvert${L.count > 1 ? 's' : ''}</span>${L.bonus ? `<span class="lk">Bonus +${L.bonus} %</span>` : ''}<span>${L.next ? `Bonus +2 % dans <b>${L.next}</b>` : 'Bonus au maximum'}</span></div>`;
+  };
   const card = ({ kind, title, sub, count, cls, body, buttons, odds }) => `
     <section class="vault ${cls} ${count > 0 ? 'has' : ''}">
       <div class="v-head"><h2>${title}</h2><span class="v-count">×${count}</span></div>
@@ -523,6 +555,7 @@ function viewChests() {
       <div class="v-sub">${sub}</div>
       ${body || ''}
       <div class="v-btns">${buttons}</div>
+      ${luckLine(kind)}
       ${oddsBar(odds)}
     </section>`;
   return `
@@ -531,20 +564,20 @@ function viewChests() {
       <span class="pill gold"><canvas class="px" data-key></canvas>${keys} clef${keys > 1 ? 's' : ''}</span>
     </section>
     ${card({
-      kind: 'normal', title: 'Coffre', count: all, cls: 'v-normal', odds: CHEST_ODDS.normal,
+      kind: 'normal', title: 'Coffre', count: all, cls: 'v-normal', odds: E.chestOdds(acc, 'normal'),
       sub: n >= CHEST_MAX ? 'Stock plein ! Ouvre-les vite.' : `<span data-timer="chest">Prochain coffre dans <b>${fmt(wait)}</b></span>`,
       body: `<div class="v-stock">${Array.from({ length: CHEST_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}<span>${n}/${CHEST_MAX} en stock${keys ? ` + ${keys} clef${keys > 1 ? 's' : ''}` : ''}</span></div>`,
       buttons: `<button class="btn primary" data-act="openChest" data-kind="normal" ${all > 0 ? '' : 'disabled'}>Ouvrir${n <= 0 && keys > 0 ? ' (clef)' : ''}</button>
-        <button class="btn green" data-act="openAll" ${all > 1 ? '' : 'disabled'}>Tout ouvrir (${all})</button>`,
+        <button class="btn green" data-act="openAll" ${all > 1 ? '' : 'disabled'}>${all > OPEN_MAX ? `Ouvrir ${OPEN_MAX}` : `Tout ouvrir (${all})`}</button>`,
     })}
     ${card({
-      kind: 'combat', title: 'Coffre de combat', count: acc.combatChests, cls: 'v-combat', odds: CHEST_ODDS.combat,
+      kind: 'combat', title: 'Coffre de combat', count: acc.combatChests, cls: 'v-combat', odds: E.chestOdds(acc, 'combat'),
       sub: `Gagne ${WINS_PER_COMBAT_CHEST} combats d’arène pour en obtenir un. Il contient <b>2 objets</b> !`,
       body: `<div class="pips">${Array.from({ length: WINS_PER_COMBAT_CHEST }, (_, i) => `<div class="pip ${i < acc.winProgress ? 'on' : ''}"></div>`).join('')}</div>`,
       buttons: `<button class="btn danger" data-act="openChest" data-kind="combat" ${acc.combatChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
     })}
     ${card({
-      kind: 'war', title: 'Coffre de guerre', count: acc.warChests, cls: 'v-war', odds: CHEST_ODDS.war,
+      kind: 'war', title: 'Coffre de guerre', count: acc.warChests, cls: 'v-war', odds: E.chestOdds(acc, 'war'),
       sub: `Gagné à la guerre des sections et au raid. <b>${WAR.warChestItems} objets</b>, jamais de Commun !`,
       buttons: `<button class="btn" style="background:linear-gradient(#d9a8ff,#8c3fe0)" data-act="openChest" data-kind="war" ${acc.warChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
     })}`;
@@ -879,7 +912,7 @@ function viewDungeons() {
           ${locked ? '' : `
           <div class="dgn-go">
             <button class="foe-btn fight" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}><i class="emo"><canvas class="px" data-emblem="skull"></canvas></i>${n > 0 ? 'Entrer' : 'Fini'}</button>
-            ${skip ? `<button class="skip-btn" data-act="skipDungeon" data-id="${d.id}">${ico('skip')} Passer ×${n}</button>`
+            ${skip ? `<button class="btn small blue skip-btn" data-act="skipDungeon" data-id="${d.id}">${ico('skip')} Passer ×${n}<small>½ XP</small></button>`
               : `<span class="runs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(DUNGEON_RUNS - n)}</span>`}
           </div>`}
         </div>`;
@@ -1232,7 +1265,7 @@ const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p 
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { throne: 'combat', pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
+const PARENT = { throne: 'combat', pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', champ: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 const PARENT_NAME = { combat: 'Combats', social: 'Social' };
 
 function setBadge(id, n) {
@@ -1316,9 +1349,11 @@ function charsCard() {
             <span class="f-stage"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
             <b>${CLASSES[h.classId].name}</b><small>Nv.${h.level}</small>
           </button>`).join('')}
-        ${acc.heroes.length < E.MAX_HEROES ? '<button class="fighter add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>' : ''}
+        ${acc.heroes.length >= E.MAX_HEROES ? '' : acc.heroes.length < E.heroSlots(acc)
+          ? '<button class="fighter add" data-act="newHeroModal"><span>+</span><small>Nouveau</small></button>'
+          : `<div class="fighter add locked"><span>${ico('lock')}</span><small>Niveau ${E.nextHeroLevel(acc)}</small></div>`}
       </div>
-      <p class="more-txt">C’est ton perso <b>actif</b> qui part se battre (arène, donjons, tour, raid, guerre). Chaque perso a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.</p>
+      <p class="more-txt">C’est ton perso <b>actif</b> qui part se battre (arène, donjons, tour, raid, guerre). Chaque perso a son niveau, ses objets, ses coffres, ses clefs et ses donjons. Quand on t’attaque, c’est ton perso <b>le plus fort</b> qui défend.<br>Nouveaux persos : le 2ᵉ au niveau <b>15</b>, le 3ᵉ au niveau <b>30</b> et le 4ᵉ au niveau <b>50</b> (niveau de ton perso le plus haut).</p>
       ${moreBtn('chars')}
     </section>`;
 }
@@ -1339,7 +1374,7 @@ function viewCombat() {
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
     { id: 'throne', name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, wide: true, c: '#ffd45a' },
     { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
-    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd45a' },
+    { id: 'champ', name: 'Championnat', sub: champSub(), tag: 'Tournoi à 8 chaque semaine, combats à 19 h 30', emblem: 'champ', badge: 0, wide: true, c: '#ffd45a' },
   ];
   return autoCard() + charsCard() + missionsCard() + `
     <section class="modes">
@@ -1808,9 +1843,11 @@ function autoInfoHtml() {
 }
 function autoBankHtml(st) {
   const n = st.bank.chests;
-  return n ? `
-    <button class="btn primary block auto-claim" data-act="claimAuto">Récupérer ${n} coffre${n > 1 ? 's' : ''} <canvas class="px" data-chest="normal"></canvas></button>`
-    : '<p class="auto-empty">Réserve vide : 1 coffre tous les 10 paliers.</p>';
+  const xp = hero.level < MAX_LEVEL ? Math.round(E.xpForLevel(hero.level) * E.autoXpFrac(acc)) : 0;
+  const what = [n ? `${n} coffre${n > 1 ? 's' : ''}` : '', xp ? `${xp} XP` : ''].filter(Boolean).join(' + ');
+  return what ? `
+    <button class="btn primary block auto-claim" data-act="claimAuto">Récupérer ${what} ${n ? '<canvas class="px" data-chest="normal"></canvas>' : ''}</button>`
+    : '<p class="auto-empty">Réserve vide : 1 coffre tous les 10 paliers, et un peu d’XP à chaque victoire.</p>';
 }
 
 function autoCard() {
@@ -1821,7 +1858,7 @@ function autoCard() {
       ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
       ${done ? '' : '<div class="auto-stage"><canvas data-auto></canvas></div>'}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Pas d’XP ici.</div>
+      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${AUTO.xpPerWin * 100} % d’un niveau, au plus ${AUTO.xpDayCap * 100} % d’un niveau par jour), pour ton perso actif.</div>
       ${moreBtn('auto')}
     </section>`;
 }
@@ -2058,7 +2095,6 @@ function runMelee({ teamA, teamB, fight, title, finish }) {
     <div class="battle-ctrl">
       <div class="ctrl-row">
         <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-        <button class="btn small" data-act="skip">Passer ${ico('skip')}</button>
         <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
       </div>
     </div>
@@ -2247,6 +2283,199 @@ function watchPvp(c) {
           : iWon ? '<p style="color:var(--muted);margin:0">Gain déjà touché, ou maximum du jour atteint.</p>' : '',
       };
     },
+  });
+}
+
+// ------------------------------ Championnat ------------------------------
+// Tableau de 8 joueurs tiré au hasard chaque lundi ; quarts, demies et finale à 19 h 30 les trois premiers jours.
+// En ligne, le tableau et chaque match joué sont rangés dans le journal des combats (le plus ancien enregistrement fait foi) ;
+// hors ligne (jeu de test), dans la sauvegarde. Le premier joueur qui ouvre le jeu après 19 h 30 fait jouer les matchs du jour.
+let champInfo = { week: '', slots: [], matches: {}, prev: null };
+let champLoading = null, champError = '';
+const champWeekStart = (week) => { const [y, m, d] = week.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+const champRes = (matches) => Object.fromEntries(Object.entries(matches).map(([k, v]) => [k, v.ids[v.winner]]));
+/** Joue les matchs dont l'heure est passée et qui n'ont pas encore de résultat ; save(key, match) les enregistre */
+async function champPlay(week, slots, matches, byId, store) {
+  const start = champWeekStart(week);
+  for (let r = 0; r < CHAMP.days.length; r++) {
+    if (Date.now() < E.champRoundAt(start, r)) break;
+    const tree = E.champTree(slots, champRes(matches));
+    for (let m = 0; m < tree[r].length; m++) {
+      const x = tree[r][m], key = `${r}-${m}`;
+      if (x.bye || x.a === undefined || x.b === undefined || matches[key]) continue;
+      const A = byId[x.a], B = byId[x.b];
+      if (!A || !B) continue;
+      const seed = E.champSeed(week, r, m);
+      const res = E.champMatch(A.team, B.team, seed);
+      const row = { r, m, ids: [x.a, x.b], names: [A.name, B.name], teams: [A.team, B.team], games: res.games, wins: res.wins, winner: res.winner };
+      matches[key] = await store(key, row, seed) || row;
+    }
+  }
+}
+function loadChamp() {
+  if (champLoading) return champLoading;
+  champError = '';
+  champLoading = (async () => {
+    try {
+      const all = throneContenders();
+      const byId = Object.fromEntries(all.map(c => [c.id, c]));
+      const ids = all.map(c => c.id);
+      const week = E.throneWeek();
+      const prevWeek = E.throneWeek(new Date(E.throneWeekStart() - 3 * 86400000));
+      if (!NET.online) {
+        acc.champ ||= { claimed: {} };
+        let L = acc.champ.local;
+        if (!L || L.week !== week) {
+          if (L && L.week === prevWeek) acc.champ.prev = L;
+          L = acc.champ.local = { week, slots: E.champSlots(ids, week), matches: {} };
+        }
+        await champPlay(week, L.slots, L.matches, byId, async () => null);
+        save();
+        const P = acc.champ.prev && acc.champ.prev.week === prevWeek ? acc.champ.prev : null;
+        champInfo = { week, slots: L.slots, matches: L.matches, prev: P };
+        return;
+      }
+      const since = new Date(E.throneWeekStart() - 7 * 86400000).toISOString();
+      let rows = await NET.fetchChamp(since);
+      const startOf = (w) => rows.find(r => r.kind === 'champ_start' && r.a_snap && r.a_snap.week === w);
+      const matchesOf = (w) => {
+        const out = {};
+        for (const r of rows) if (r.kind === 'champ' && r.a_snap && r.a_snap.week === w && !out[r.a_snap.key]) out[r.a_snap.key] = r.a_snap;
+        return out;
+      };
+      if (!startOf(week)) {
+        await NET.logFight({ defender_id: null, attacker_name: acc.pseudo, defender_name: '', kind: 'champ_start', winner: 0, seed: 0, a_snap: { week, slots: E.champSlots(ids, week) }, d_snap: {} });
+        rows = await NET.fetchChamp(since);
+      }
+      const slots = startOf(week).a_snap.slots, matches = matchesOf(week);
+      let played = false;
+      await champPlay(week, slots, matches, byId, async (key, row, seed) => {
+        played = true;
+        await NET.logFight({ defender_id: null, attacker_name: row.names[0], defender_name: row.names[1], kind: 'champ', winner: row.winner, seed, a_snap: { week, key, ...row }, d_snap: {} });
+        return null;
+      });
+      if (played) {   // relire : si quelqu'un d'autre a joué le même match en même temps, le premier enregistré compte
+        rows = await NET.fetchChamp(since);
+        Object.assign(matches, matchesOf(week));
+      }
+      const ps = startOf(prevWeek);
+      champInfo = { week, slots, matches, prev: ps ? { week: prevWeek, slots: ps.a_snap.slots, matches: matchesOf(prevWeek) } : null };
+    } catch (e) {
+      champError = e.message || 'Erreur inconnue';
+    } finally {
+      champLoading = null;
+    }
+  })();
+  return champLoading;
+}
+/** Petit texte de la tuile du championnat */
+function champSub() {
+  if (champInfo.week !== E.throneWeek()) return 'Tableau de la semaine';
+  const nx = champNext();
+  if (!nx) { const t = E.champTree(champInfo.slots, champRes(champInfo.matches)); const w = t[2][0].winner; const c = w && throneContenders().find(x => x.id === w); return c ? `Champion : ${c.name}` : 'Finale jouée'; }
+  return `${CHAMP.roundNames[nx.r]} à 19 h 30`;
+}
+/** Prochain tour à jouer cette semaine (ou null si la finale est passée) */
+function champNext() {
+  const start = champWeekStart(champInfo.week);
+  for (let r = 0; r < CHAMP.days.length; r++) if (Date.now() < E.champRoundAt(start, r)) return { r, at: E.champRoundAt(start, r) };
+  return null;
+}
+const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+function viewChamp() {
+  if (champInfo.week !== E.throneWeek() || !champInfo.slots.length) {
+    if (champError) return `<section class="card"><h2>Championnat</h2><p class="auth-msg">Impossible de charger le championnat : ${esc(champError)}</p>
+      <button class="btn primary block" style="margin-top:12px" data-act="retryChamp">Réessayer</button></section>`;
+    if (!champLoading) loadChamp().then(() => { if (tab === 'champ') softRender(); });
+    return offlineCard('Championnat', 'Chargement du tableau…');
+  }
+  const nx = champNext();
+  const all = throneContenders();
+  const byId = Object.fromEntries(all.map(c => [c.id, c]));
+  const me = myId();
+  const tree = E.champTree(champInfo.slots, champRes(champInfo.matches));
+  const fin = tree[2][0];
+  const start = champWeekStart(champInfo.week);
+  const heroOf = (c) => (c && c.data ? E.strongestHero(c.data) : c ? { classId: c.classId || c.team[0].classId, dye: null } : null);
+  const who = (id, won, lost) => {
+    if (id === undefined) return '<div class="ch-p tbd"><span class="ch-av"></span><span class="ch-n">À venir</span></div>';
+    if (id === null) return '<div class="ch-p empty"><span class="ch-av"></span><span class="ch-n">Place vide</span></div>';
+    const c = byId[id], h = heroOf(c);
+    return `<div class="ch-p ${won ? 'won' : ''} ${lost ? 'lost' : ''} ${id === me ? 'me' : ''}">
+      <span class="ch-av">${h ? `<canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>` : ''}</span>
+      <span class="ch-n">${c ? nameHtml(c.name, c.data) : '?'}</span></div>`;
+  };
+  const round = (r) => {
+    const at = E.champRoundAt(start, r), d = new Date(at);
+    const when = `${DAY_NAMES[d.getDay()]} ${CHAMP.hour} h ${String(CHAMP.minute).padStart(2, '0')}`;
+    return `
+      <section class="card hx ch-round" style="--hc:${['#3d9bff', '#b05cff', '#ffd45a'][r]}">
+        ${secHead(ico(r === 2 ? 'trophy' : 'swords'), CHAMP.roundNames[r], Date.now() < at ? `Le ${when}` : 'Joué', Date.now() < at ? `<span class="pill" data-endlong="${at}">${fmtLong(at - Date.now())}</span>` : '')}
+        ${tree[r].map((x, m) => {
+          const M = champInfo.matches[`${r}-${m}`];
+          const done = x.winner !== undefined && x.winner !== null;
+          const score = M ? `<b class="ch-sc">${M.wins[0]} - ${M.wins[1]}</b>` : x.bye && done ? '<b class="ch-sc bye">Qualifié</b>' : '<b class="ch-sc">VS</b>';
+          return `
+            <div class="ch-match ${M ? 'played' : ''}">
+              ${who(x.a, done && x.winner === x.a, done && x.a !== null && x.winner !== x.a)}
+              ${score}
+              ${who(x.b, done && x.winner === x.b, done && x.b !== null && x.winner !== x.b)}
+              ${M ? `<button class="btn small blue ch-watch" data-act="champMatch" data-k="${r}-${m}">${ico('play')} Revoir</button>` : ''}
+            </div>`;
+        }).join('')}
+      </section>`;
+  };
+  // récompenses (cette semaine ou la semaine dernière), à récupérer une fois
+  const claimCard = (info) => {
+    if (!info) return '';
+    const t = E.champTree(info.slots, champRes(info.matches)), place = E.champPlace(t, me);
+    acc.champ ||= { claimed: {} };
+    if (!place || acc.champ.claimed[info.week]) return '';
+    const txt = { win: ['Tu es champion !', 'Un coffre de guerre pour toi.'], second: ['Tu es finaliste !', 'Un coffre de combat pour toi.'], other: ['Merci d’avoir joué !', `Un coffre pour ton ${CLASSES[hero.classId].name}.`] }[place];
+    return `<section class="card war-reward"><h2>Championnat${info.week !== champInfo.week ? ' de la semaine dernière' : ''}</h2><div class="big-res">${txt[0]}</div><p class="hint">${txt[1]}</p>
+      <button class="btn primary block" data-act="claimChamp" data-w="${info.week}">Récupérer ma récompense</button></section>`;
+  };
+  // l'heure d'un tour est passée et un match n'a pas encore de résultat : on le fait jouer
+  const due = tree.some((rd, r) => Date.now() >= E.champRoundAt(start, r) && rd.some((x, m) => !x.bye && x.a != null && x.b != null && !champInfo.matches[`${r}-${m}`]));
+  if (due && !champLoading) setTimeout(() => loadChamp().then(() => { if (tab === 'champ') softRender(); }), 0);
+  const myPlace = E.champPlace(tree, me);
+  const inIt = champInfo.slots.includes(me);
+  const champion = fin.winner ? byId[fin.winner] : null;
+  return claimCard(champInfo.prev) + claimCard(champInfo) + modeHead({
+    id: 'champ', c: '#ffd45a', art: '<canvas class="px" data-emblem="champ"></canvas>',
+    title: 'Championnat', sub: 'Tournoi à 8, les combats se lancent tout seuls à 19 h 30',
+    chips: [
+      mchip(ico('trophy'), champion ? 'Champion' : 'Prochain tour', champion ? esc(champion.name) : nx ? CHAMP.roundNames[nx.r] : '—', champion ? 'hot' : ''),
+      mchip(ico('flag'), 'Toi', !inIt ? 'Pas inscrit' : myPlace === 'win' ? 'Champion' : myPlace === 'second' ? 'Finaliste' : tree.some((rd, r) => rd.some(x => x.winner !== undefined && x.winner !== null && x.winner !== me && (x.a === me || x.b === me))) ? 'Éliminé' : 'En course'),
+      mchip(ico('hourglass'), nx ? 'Prochain combat' : 'Nouveau tableau', `<span data-endlong="${nx ? nx.at : Date.now() + E.msToNextThroneWeek()}">${fmtLong(nx ? nx.at - Date.now() : E.msToNextThroneWeek())}</span>`),
+    ],
+    info: `Chaque lundi, un tableau de <b>8 joueurs</b> est tiré au hasard (s’il manque quelqu’un, son adversaire passe directement). Les combats se lancent tout seuls à <b>19 h 30</b> : quarts de finale le lundi, demi-finales le mardi, finale le mercredi. Chaque match se joue en <b>3 manches</b> (2 manches gagnées suffisent), tes 4 persos contre les 4 siens en relais, sans soin entre deux duels. Tu peux revoir chaque manche.<br><br>Récompenses : <b>coffre de guerre</b> pour le champion, <b>coffre de combat</b> pour le finaliste, <b>1 coffre</b> pour tous les autres. Puis tout recommence le lundi suivant.`,
+  }) + [0, 1, 2].map(round).join('');
+}
+/** Fiche d'un match : les manches, chacune à revoir */
+function openChampMatch(key) {
+  const M = champInfo.matches[key];
+  if (!M) return;
+  openModal(`
+    <h3>${CHAMP.roundNames[M.r]} : ${esc(M.names[0])} contre ${esc(M.names[1])}</h3>
+    <p class="hint" style="margin-top:6px">${esc(M.names[M.winner])} gagne ${M.wins[M.winner]} manche${M.wins[M.winner] > 1 ? 's' : ''} à ${M.wins[1 - M.winner]}.</p>
+    <div class="ch-games">${M.games.map((g, i) => `
+      <button class="ch-game" data-act="champGame" data-k="${key}" data-g="${i}"><b>Manche ${i + 1}</b><span>${esc(M.names[g.winner])} gagne</span>${ico('play')}</button>`).join('')}
+    </div>
+    <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>`);
+}
+function watchChampGame(key, gi) {
+  const M = champInfo.matches[key], g = M && M.games[gi];
+  if (!g) return;
+  closeModal();
+  const [A, B] = M.teams;
+  const result = E.simulateRelay(A, B, g.seed);
+  const pips = (n, tot) => `<span class="pips-vs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(tot - n)}</span>`;
+  const head = (sc) => `${esc(M.names[0])} ${pips(sc[0], A.length)} <span style="color:var(--gold)">VS</span> ${pips(sc[1], B.length)} ${esc(M.names[1])}`;
+  runBattle({
+    me: A[0], foe: B[0], result, theme: 'castle', track: false, noBar: true, title: head([A.length, B.length]),
+    onEvent: (e) => { if (e.score) { const t = document.querySelector('.battle-vs'); if (t) t.innerHTML = head(e.score); } },
+    finish: (r) => ({ won: true, headline: `${M.names[r.winner]} GAGNE`, headClass: 'win', rewardsHtml: `<p style="color:var(--muted);margin:0">Manche ${gi + 1} sur ${M.games.length}</p>` }),
   });
 }
 
@@ -2499,7 +2728,7 @@ function startHorde() {
   const h = hero;
   const head = (kills) => `La Horde <span style="color:var(--gold)">·</span> ${kills} monstre${kills > 1 ? 's' : ''} battu${kills > 1 ? 's' : ''} <span style="color:var(--gold)">·</span> +${E.hordeFlouze(kills)} <canvas class="px ico" data-clat></canvas>`;
   runBattle({
-    me, foe: E.hordeMonster(seed, 0), live, theme: 'abyss', manual: true, victory: myVictory(),
+    me, foe: E.hordeMonster(seed, 0), live, theme: 'abyss', manual: true, victory: myVictory(), skip: true,
     title: head(0),
     onEvent: (e) => {
       if (e.type !== 'kill') return;
@@ -2613,7 +2842,7 @@ function viewShop() {
       mchip('<canvas class="px" data-key></canvas>', `Clefs ${CLASSES[hero.classId].name}`, hero.keys),
       mchip(ico('bag'), 'Objets du jour', `${left} / ${SHOP_DAILY.count}`),
     ],
-    info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Objets du jour</b> : 3 objets gris à ${SHOP_DAILY.price} Flouze, un seul exemplaire de chaque, renouvelés à minuit. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
+    info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Objets du jour</b> : 3 objets au hasard, du Commun à l’Épique (${SHOP_DAILY.prices.join(' / ')} Flouze selon la rareté), un seul exemplaire de chaque, renouvelés à minuit. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
   }) + `
     <section class="card hx merchant" style="--hc:#ffd45a">
       ${secHead(ico('star'), 'Le marchand', `Nouveaux objets dans <span data-timer="day3">${fmt(msToMidnight())}</span>`)}
@@ -2625,9 +2854,9 @@ function viewShop() {
       <div class="daily">
         ${daily.map(d => `
           <div class="dl ${d.bought ? 'sold' : ''}">
-            <div class="it r0 dl-ico" style="--rc:${RARITIES[0].color}"><canvas class="px" data-icon="${d.itemId}"></canvas></div>
-            <b>${esc(ITEMS[d.itemId].name)}</b><small>${SLOTS[ITEMS[d.itemId].slot].name}</small>
-            <small class="dl-st">${Object.entries(E.itemStats(d.itemId, 0)).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ')}</small>
+            <div class="it r${d.rarity} dl-ico" style="--rc:${RARITIES[d.rarity].color}"><canvas class="px" data-icon="${d.itemId}"></canvas></div>
+            <b>${esc(ITEMS[d.itemId].name)}</b><small>${SLOTS[ITEMS[d.itemId].slot].name} · <span style="color:${RARITIES[d.rarity].color}">${RARITIES[d.rarity].name}</span></small>
+            <small class="dl-st">${Object.entries(E.itemStats(d.itemId, d.rarity)).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ')}</small>
             ${d.bought ? '<span class="dl-sold">Acheté</span>'
               : `<button class="btn small green" data-act="buyDaily" data-i="${d.i}" ${acc.clat < d.price ? 'disabled' : ''}>${d.price}<canvas class="px" data-clat></canvas></button>`}
           </div>`).join('')}
@@ -2687,7 +2916,7 @@ function updateXpBonus() {
 }
 
 const VIEWS = { throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
-  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, journal: viewJournal, players: viewPlayers };
+  combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, champ: viewChamp, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
@@ -2721,7 +2950,7 @@ function openChestFlow(kind, all = false) {
   save();
   SFX.chest();
   openModal(`
-    <div class="open-stage">
+    <div class="open-stage ${res.items.length > 4 ? 'many' : ''}">
       <h3>${all ? `${res.count} coffres${res.keys ? ` (dont ${res.keys} avec une clef)` : ''}` : ({ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || (res.key ? 'Coffre (clef)' : 'Coffre'))}</h3>
       <div class="rays" id="chest-wrap"><canvas class="px chest-big shake" id="chest-cv" data-chest="${kind}"></canvas></div>
       <div id="loot"></div>
@@ -2742,7 +2971,7 @@ function openChestFlow(kind, all = false) {
             <div class="rar" style="color:${RARITIES[it.rarity].color}">${RARITIES[it.rarity].name}</div>
           </div>`).join('')}
       </div>
-      <p style="color:var(--muted);margin:14px 0 0">+${res.xp} XP</p>
+      <p class="loot-xp">+${res.xp} XP${all && E.openableChests(hero) > 0 ? ` · encore ${E.openableChests(hero)} coffre${E.openableChests(hero) > 1 ? 's' : ''} à ouvrir` : ''}</p>
       ${res.items.some(it => E.stackOf(hero, it.itemId, it.rarity).length >= 2 && it.rarity < RARITIES.length - 1) ? '<p style="color:#c58bff;font-weight:800;margin:6px 0 0">✦ Une fusion est possible !</p>' : ''}
       <div class="close-row"><button class="btn primary" data-act="closeAndRender">Super !</button></div>`;
     hydrate(document.getElementById('loot'));
@@ -2806,7 +3035,7 @@ const pxCaps = (t) => String(t);   // Lilita One affiche bien les capitales acce
 /** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
 const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
-function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null, noBar = false }) {
+function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, manual = false, victory = null, finish, track = true, live = null, onEvent = null, noBar = false, skip = false }) {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
   let out = null;
@@ -2833,7 +3062,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
       </div>` : ''}
       <div class="ctrl-row">
         <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-        <button class="btn small" data-act="skip">Passer ${ico('skip')}</button>
+        ${skip ? `<button class="btn small" data-act="skip">Passer ${ico('skip')}</button>` : ''}
         <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
       </div>
     </div>
@@ -3050,6 +3279,7 @@ const ACTIONS = {
   tab: (d) => {
     SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
+    if (d.id === 'champ' || d.id === 'combat') (NET.online ? refreshPlayers() : Promise.resolve()).then(loadChamp).then(() => { if (tab === d.id) softRender(); });
     if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'pvp', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets' || d.id === 'pvp') refreshBets().then(() => { if (tab === d.id) softRender(); });
@@ -3091,11 +3321,26 @@ const ACTIONS = {
   podiumMsg: () => openPodiumMsg(),
   throneFight: (d) => startThrone(d.id),
   claimThrone: () => claimThroneReward(),
+  retryChamp: () => { champError = ''; loadChamp().then(() => { if (tab === 'champ') softRender(); }); },
+  champMatch: (d) => openChampMatch(d.k),
+  champGame: (d) => watchChampGame(d.k, +d.g),
+  claimChamp: (d) => {
+    const info = d.w === champInfo.week ? champInfo : champInfo.prev;
+    if (!info) return;
+    const place = E.champPlace(E.champTree(info.slots, champRes(info.matches)), myId());
+    acc.champ ||= { claimed: {} };
+    if (!place || acc.champ.claimed[info.week]) return;
+    acc.champ.claimed[info.week] = place;
+    E.champReward(acc, hero, place);
+    SFX.loot(place === 'win' ? 4 : 2); save(); render();
+    toast({ win: 'Coffre de guerre récupéré !', second: 'Coffre de combat récupéré !', other: `Coffre ajouté pour ton ${CLASSES[hero.classId].name} !` }[place]);
+  },
   claimAuto: () => {
-    const n = E.autoClaim(acc, hero);
-    if (!n) return;
+    const r = E.autoClaim(acc, hero);
+    if (!r.chests && !r.xp) return;
     SFX.loot(2); save(); render();
-    toast(`+${n} coffre${n > 1 ? 's' : ''} pour ${CLASSES[hero.classId].name} : va les ouvrir dans Coffres !`);
+    toast(`${[r.chests ? `+${r.chests} coffre${r.chests > 1 ? 's' : ''}` : '', r.xp ? `+${r.xp} XP` : ''].filter(Boolean).join(' et ')} pour ${CLASSES[hero.classId].name}${r.chests ? ' : va les ouvrir dans Coffres !' : ''}`);
+    announce(r.lv);
   },
   retryThrone: () => { throneError = ''; loadThrone().then(() => { if (tab === 'throne') softRender(); }); },
   podiumMsgSave: (d) => {
@@ -3159,6 +3404,16 @@ const ACTIONS = {
   spellDown: (d) => { const i = hero.spells.indexOf(d.id); if (i >= 0 && i < hero.spells.length - 1) { [hero.spells[i + 1], hero.spells[i]] = [hero.spells[i], hero.spells[i + 1]]; save(); render(); } },
   spellOff: (d) => { hero.spells = hero.spells.filter(id => id !== d.id); save(); render(); },
   spellInfo: (d) => openSpell(d.id),
+  trainSlot: (d) => openTrainSlot(+d.i),
+  trainPick: (d) => {
+    const cur = trainSpells(), i = +d.i;
+    const slots = Array.from({ length: MAX_ACTIVE_SPELLS }, (_, k) => cur[k] || null);
+    if (d.id) { const j = slots.indexOf(d.id); if (j >= 0) slots[j] = slots[i]; slots[i] = d.id; }   // un sort déjà placé change de place
+    else slots[i] = null;
+    hero.trainSpells = slots.filter(Boolean);
+    save(); closeModal(); render(); SFX.click();
+  },
+  trainReset: () => { delete hero.trainSpells; save(); closeModal(); render(); SFX.click(); },
   spellEquip: (d) => {
     if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id) && SPELLS[d.id].lvl <= hero.level) { hero.spells.push(d.id); save(); }
     closeModal(); render(); SFX.click();
@@ -3178,8 +3433,8 @@ const ACTIONS = {
   openAll: () => openChestFlow('normal', true),
   buyDaily: (d) => {
     const it = E.buyDaily(acc, hero, +d.i);
-    if (!it) { toast(`Il faut ${SHOP_DAILY.price} Flouze.`); return; }
-    SFX.loot(0); save(); render();
+    if (!it) { toast(`Il faut ${E.dailyShop(acc)[+d.i].price} Flouze.`); return; }
+    SFX.loot(it.rarity); save(); render();
     toast(`${ITEMS[it.itemId].name} ajouté au sac de ton ${CLASSES[hero.classId].name} !`);
   },
   buyKey: () => {

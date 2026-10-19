@@ -11,7 +11,7 @@ export const MAX_ACTIVE_SPELLS = 4;
 export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h (remise à zéro à minuit et à midi), par personnage
 export const DUNGEON_KEYS_MAX = 5;  // clefs gagnées au maximum en donjon toutes les 12 h, par personnage (ensuite : XP seulement)
 export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
-export const KEY_PRICE = 50;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
+export const KEY_PRICE = 70;       // une clef coûte 70 Flouze à la boutique (1 clef = 1 coffre)
 export const SELL_PRICE = [1, 3, 7, 16, 40, 100, 250];   // revente d'un objet selon sa rareté (en Flouze)
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
@@ -38,6 +38,11 @@ export const RARITIES = [
   { id: 5, name: 'Mythique', color: '#ff3d6e', mult: 12 },
   { id: 6, name: 'Chaotique', color: '#ff2bd6', mult: 16 },
 ];
+
+// Bonus de chance : tous les `step` coffres ouverts (depuis le début), Peu commun, Rare et Épique gagnent
+// chacun `gain` points, pris au Commun (au Peu commun pour le coffre de guerre), qui ne descend pas sous `floor`.
+export const CHEST_LUCK = { step: { normal: 100, combat: 50, war: 25 }, gain: 2, floor: 10 };
+export const OPEN_MAX = 10;                       // coffres ouverts au maximum d'un coup
 
 // Probabilités de rareté dans les coffres (en %)
 export const CHEST_ODDS = {
@@ -640,7 +645,8 @@ const C = (id, name, price, color) => ({ id: 'c_' + id, kind: 'color', name, pri
 const D = (id, name, price, dye) => ({ id: 'd_' + id, kind: 'dye', name, price, dye });
 const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, price, colors });
 // Skin : une tenue propre à une classe (remplace les anciennes teintures, qui restent portables par ceux qui les ont)
-const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price, look });
+const SKIN_EXTRA = 20;   // tous les skins coûtent 20 Flouze de plus que le prix écrit ci-dessous
+const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price: price + SKIN_EXTRA, look });
 // PvP en direct : défi entre joueurs en ligne, tous les persos de chacun à la suite (relais)
 export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
 // Le trône : classement de la semaine (lundi 0 h), défis illimités contre ceux au-dessus de soi (échange de places)
@@ -655,8 +661,18 @@ export const AUTO = {
   need: [[1, 200], [250, 2100], [1000, 6700]],
   monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
   boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
+  // XP : chaque victoire met 0,5 % d'un niveau en réserve (pour le perso actif quand on récupère),
+  // au plus 25 % d'un niveau par jour : un petit coup de pouce, sans remplacer les donjons.
+  xpPerWin: 0.005, xpDayCap: 0.25,
 };
-export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
+// Championnat : chaque semaine (à partir du lundi), un tableau de 8 joueurs tiré au hasard.
+// Quarts le lundi, demi-finales le mardi, finale le mercredi, à 19 h 30. Chaque match se joue en 3 manches
+// (2 manches gagnées suffisent), équipe de 4 contre équipe de 4 en relais, sans soin entre deux duels.
+export const CHAMP = { size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3, roundNames: ['Quarts de finale', 'Demi-finales', 'Finale'] };
+
+// Le marchand : 3 objets tirés au hasard chaque jour parmi tous les équipements, de Commun à Épique.
+// odds = chances de chaque rareté (en %), prices = prix en Flouze selon la rareté.
+export const SHOP_DAILY = { count: 3, odds: [50, 30, 15, 5], prices: [10, 50, 150, 300] };
 
 export const COSMETICS = [
   // Titres (affichés sous ton pseudo)
