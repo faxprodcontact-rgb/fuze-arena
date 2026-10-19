@@ -804,7 +804,17 @@ i.sl-base { background: #a69cbf; } i.sl-pts { background: var(--green); } i.sl-e
 .it.r3 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 14px rgba(176,92,255,.5); }
 .it.r4 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 18px rgba(255,159,26,.6); animation: legend 2.4s ease-in-out infinite; }
 @keyframes legend { 50% { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 0 2px #0e0b16, 0 0 26px rgba(255,200,60,.85); } }
-.it.r3::after, .it.r4::after, .slot.filled.r3::after, .slot.filled.r4::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.3) 50%, transparent 65%); animation: shimmer 3s infinite; pointer-events: none; }
+.it.r5, .slot.filled.r5 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 20px rgba(255,61,110,.7); animation: mythic 2s ease-in-out infinite; }
+@keyframes mythic { 50% { box-shadow: inset 0 0 0 2px #ff9fb4, 0 0 0 2px #0e0b16, 0 0 30px rgba(255,61,110,.95); } }
+/* Chaotique : le cadre change de couleur sans arrêt */
+.it.r6, .slot.filled.r6 { box-shadow: inset 0 0 0 2px var(--rc), 0 0 0 2px #0e0b16, 0 0 24px rgba(255,43,214,.8); animation: chaos 1.6s linear infinite; }
+@keyframes chaos {
+  0%, 100% { box-shadow: inset 0 0 0 2px #ff2bd6, 0 0 0 2px #0e0b16, 0 0 24px rgba(255,43,214,.85); }
+  25% { box-shadow: inset 0 0 0 2px #3df5ff, 0 0 0 2px #0e0b16, 0 0 24px rgba(61,245,255,.85); }
+  50% { box-shadow: inset 0 0 0 2px #c6ff3d, 0 0 0 2px #0e0b16, 0 0 24px rgba(198,255,61,.85); }
+  75% { box-shadow: inset 0 0 0 2px #ff7a1a, 0 0 0 2px #0e0b16, 0 0 24px rgba(255,122,26,.85); }
+}
+.it.r3::after, .it.r4::after, .it.r5::after, .it.r6::after, .slot.filled.r3::after, .slot.filled.r4::after, .slot.filled.r5::after, .slot.filled.r6::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.3) 50%, transparent 65%); animation: shimmer 3s infinite; pointer-events: none; }
 .slot.filled { overflow: hidden; }
 .it .n { background: rgba(14,11,22,.85); padding: 2px 4px; border-radius: 5px; right: 3px; bottom: 3px; }
 /* titres de rareté */
@@ -1245,12 +1255,12 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 /* ---------- Encadré Sac ---------- */
 .bag-card { overflow: hidden; }
 .fuse-hint { color: #c58bff; }
-.rar-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+.rar-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 12px; }
 .rar-strip div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px 6px; border-radius: 10px; min-width: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 14%, #1d1729), #15111e); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rc) 45%, transparent); }
 .rar-strip i { width: 9px; height: 9px; transform: rotate(45deg); background: var(--rc); box-shadow: 0 0 6px var(--rc); }
 .rar-strip b { font-family: var(--pixel); font-size: 11px; color: #fff; margin-top: 3px; }
-.rar-strip small { font-size: 8.5px; font-weight: 800; color: var(--rc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rar-strip small { font-size: 7.5px; font-weight: 800; color: var(--rc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .rar-strip div.none { opacity: .4; }
 .bag-card .seg { background: #120e1c; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
 .sell-all { background: linear-gradient(180deg, #2f2747, #1c1729); box-shadow: 0 0 0 2px #0e0b16, inset 0 0 0 1px rgba(201,162,74,.45); }

@@ -12,7 +12,7 @@ export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h
 export const DUNGEON_KEYS_MAX = 5;  // clefs gagnées au maximum en donjon toutes les 12 h, par personnage (ensuite : XP seulement)
 export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
 export const KEY_PRICE = 50;       // une clef coûte 100 Flouze à la boutique (1 clef = 1 coffre)
-export const SELL_PRICE = [1, 3, 7, 16, 40];   // revente d'un objet selon sa rareté (en Flouze)
+export const SELL_PRICE = [1, 3, 7, 16, 40, 100, 250];   // revente d'un objet selon sa rareté (en Flouze)
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
 export const RESET_ID = '2026-10-18-maj';
@@ -34,6 +34,9 @@ export const RARITIES = [
   { id: 2, name: 'Rare', color: '#3d9bff', mult: 3.2 },
   { id: 3, name: 'Épique', color: '#b05cff', mult: 5.5 },
   { id: 4, name: 'Légendaire', color: '#ff9f1a', mult: 9 },
+  // ces deux-là ne sortent jamais des coffres : seulement par fusion (2 Légendaires → Mythique, 2 Mythiques → Chaotique)
+  { id: 5, name: 'Mythique', color: '#ff3d6e', mult: 15 },
+  { id: 6, name: 'Chaotique', color: '#ff2bd6', mult: 25 },
 ];
 
 // Probabilités de rareté dans les coffres (en %)
@@ -312,8 +315,8 @@ export const SETS = {
 const FOCUS = 3, SLOT_PART = 1.2, BONUS_PART = 0.8, REST_PART = 0.25;
 // Les armes donnent aussi du critique et les bottes de l'esquive (en %, selon la rareté).
 // Plafonds : jamais plus de 40 % de critique ni de 25 % d'esquive au total.
-export const ITEM_CRIT = [0.01, 0.02, 0.03, 0.04, 0.06];
-export const ITEM_DODGE = [0.01, 0.015, 0.02, 0.03, 0.04];
+export const ITEM_CRIT = [0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1];
+export const ITEM_DODGE = [0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06];
 export const CRIT_CAP = 0.40, DODGE_CAP = 0.25;
 const SLOT_STAT = { hat: 'vit', armor: 'def', boots: 'spd', amulet: 'lck' };
 const pickFrom = (id, list) => list[[...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % list.length];

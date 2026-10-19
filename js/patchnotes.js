@@ -6,6 +6,17 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1242', date: '19/10/2026', time: '12h42', title: 'Nouvelles raretés : Mythique et Chaotique',
+    sections: [
+      { title: 'Objets', items: [
+        'Deux nouvelles raretés au-dessus de Légendaire : Mythique et Chaotique.',
+        'Elles ne sortent jamais des coffres : uniquement par fusion. 2 Légendaires identiques donnent 1 Mythique, 2 Mythiques identiques donnent 1 Chaotique.',
+        'Stats d’un objet : Légendaire ×9, Mythique ×15, Chaotique ×25 (par rapport à un Commun). Plus de critique et d’esquive aussi.',
+        'Revente : 100 Flouze pour un Mythique, 250 pour un Chaotique.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-19-1211', date: '19/10/2026', time: '12h11', title: 'Bonne semaine !',
     gift: { id: 'bonne-semaine-2026-10-19-1211', amount: 0, combatChests: 1, text: 'Bonne semaine les zgueg' },
     sections: [
