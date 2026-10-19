@@ -676,12 +676,55 @@ Object.assign(MONSTERS, {
 });
 
 export function monsterCanvas(id) {
+  const v = MON_VEC.get(id);
+  if (v) return v;
   return cached('monster:' + id, () => {
     const M = MONSTERS[id];
     const c = render(fromMap(M.rows, M.pal));
     if (M.res) { c.lw /= M.res; c.lh /= M.res; }
     return c;
   });
+}
+
+
+// =====================================================================
+//  MONSTRES VECTORIELS (refonte) : art/monstres/<id>.svg
+//  Recadrés sur le dessin, à la hauteur de l'ancien sprite pixel (un peu plus grands), regard vers la droite.
+// =====================================================================
+const MON_VEC = new Map();
+const MON_FLIP = new Set(['slimeKing', 'wolf', 'demon']);   // dessins de la maquette tournés vers la gauche
+const MON_R = 12;                                           // pixels par unité logique
+export async function loadMonsterArt() {
+  const q = new URL(import.meta.url).search;
+  await Promise.all(Object.keys(MONSTERS).map(async (id) => {
+    try {
+      const res = await fetch(new URL(`../art/monstres/${id}.svg${q}`, import.meta.url));
+      if (!res.ok) return;
+      const txt = await res.text();
+      const [, , vw, vh] = txt.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number);
+      const img = await svgImage(txt);
+      const k = 1.6, big = document.createElement('canvas');
+      big.width = Math.round(vw * k); big.height = Math.round(vh * k);
+      const bx = big.getContext('2d');
+      bx.drawImage(img, 0, 0, big.width, big.height);
+      const data = bx.getImageData(0, 0, big.width, big.height).data;
+      let x0 = big.width, y0 = big.height, x1 = 0, y1 = 0;
+      for (let y = 0; y < big.height; y++) for (let x = 0; x < big.width; x++) if (data[(y * big.width + x) * 4 + 3] > 12) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x1 <= x0) return;
+      const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+      // taille : la hauteur de l'ancien dessin pixel, un peu agrandie (le nouveau dessin est plus fin)
+      const old = cached('monster:' + id, () => { const M = MONSTERS[id]; const c = render(fromMap(M.rows, M.pal)); if (M.res) { c.lw /= M.res; c.lh /= M.res; } return c; });
+      const LH = lh(old) * 1.2, LW = LH * cw / ch;
+      const c = document.createElement('canvas');
+      c.width = Math.round(LW * MON_R); c.height = Math.round(LH * MON_R);
+      const x = c.getContext('2d');
+      x.imageSmoothingQuality = 'high';
+      if (MON_FLIP.has(id)) { x.translate(c.width, 0); x.scale(-1, 1); }
+      x.drawImage(big, x0, y0, cw, ch, 0, 0, c.width, c.height);
+      c.lw = LW; c.lh = LH; c.smooth = true;
+      MON_VEC.set(id, c);
+    } catch (e) { console.warn('Dessin du monstre indisponible :', id, e); }
+  }));
 }
 
 // =====================================================================
