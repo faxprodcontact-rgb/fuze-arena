@@ -196,6 +196,7 @@ function trainingBest() {
 const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `${ico('trophy')} <b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : `${ico('trophy')} Pas encore de record`; };
 
 function onTrainingEntry(e) {
+  onTrainSpells(e);
   if (!T || e.type !== 'action' || e.pet) return;
   if (e.actor === 0) {
     T.acts++;
@@ -223,29 +224,40 @@ function onTrainingEntry(e) {
   }
 }
 
-// Sorts testés à l'entraînement : 4 places, indépendantes des sorts de combat
-const trainSpells = () => (hero.trainSpells || hero.spells).filter(id => SPELLS[id] && SPELLS[id].lvl <= hero.level).slice(0, MAX_ACTIVE_SPELLS);
+// Sorts de l'entraînement : les sorts de combat du perso, sous l'épouvantail. Toucher un sort le fait lancer
+// par le héros à sa prochaine action (combat en direct), et affiche ce qu'il a fait.
+let trainFight = null, trainCast = null;
+const trainSpellList = () => hero.spells.filter(id => SPELLS[id] && SPELLS[id].lvl <= hero.level).slice(0, MAX_ACTIVE_SPELLS);
 function trainSpellsHtml() {
-  const list = trainSpells();
-  return `<div class="train-spells"><span class="tsp-l">${ico('magic')} Sorts testés</span>
-    ${Array.from({ length: MAX_ACTIVE_SPELLS }, (_, i) => list[i]
-      ? `<button class="tsp filled" data-act="trainSlot" data-i="${i}" aria-label="${esc(SPELLS[list[i]].name)}"><canvas class="px" data-spell="${list[i]}"></canvas></button>`
-      : `<button class="tsp" data-act="trainSlot" data-i="${i}" aria-label="Placer un sort">+</button>`).join('')}</div>`;
+  const list = trainSpellList();
+  if (!list.length) return '';
+  return `<div class="train-spells" id="train-spells">
+    ${list.map((id, i) => `<button class="tsp" data-act="trainCast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
+  </div><div class="train-cast" id="train-cast">Touche un sort pour le lancer</div>`;
 }
-function openTrainSlot(i) {
-  const list = trainSpells(), cur = list[i];
-  const all = Object.values(SPELLS).filter(s => s.cls === hero.classId && s.lvl <= hero.level).sort((a, b) => a.lvl - b.lvl);
-  openModal(`
-    <h3>Sort à tester (place ${i + 1})</h3>
-    <p class="hint" style="margin-top:6px">Teste n’importe quel sort débloqué contre l’épouvantail. Tes sorts de combat ne changent pas.</p>
-    <div class="spell-grid">
-      ${all.map(sp => `<button class="sgrid ${sp.id === cur ? 'on' : ''}" data-act="trainPick" data-i="${i}" data-id="${sp.id}"><canvas class="px" data-spell="${sp.id}"></canvas><small>${esc(sp.name)}</small></button>`).join('')}
-    </div>
-    <div class="close-row">
-      ${cur ? `<button class="btn danger" data-act="trainPick" data-i="${i}" data-id="">Vider</button>` : ''}
-      <button class="btn" data-act="trainReset">Mes sorts de combat</button>
-      <button class="btn" data-act="closeModal">Fermer</button>
-    </div>`);
+/** Recharges des sorts (en tours) et sort lancé : met à jour les boutons et la ligne de résultat */
+function onTrainSpells(e) {
+  const box = document.getElementById('train-spells');
+  if (box && e.s && e.s[0] && e.s[0].cd) box.querySelectorAll('.tsp').forEach(b => {
+    const left = Math.max(0, (e.s[0].cd[+b.dataset.i] || 0) - 1);
+    b.classList.toggle('wait', left > 0);
+    b.querySelector('.cd').textContent = left || '';
+  });
+  if (e.type !== 'action' || e.actor !== 0 || e.pet || !trainCast) return;
+  // le héros vient d'agir : on repasse en automatique
+  if (trainFight) trainFight.setManual(false);
+  const asked = trainCast;
+  trainCast = null;
+  if (box) box.querySelectorAll('.tsp.queued').forEach(b => b.classList.remove('queued'));
+  const out = document.getElementById('train-cast');
+  if (!out) return;
+  if (e.id !== asked) { out.innerHTML = `${esc(SPELLS[asked].name)} pas prêt : réessaie`; return; }
+  const dmg = e.results.filter(r => r.type === 'hit' && r.target === 1).reduce((a, r) => a + r.dmg, 0);
+  const crit = e.results.some(r => r.type === 'hit' && r.target === 1 && r.crit);
+  const heal = e.results.filter(r => r.type === 'heal' && r.target === 0).reduce((a, r) => a + r.amount, 0);
+  const parts = [dmg ? `<b>${fmtNum(dmg)}</b> dégâts${crit ? ' <em>critique</em>' : ''}` : '', heal ? `<b class="g">+${fmtNum(heal)}</b> PV` : ''].filter(Boolean);
+  out.innerHTML = `${esc(SPELLS[asked].name)} : ${parts.join(' · ') || 'effet lancé'}`;
+  out.classList.remove('pop'); void out.offsetWidth; out.classList.add('pop');
 }
 
 function startTraining() {
@@ -254,9 +266,10 @@ function startTraining() {
   resetTraining();
   stopPreviews.push(playTraining(cv, () => {
     const me = mySnap();
-    me.spells = trainSpells();   // les sorts placés dans l'entraînement (au départ, ceux de combat)
     const foe = dummySnap(hero.level);
-    return { me, foe, result: E.simulate(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false }) };
+    trainCast = null;
+    trainFight = E.createFight(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false });
+    return { me, foe, result: trainFight };
   }, { onEntry: onTrainingEntry }));
 }
 
@@ -3404,16 +3417,17 @@ const ACTIONS = {
   spellDown: (d) => { const i = hero.spells.indexOf(d.id); if (i >= 0 && i < hero.spells.length - 1) { [hero.spells[i + 1], hero.spells[i]] = [hero.spells[i], hero.spells[i + 1]]; save(); render(); } },
   spellOff: (d) => { hero.spells = hero.spells.filter(id => id !== d.id); save(); render(); },
   spellInfo: (d) => openSpell(d.id),
-  trainSlot: (d) => openTrainSlot(+d.i),
-  trainPick: (d) => {
-    const cur = trainSpells(), i = +d.i;
-    const slots = Array.from({ length: MAX_ACTIVE_SPELLS }, (_, k) => cur[k] || null);
-    if (d.id) { const j = slots.indexOf(d.id); if (j >= 0) slots[j] = slots[i]; slots[i] = d.id; }   // un sort déjà placé change de place
-    else slots[i] = null;
-    hero.trainSpells = slots.filter(Boolean);
-    save(); closeModal(); render(); SFX.click();
+  trainCast: (d) => {
+    const b = document.querySelector(`.tsp[data-i="${d.i}"]`);
+    if (!trainFight || !b) return;
+    if (b.classList.contains('wait')) { toast(`${SPELLS[d.id].name} se recharge encore.`); return; }
+    trainCast = d.id;
+    trainFight.setManual(true);
+    trainFight.queue(d.id);
+    document.querySelectorAll('.tsp.queued').forEach(x => x.classList.remove('queued'));
+    b.classList.add('queued');
+    SFX.click();
   },
-  trainReset: () => { delete hero.trainSpells; save(); closeModal(); render(); SFX.click(); },
   spellEquip: (d) => {
     if (hero.spells.length < MAX_ACTIVE_SPELLS && !hero.spells.includes(d.id) && SPELLS[d.id].lvl <= hero.level) { hero.spells.push(d.id); save(); }
     closeModal(); render(); SFX.click();

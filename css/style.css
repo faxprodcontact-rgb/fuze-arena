@@ -1473,12 +1473,20 @@ h1, h2, h3, h4, b, strong { font-synthesis: none; }
 .open-stage.many .loot.many .loot-card .rar { font-size: 9px; }
 .open-stage.many .close-row { margin-top: 10px; }
 
-/* sorts testés à l'entraînement */
-.train-spells { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
-.train-spells .tsp-l { flex: 1; font-family: var(--pixel); font-size: 14px; color: #fff; text-shadow: var(--ol); display: flex; align-items: center; gap: 6px; }
-.tsp { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: rgba(10,6,34,.55); box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px rgba(255,212,90,.35); color: var(--gold); font-family: var(--pixel); font-size: 22px; }
-.tsp.filled { background: none; box-shadow: none; }
-.tsp canvas { width: 46px; height: 46px; }
+/* sorts de l'entraînement : touchés = lancés par le héros */
+.train-spells { display: flex; justify-content: center; gap: 12px; margin: 12px 0 2px; }
+.tsp { position: relative; width: 52px; height: 52px; border-radius: 13px; transition: transform .1s; }
+.tsp canvas { width: 52px; height: 52px; display: block; }
+.tsp:active { transform: scale(.92); }
+.tsp .cd { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--pixel); font-size: 22px; color: #fff; text-shadow: var(--ol); pointer-events: none; }
+.tsp.wait canvas { filter: grayscale(.7) brightness(.55); }
+.tsp.queued { box-shadow: 0 0 0 3px var(--gold), 0 0 16px rgba(255,212,90,.7); animation: tspPulse .7s ease-in-out infinite alternate; }
+@keyframes tspPulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+.train-cast { text-align: center; font-weight: 800; font-size: 14px; color: var(--muted); min-height: 20px; margin: 6px 0 4px; }
+.train-cast b { font-family: var(--pixel); font-weight: 400; font-size: 18px; color: #ffd45a; text-shadow: var(--ol); }
+.train-cast b.g { color: #7bf09a; }
+.train-cast em { font-style: normal; color: #ff8a7a; }
+.train-cast.pop { animation: pop .4s cubic-bezier(.2,.9,.3,1.5) both; }
 
 /* bouton Passer des donjons (refonte) */
 .btn.small.skip-btn { width: 100%; padding: 6px 6px 9px; border-radius: 11px; font-size: 13px; gap: 4px; flex-wrap: wrap; line-height: 1; color: #fff; }
