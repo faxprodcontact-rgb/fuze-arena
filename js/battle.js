@@ -146,18 +146,165 @@ function sceneLayers(themeId = 'arena') {
   return LAYERS[themeId];
 }
 
-// Décor d'un seul tenant (utilisé par l'animation de guerre)
-const BG = {};
-function background(themeId = 'arena') {
-  if (BG[themeId]) return BG[themeId];
-  const L = sceneLayers(themeId), T = L.T;
-  const c = document.createElement('canvas');
-  c.width = 160; c.height = 90;
+// ------------------------------ Décors vectoriels (refonte) ------------------------------
+// art/decors/<thème>.svg : 3 plans (loin, milieu, sol) dans un repère 480 × 660. 3 px = 1 unité de l'ancien décor
+// (160 × 90), décalé de 130 unités vers le haut : le décor monte jusqu'en haut d'un écran de téléphone.
+// Le fichier donne aussi le ciel, la couleur de la terre sous le décor, les étoiles et le soleil (commentaire THEME).
+const DEC_UP = 130;
+const DEC_R = { loin: 5, milieu: 7, sol: 7 };     // pixels par unité au moment de dessiner les plans
+const DEC_SRC = {};
+export async function loadDecorArt() {
+  const q = new URL(import.meta.url).search;
+  await Promise.all(Object.keys(THEMES).map(async (id) => {
+    try {
+      const res = await fetch(new URL(`../art/decors/${id}.svg${q}`, import.meta.url));
+      if (!res.ok) return;
+      const txt = await res.text();
+      const defs = (txt.match(/<defs>[\s\S]*?<\/defs>/) || [''])[0];
+      const T = JSON.parse(txt.match(/<!-- THEME (\{.*\}) -->/)[1]);
+      const out = { T };
+      for (const m of txt.matchAll(/<!-- PLAN (\w+) (-?\d+) (\d+) -->([\s\S]*?)<!-- FIN \1 -->/g)) {
+        const y0 = +m[2], h = +m[3] - y0;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ${y0} 480 ${h}" width="480" height="${h}">${defs}<g stroke-linejoin="round" stroke-linecap="round">${m[4]}</g></svg>`;
+        const img = new Image();
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        await img.decode();
+        out[m[1]] = { img, top: y0 / 3 - DEC_UP, h: h / 3 };
+      }
+      if (out.loin && out.milieu && out.sol) DEC_SRC[id] = out;
+    } catch (e) { console.warn('Décor indisponible :', id, e); }
+  }));
+}
+// les plans ne sont dessinés en image qu'à la première utilisation du thème (4 thèmes gardés en mémoire)
+const DEC = new Map();
+function decorLayers(id) {
+  if (DEC.has(id)) { const v = DEC.get(id); DEC.delete(id); DEC.set(id, v); return v; }
+  const src = DEC_SRC[id];
+  if (!src) return null;
+  const V = { T: src.T };
+  for (const plan of ['loin', 'milieu', 'sol']) {
+    const { img, top, h } = src[plan], R = DEC_R[plan];
+    const c = document.createElement('canvas');
+    c.width = 160 * R; c.height = Math.round(h * R);
+    const x = c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(img, 0, 0, c.width, c.height);
+    V[plan] = { c, top, h };
+  }
+  DEC.set(id, V);
+  if (DEC.size > 4) DEC.delete(DEC.keys().next().value);
+  return V;
+}
+// nuage vectoriel qui dérive (dessiné une fois)
+let CLOUD = null;
+function cloudSprite(col) {
+  if (CLOUD && CLOUD.col === col) return CLOUD;
+  const c = document.createElement('canvas'); c.width = 240; c.height = 90;
   const x = c.getContext('2d');
-  T.sky.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * 7, 160, 7); });
-  x.drawImage(L.far, 0, 0); x.drawImage(L.mid, 0, 0); x.drawImage(L.gnd, 0, 0);
-  BG[themeId] = c;
+  const bumps = [[46, 58, 28], [86, 40, 36], [134, 34, 40], [176, 48, 30], [204, 62, 20], [120, 64, 34], [62, 68, 22]];
+  const shape = (dx, dy) => { x.beginPath(); bumps.forEach(([bx, by, r]) => { x.moveTo(bx + dx + r, by + dy); x.arc(bx + dx, by + dy, r, 0, Math.PI * 2); }); x.fill(); };
+  x.fillStyle = shade(col, -0.16); shape(0, 0);
+  x.fillStyle = col; shape(-5, -7);
+  x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; shape(0, 0);
+  x.globalCompositeOperation = 'destination-out'; x.fillRect(0, 76, 240, 20);
+  CLOUD = c; CLOUD.col = col;
   return c;
+}
+
+/**
+ * Dessine tout le décor d'une scène (ciel, étoiles, soleil, nuages, 3 plans, terre jusqu'en bas).
+ * W/H/GROUND en unités de la scène ; moving = léger mouvement de caméra (les plans glissent à des vitesses différentes).
+ */
+export function paintScene(ctx, theme, W, H, GROUND, time = 0, moving = true) {
+  const V = decorLayers(theme);
+  const T = V ? V.T : (THEMES[theme] || THEMES.arena);
+  const sb = (W + 24) / 160, top = GROUND - 75 * sb;   // 1 unité de décor = sb unités de scène ; la ligne des pieds = unité 75
+  const Y = u => top + u * sb;
+  const sway = moving ? Math.sin(time * 0.22) * 5 : 0;
+  const hz = Y(V ? T.hz : 62);
+  const smooth = ctx.imageSmoothingEnabled;
+  // ciel en dégradé, du haut de l'écran jusqu'à l'horizon
+  const sg = ctx.createLinearGradient(0, V ? Math.min(0, Y(-110)) : top, 0, hz);
+  T.sky.forEach((c, i) => sg.addColorStop(i / (T.sky.length - 1), c));
+  ctx.fillStyle = sg; ctx.fillRect(-10, -10, W + 20, hz + 12);
+  // étoiles qui scintillent
+  const stars = V ? T.stars : parseInt(T.sky[0].slice(1, 3), 16) + parseInt(T.sky[0].slice(3, 5), 16) + parseInt(T.sky[0].slice(5, 7), 16) < 200;
+  if (stars) {
+    ctx.fillStyle = '#ffffff';
+    const sh = Math.max(20, V ? hz - 30 * sb : top + 40 * sb);
+    for (let j = 0; j < 44; j++) {
+      const sx = (j * 97 + sway * 0.1) % W, sy = (j * 53) % sh, r = j % 5 ? 0.8 : 1.5;
+      ctx.globalAlpha = 0.25 + 0.5 * Math.abs(Math.sin(time * 1.3 + j * 1.7));
+      if (V) { ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill(); if (j % 5 === 0) { ctx.fillRect(sx - 3.5, sy - 0.4, 7, 0.8); ctx.fillRect(sx - 0.4, sy - 3.5, 0.8, 7); } }
+      else ctx.fillRect(sx, sy, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // soleil ou lune, avec son halo
+  if (T.sun) {
+    const sx = V ? W * 0.74 + sway * 0.15 : -12 + sway * 0.15 + 117 * sb, sy = V ? Math.max(30, Y(-42)) : top + 39 * sb, r = 46 * sb;
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, V ? 70 : r);
+    g.addColorStop(0, T.sun[0]); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = V ? 0.45 : 0.35; ctx.fillStyle = g; ctx.fillRect(sx - r * 2, sy - r * 2, r * 4, r * 4);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    if (V) {
+      const rr = T.moon ? 13 : 16;
+      ctx.fillStyle = T.sun[0]; ctx.beginPath(); ctx.arc(sx, sy, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = T.sun[1]; ctx.beginPath(); ctx.arc(sx - rr * 0.18, sy - rr * 0.18, rr * 0.78, 0, Math.PI * 2); ctx.fill();
+      if (T.moon) {
+        ctx.fillStyle = T.sun[0];
+        [[0.3, 0.25, 0.22], [-0.35, 0.3, 0.14], [0.05, -0.35, 0.12]].forEach(([dx, dy, k]) => { ctx.beginPath(); ctx.arc(sx + dx * rr, sy + dy * rr, k * rr, 0, Math.PI * 2); ctx.fill(); });
+      }
+    }
+  }
+  if (V) {
+    ctx.imageSmoothingEnabled = true;
+    // nuages qui dérivent
+    if (T.cloud) {
+      const cs = cloudSprite(T.cloud);
+      for (let j = 0; j < 3; j++) {
+        const cw = (52 + j * 16) * (W / 240), ch = cw * 0.375, cx = ((j * 157 + time * (4 + j * 2)) % (W + cw * 2)) - cw, cy = Math.max(8, hz - (120 - j * 26) * sb) - ch * 0.5;
+        ctx.globalAlpha = 0.95 - j * 0.12; ctx.drawImage(cs, cx, cy, cw, ch);
+      }
+      ctx.globalAlpha = 1;
+    }
+    const dl = (L, dx) => ctx.drawImage(L.c, -12 + dx, Y(L.top), W + 24, L.h * sb);
+    dl(V.loin, sway * 0.25); dl(V.milieu, sway * 0.6); dl(V.sol, 0);
+    // la terre continue jusqu'en bas, en s'assombrissant
+    const yb = Y(V.sol.top + V.sol.h) - 0.5;
+    if (yb < H) {
+      ctx.fillStyle = T.deep; ctx.fillRect(-10, yb, W + 20, H - yb + 10);
+      const g = ctx.createLinearGradient(0, yb, 0, H);
+      g.addColorStop(0, 'rgba(10,8,16,0)'); g.addColorStop(1, 'rgba(10,8,16,0.55)');
+      ctx.fillStyle = g; ctx.fillRect(-10, yb, W + 20, H - yb + 10);
+    }
+    ctx.imageSmoothingEnabled = smooth;
+    return;
+  }
+  // ancien décor pixel (si les dessins n'ont pas pu être chargés)
+  const L = sceneLayers(theme);
+  ctx.drawImage(L.far, -12 + sway * 0.25, top, W + 24, 90 * sb);
+  if (T.cloud) {
+    ctx.fillStyle = T.cloud;
+    for (let j = 0; j < 4; j++) {
+      const cw = (14 + j * 5) * sb, cx = ((j * 137 + time * (5 + j * 2)) % (W + cw * 2)) - cw, cy = top + (6 + j * 6) * sb;
+      ctx.globalAlpha = 0.85 - j * 0.12;
+      ctx.fillRect(cx, cy, cw, 2 * sb); ctx.fillRect(cx + 3 * sb, cy - 2 * sb, cw - 8 * sb, 2 * sb); ctx.fillRect(cx + 6 * sb, cy - 3 * sb, 5 * sb, sb);
+    }
+    ctx.globalAlpha = 1;
+  }
+  const mg = ctx.createLinearGradient(0, top + 40 * sb, 0, top + 62 * sb);
+  mg.addColorStop(0, 'rgba(0,0,0,0)'); mg.addColorStop(1, T.sky[T.sky.length - 1]);
+  ctx.globalAlpha = 0.45; ctx.fillStyle = mg; ctx.fillRect(-10, top + 40 * sb, W + 20, 22 * sb); ctx.globalAlpha = 1;
+  ctx.drawImage(L.mid, -12 + sway * 0.6, top, W + 24, 90 * sb);
+  ctx.drawImage(L.gnd, -12, top, W + 24, 90 * sb);
+  const band = 19 * sb;
+  for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(L.gnd, 0, 71, 160, 19, -12, y, W + 24, band);
+  const g = ctx.createLinearGradient(0, top + 90 * sb, 0, H);
+  g.addColorStop(0, 'rgba(10,8,16,0)'); g.addColorStop(1, 'rgba(10,8,16,0.65)');
+  ctx.fillStyle = g;
+  ctx.fillRect(-10, top + 90 * sb, W + 20, H);
 }
 
 // Ambiance animée de chaque décor
@@ -1020,10 +1167,10 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       const tw = 0.55 + 0.45 * Math.sin(p.ph * 3);
       if (k === 'firefly' || k === 'wisp' || k === 'ember') {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = (k === 'firefly' ? tw : 0.8) * 0.35; ctx.fillStyle = p.col;
-        ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+        ctx.globalAlpha = (k === 'firefly' ? tw : 0.8) * 0.3; ctx.fillStyle = p.col;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3.6, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = k === 'firefly' ? tw : k === 'ember' ? Math.max(0, Math.min(1, (p.y - 10) / 80)) : 0.7;
-        ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.3, 0, Math.PI * 2); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
       } else if (k === 'leaf') {
         ctx.globalAlpha = 0.9; ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, 3, 2); ctx.fillStyle = shade(p.col, -0.3); ctx.fillRect(p.x + (Math.sin(p.ph * 4) > 0 ? 2 : 0), p.y + 1, 1, 1);
@@ -1032,66 +1179,14 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       } else {
         ctx.globalAlpha = (k === 'snow' ? 0.85 : 0.35 * tw); ctx.fillStyle = p.col;
         const sz = k === 'snow' ? (p.front ? 3 : 2) : 2;
-        ctx.fillRect(p.x, p.y, sz, sz);
+        ctx.beginPath(); ctx.arc(p.x + sz / 2, p.y + sz / 2, sz * 0.6, 0, Math.PI * 2); ctx.fill();
       }
     }
     ctx.globalAlpha = 1;
   }
 
   function drawBackground() {
-    const L = sceneLayers(theme), T = L.T;
-    const sb = (W + 24) / 160;              // le décor déborde un peu pour pouvoir bouger
-    const top = GROUND - 75 * sb;           // la ligne du sol tombe sous les pieds
-    const sway = Math.sin(time * 0.22) * 5; // léger mouvement de caméra : les plans bougent à des vitesses différentes
-    const hz = top + 62 * sb;
-    // ciel en dégradé doux
-    const sg = ctx.createLinearGradient(0, top, 0, hz);
-    T.sky.forEach((c, i) => sg.addColorStop(i / (T.sky.length - 1), c));
-    ctx.fillStyle = sg; ctx.fillRect(-10, -10, W + 20, hz + 12);
-    // étoiles qui scintillent (ciels sombres)
-    const dark = parseInt(T.sky[0].slice(1, 3), 16) + parseInt(T.sky[0].slice(3, 5), 16) + parseInt(T.sky[0].slice(5, 7), 16) < 200;
-    if (dark) {
-      ctx.fillStyle = '#ffffff';
-      for (let j = 0; j < 44; j++) {
-        const sy = (j * 53) % Math.max(20, top + 40 * sb);
-        ctx.globalAlpha = 0.25 + 0.5 * Math.abs(Math.sin(time * 1.3 + j * 1.7));
-        ctx.fillRect((j * 97 + sway * 0.1) % W, sy, j % 5 ? 1.5 : 2.5, j % 5 ? 1.5 : 2.5);
-      }
-      ctx.globalAlpha = 1;
-    }
-    // halo du soleil / de la lune
-    if (T.sun) {
-      const sx = -12 + sway * 0.15 + 117 * sb, sy = top + 39 * sb, r = 46 * sb;
-      ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
-      g.addColorStop(0, T.sun[0]); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 0.35; ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    }
-    ctx.drawImage(L.far, -12 + sway * 0.25, top, W + 24, 90 * sb);
-    // nuages qui dérivent
-    if (T.cloud) {
-      ctx.fillStyle = T.cloud;
-      for (let j = 0; j < 4; j++) {
-        const cw = (14 + j * 5) * sb, cx = ((j * 137 + time * (5 + j * 2)) % (W + cw * 2)) - cw, cy = top + (6 + j * 6) * sb;
-        ctx.globalAlpha = 0.85 - j * 0.12;
-        ctx.fillRect(cx, cy, cw, 2 * sb); ctx.fillRect(cx + 3 * sb, cy - 2 * sb, cw - 8 * sb, 2 * sb); ctx.fillRect(cx + 6 * sb, cy - 3 * sb, 5 * sb, sb);
-      }
-      ctx.globalAlpha = 1;
-    }
-    // brume à l'horizon, entre le lointain et le milieu
-    const mg = ctx.createLinearGradient(0, top + 40 * sb, 0, top + 62 * sb);
-    mg.addColorStop(0, 'rgba(0,0,0,0)'); mg.addColorStop(1, T.sky[T.sky.length - 1]);
-    ctx.globalAlpha = 0.45; ctx.fillStyle = mg; ctx.fillRect(-10, top + 40 * sb, W + 20, 22 * sb); ctx.globalAlpha = 1;
-    ctx.drawImage(L.mid, -12 + sway * 0.6, top, W + 24, 90 * sb);
-    ctx.drawImage(L.gnd, -12, top, W + 24, 90 * sb);
-    // le sol continue jusqu'en bas, en s'assombrissant
-    const band = 19 * sb;
-    for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(L.gnd, 0, 71, 160, 19, -12, y, W + 24, band);
-    const g = ctx.createLinearGradient(0, top + 90 * sb, 0, H);
-    g.addColorStop(0, 'rgba(10,8,16,0)'); g.addColorStop(1, 'rgba(10,8,16,0.65)');
-    ctx.fillStyle = g;
-    ctx.fillRect(-10, top + 90 * sb, W + 20, H);
+    paintScene(ctx, theme, W, H, GROUND, time, true);
     drawAmb(false);
   }
 
@@ -1385,10 +1480,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     ctx.imageSmoothingEnabled = false;
     ctx.save();
     ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
-    const bg = background('castle');
-    const sb = (W + 12) / 160, top = GROUND - 75 * sb;
-    ctx.fillStyle = THEMES.castle.sky[0]; ctx.fillRect(-10, -10, W + 20, H + 20);
-    ctx.drawImage(bg, -6, top, W + 12, 90 * sb);
+    paintScene(ctx, 'castle', W, H, GROUND, time, false);
     [...F].sort((a, b) => a.dy - b.dy).forEach(drawOne);
     for (const e of effects) {
       const p = 1 - e.life / e.max;
@@ -1687,17 +1779,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     ctx.save();
     ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     // décor : le même que pour un duel (ciel en dégradé, plans du fond, sol jusqu'en bas de l'écran)
-    const L = sceneLayers(theme), T = L.T;
-    const sb = (W + 24) / 160, top = GROUND - 75 * sb, hz = top + 62 * sb;
-    const sg = ctx.createLinearGradient(0, 0, 0, hz);
-    T.sky.forEach((c, i) => sg.addColorStop(i / (T.sky.length - 1), c));
-    ctx.fillStyle = sg; ctx.fillRect(-10, -10, W + 20, hz + 12);
-    ctx.drawImage(L.far, -12, top, W + 24, 90 * sb);
-    ctx.drawImage(L.mid, -12, top, W + 24, 90 * sb);
-    ctx.drawImage(L.gnd, -12, top, W + 24, 90 * sb);
-    const band = 19 * sb;
-    for (let y = top + 90 * sb; y < H + 10; y += band) ctx.drawImage(L.gnd, 0, 71, 160, 19, -12, y, W + 24, band);
-    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(-10, top + 90 * sb, W + 20, H);
+    paintScene(ctx, theme, W, H, GROUND, time, false);
     [...F].sort((a, b) => a.dy - b.dy).forEach(drawOne);
     for (const e of effects) {
       const p = 1 - e.life / e.max;
