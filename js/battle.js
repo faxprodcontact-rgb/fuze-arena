@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261019132013';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261019132013';
-import { SFX, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261019132013';
+import { CLASSES } from './data.js?v=20261019164950';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261019164950';
+import { SFX, SFX as SFX_ON, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261019164950';
 
 
 const S = 3;                      // taille d'un pixel de sprite
@@ -1435,10 +1435,11 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
  * teams = [équipe A, équipe B] (snapshots), colors = couleur de chaque équipe.
  * Renvoie { promise, setSpeed, skip, destroy } (comme playBattle).
  */
-export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#ff5d6c'], theme = 'castle' } = {}) {
+export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#ff5d6c'], theme = 'castle', silent = false, skipFirst = 0, onEvent = null, speed: speed0 = 1 } = {}) {
   const ctx = canvas.getContext('2d');
+  const SFX = silent ? NO_SFX : SFX_ON;   // combat auto : sans le son
   const W = 360;
-  let H = 240, GROUND = 210, k = 1, alive = true, last = performance.now(), time = 0, shake = 0, speed = 1, banner = null;
+  let H = 240, GROUND = 210, k = 1, alive = true, last = performance.now(), time = 0, shake = 0, speed = speed0, banner = null;
   const SC = 2.5;
   const tweens = [], effects = [], texts = [], timers = [];
   function resize() {
@@ -1471,22 +1472,27 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
   // 4 places par équipe, en losange : 2 devant, 2 derrière (les plus forts devant)
   const SLOTS = [[0.4, -2], [0.3, -42], [0.2, -14], [0.1, -54]];
   const mk = (m, side, j) => {
+    const [px, dy0] = SLOTS[j % SLOTS.length];
+    const dy = H > W ? dy0 : dy0 * 0.55;   // petit écran (combat auto) : les rangs sont plus serrés
+    const base = { s: m, name: m.name, side, dir: side === 0 ? 1 : -1, slotX: side === 0 ? px : 1 - px, dy, pose: 'idle', running: false,
+      offX: 0, offY: 0, rot: 0, alpha: 1, flash: 0, glow: 0, hp: m.maxHp, max: m.maxHp, shown: 1, shield: 0, dead: false, phase: Math.random() * 6, stun: false };
+    if (m.monster) {   // monstre : pas d'arme, dessiné un peu plus petit qu'en donjon (le boss plus gros)
+      const sprite = monsterCanvas(m.monster), sc = SC * (m.boss ? 1 : 0.8);
+      return { ...base, sprite, spriteAtk: sprite, spriteRun: null, weapon: null, sw: lw(sprite) * sc, sh: lh(sprite) * sc, idle: 0, wAng: 0 };
+    }
     const weapon = CLASSES[m.classId].weapon;
-    const [px, dy] = SLOTS[j % SLOTS.length];
     return {
-      s: m, name: m.name, side, dir: side === 0 ? 1 : -1, slotX: side === 0 ? px : 1 - px, dy,
-      sprite: heroCanvas(m.classId, m.dye || null), spriteAtk: heroCanvas(m.classId, m.dye || null, 'atk'), pose: 'idle',
-      spriteRun: [heroCanvas(m.classId, m.dye || null, 'run1'), heroCanvas(m.classId, m.dye || null, 'run2')], running: false,
-      weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon),
-      idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon], offX: 0, offY: 0, rot: 0, alpha: 1, flash: 0, glow: 0,
-      hp: m.maxHp, max: m.maxHp, shown: 1, shield: 0, dead: false, phase: Math.random() * 6, stun: false,
+      ...base, sprite: heroCanvas(m.classId, m.dye || null), spriteAtk: heroCanvas(m.classId, m.dye || null, 'atk'),
+      spriteRun: [heroCanvas(m.classId, m.dye || null, 'run1'), heroCanvas(m.classId, m.dye || null, 'run2')],
+      weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon), sw: HERO_W * SC, sh: HERO_H * SC,
+      idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon],
     };
   };
   const F = [...teamA.map((m, j) => mk(m, 0, j)), ...teamB.map((m, j) => mk(m, 1, j))];
   const baseX = (f) => f.slotX * W;
   const posX = (f) => baseX(f) + f.offX * f.dir;
   const footY = (f) => GROUND + f.dy + f.offY;
-  const mid = (f) => ({ x: posX(f), y: footY(f) - HERO_H * SC * 0.55 });
+  const mid = (f) => ({ x: posX(f), y: footY(f) - f.sh * 0.55 });
   const SHOT = { fireball: ['#ff9f43', '#ffd84a'], ice: ['#6fe3ff', '#e0f7ff'], bolt: ['#ffd84a', '#fff3b0'], lightning: ['#ffd84a', '#ffffff'],
     drain: ['#a64dff', '#e0c8ff'], holy: ['#fff3b0', '#ffffff'], spore: ['#7bed6f', '#c8ffb8'], rock: ['#9a8a74', '#d0c4b0'], rain: ['#6fa8dc', '#e0f0ff'] };
 
@@ -1535,7 +1541,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
         e.results.forEach(r => apply(r, f));
         await tween(f, { offY: 0 }, 160);
       } else if (e.melee && !e.pet) {
-        const dist = Math.max(0, Math.abs(baseX(T) - baseX(f)) - HERO_W * SC * 0.8);
+        const dist = Math.max(0, Math.abs(baseX(T) - baseX(f)) - (f.sw + T.sw) * 0.4);
         const lift = (footY(T) - footY(f));
         f.running = true;
         await tween(f, { offX: dist, offY: lift }, 230, 'inOutQuad');
@@ -1557,7 +1563,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
       } else {
         await tween(f, { wAng: f.idle - 25, offY: -3 }, 100);
         for (let s = 0; s < steps; s++) {
-          const from = { x: posX(f) + 10 * f.dir, y: footY(f) - HERO_H * SC * 0.6 }, to = mid(T);
+          const from = { x: posX(f) + 10 * f.dir, y: footY(f) - f.sh * 0.6 }, to = mid(T);
           const arrow = !e.pet && f.weapon === 'bow' && !SHOT[e.fx];
           const p = { kind: 'shot', x: from.x, y: from.y, arrow, cols: SHOT[e.fx] || (e.pet ? ['#ffd84a', '#fff3b0'] : ['#8a3bd1', '#e0c8ff']), angle: Math.atan2(to.y - from.y, to.x - from.x), life: 1e9, max: 1e9 };
           effects.push(p);
@@ -1634,23 +1640,25 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
 
   function drawOne(f) {
     const x = posX(f), y = footY(f) + (f.dead ? 0 : Math.sin(time * 3 + f.phase) * 0.8);
-    const SW = HERO_W * SC, SH = HERO_H * SC;
+    const SW = f.sw, SH = f.sh;
     ctx.globalAlpha = 0.25 * f.alpha; ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.ellipse(x, footY(f) + 2, 15, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, footY(f) + 2, Math.max(15, SW * 0.4), 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = f.alpha;
     ctx.save();
     ctx.translate(x, y); ctx.scale(f.dir, 1);
     ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
-    const runF = f.running ? Math.floor(time * 9) % 2 : -1;
+    const runF = f.running && f.spriteRun ? Math.floor(time * 9) % 2 : -1;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
     if (f.glow > 0.01) { ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 12 * f.glow; }
     ctx.drawImage(body, -SW / 2, -SH, SW, SH);
     ctx.shadowBlur = 0;
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
-    const Hd = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose);
-    ctx.translate(-SW / 2 + Hd.x * SC, -SH + Hd.y * SC);
-    ctx.rotate((f.wAng * Math.PI) / 180);
-    ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
+    if (f.weapon) {
+      const Hd = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose);
+      ctx.translate(-SW / 2 + Hd.x * SC, -SH + Hd.y * SC);
+      ctx.rotate((f.wAng * Math.PI) / 180);
+      ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
+    }
     ctx.restore();
     if (!f.dead) {
       const top = footY(f) - SH - 5;
@@ -1712,7 +1720,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     // combattants encore debout de chaque côté
     const up = (side) => F.filter(f => f.side === side && !f.dead).length;
     ctx.font = `9px ${FONT}`; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
-    const hy = Math.max(46, GROUND - 150);   // sous le titre, au-dessus de la mêlée
+    const hy = H > W ? Math.max(46, GROUND - 150) : 14;   // sous le titre, au-dessus de la mêlée (en haut si l'écran est petit)
     ctx.textAlign = 'left'; ctx.strokeText(`${up(0)} debout`, 10, hy); ctx.fillStyle = colors[0]; ctx.fillText(`${up(0)} debout`, 10, hy);
     ctx.textAlign = 'right'; ctx.strokeText(`${up(1)} debout`, W - 10, hy); ctx.fillStyle = colors[1]; ctx.fillText(`${up(1)} debout`, W - 10, hy);
     if (banner) {
@@ -1732,22 +1740,32 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     render();
     requestAnimationFrame(frame);
   }
-  function destroy() { alive = false; ro.disconnect(); setQuiet(false); }
+  function destroy() { alive = false; ro.disconnect(); if (!silent) setQuiet(false); }
   requestAnimationFrame(frame);
 
   const promise = (async () => {
     await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
-    await wait(500);
+    // reprise d'un combat déjà commencé : les premiers événements sont appliqués d'un coup, sans animation
+    for (let j = 0; j < skipFirst; j++) {
+      const e = fight.next();
+      if (!e) break;
+      if (e.type === 'ko') { const T = F[e.target]; T.dead = true; T.rot = -85; T.alpha = 0.3; }
+      sync(e.s);
+      if (onEvent) onEvent(e);
+    }
+    for (const f of F) f.shown = Math.max(0, f.hp) / f.max;
+    if (!skipFirst) await wait(500);
     for (let e = fight.next(); e; e = fight.next()) {
       if (!alive) return;
       await playEntry(e);
+      if (onEvent && alive) onEvent(e);
     }
     await wait(300);
   })();
   return {
     promise,
-    setSpeed(v) { speed = v; setQuiet(v > 3); },
-    skip() { speed = 60; setQuiet(true); },
+    setSpeed(v) { speed = v; if (!silent) setQuiet(v > 3); },
+    skip() { speed = 60; if (!silent) setQuiet(true); },
     destroy,
   };
 }

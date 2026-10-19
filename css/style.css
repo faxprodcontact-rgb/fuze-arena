@@ -1354,3 +1354,18 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .fl-row .it canvas { width: 30px; height: auto; }
 .fl-row b { font-size: 13px; }
 .fl-row small { color: var(--rc); font-weight: 800; font-size: 11px; }
+
+/* ---------- Combat auto ---------- */
+.auto-stage { position: relative; height: 190px; margin: 8px -4px 10px; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(255,255,255,.06); }
+.auto-stage canvas { width: 100%; height: 100%; display: block; }
+.auto-head { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 8px; text-align: center; }
+.auto-head b { font-family: var(--pixel); font-size: 10px; color: #7bf09a; }
+.auto-head small { color: var(--muted); font-size: 10.5px; font-weight: 700; }
+.auto-bar { position: relative; height: 16px; border-radius: 8px; background: #120e1c; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.auto-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #2a9a45, #4cd964); transition: width .4s; }
+.auto-bar span { position: relative; display: block; text-align: center; font-size: 10px; font-weight: 800; line-height: 16px; }
+.auto-next { margin: 6px 0 8px; font-size: 11px; color: var(--muted); text-align: center; }
+.auto-next b { color: #fff; }
+.auto-claim canvas.px { width: 16px; height: auto; vertical-align: middle; }
+.auto-empty, .auto-done { margin: 4px 0 0; font-size: 11px; color: var(--muted); text-align: center; }
+.auto-done { color: var(--gold); font-weight: 800; }

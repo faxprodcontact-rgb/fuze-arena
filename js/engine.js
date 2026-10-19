@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, PVP, THRONE, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019132013';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019132013';
+} from './data.js?v=20261019164950';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019164950';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -583,6 +583,73 @@ export function createMelee(A, B, seed, { maxActions = null } = {}) {
     queue() {}, get queued() { return null; }, setManual() {}, get manual() { return false; },
     result() { while (!ended) advance(); out.length = 0; return { log, winner, hp: F.map(f => Math.max(0, Math.round(f.hp))) }; },
   };
+}
+
+// ------------------------------ Combat auto ------------------------------
+// g = palier global (1 à 1000) : difficulté = g / 100 (arrondi au-dessus), palier dans la difficulté = 1 à 100.
+export const autoDiff = (g) => Math.ceil(g / AUTO.paliers);
+export const autoPalier = (g) => ((g - 1) % AUTO.paliers) + 1;
+export const AUTO_LAST = AUTO.diffs * AUTO.paliers;
+export function autoState(acc) {
+  acc.auto ||= { g: 1, n: 0, best: 1, last: Date.now(), bank: { keys: 0, chests: 0 } };
+  return acc.auto;
+}
+/** Les monstres d'un palier : 4 monstres, ou un boss et 2 sbires tous les 10 paliers */
+export function autoMonsters(g) {
+  const pool = DUNGEONS.flatMap(dungeonFoes);
+  const lvl = Math.min(MAX_LEVEL, Math.round(1 + (g - 1) * AUTO.levelPerPalier));
+  const boost = 1 + AUTO.diffBoost * (autoDiff(g) - 1);
+  const boss = g % 10 === 0;
+  return (boss ? [0, 1, 2] : [0, 1, 2, 3]).map(j => {
+    const m = buildMonster({ ...pool[(g * 7 + j * 11) % pool.length], lvl });
+    const k = boost * (boss && j === 0 ? AUTO.boss.power : 1);
+    for (const q in m.stats) m.stats[q] = Math.max(1, Math.round(m.stats[q] * k));
+    m.maxHp = Math.round(m.maxHp * (boss && j === 0 ? AUTO.boss.hp : boss ? 0.8 : 1));
+    if (boss && j === 0) m.boss = true;
+    return m;
+  });
+}
+/** Graine du n-ième combat auto d'un compte (le même combat est montré à l'écran et compté) */
+export const autoSeed = (acc, n) => hashStr(`auto:${acc.pseudo}:${n}`);
+/**
+ * Joue le combat du palier en cours. Victoire : palier suivant (et tous les 10 paliers, 1 clef + 1 coffre en réserve).
+ * Défaite : retour au premier palier de la dizaine (perdu au 37 → 31, donc jamais deux fois la même récompense).
+ */
+export function autoResolve(acc, team) {
+  const st = autoState(acc);
+  const g = st.g;
+  const won = !!team.length && createMelee(team, autoMonsters(g), autoSeed(acc, st.n)).result().winner === 0;
+  st.n++;
+  let reward = false;
+  if (won) {
+    if (g % 10 === 0) { st.bank.keys++; st.bank.chests++; reward = true; }
+    st.g = Math.min(AUTO_LAST + 1, g + 1);   // AUTO_LAST + 1 = tout est fini
+  } else {
+    st.g = Math.floor((g - 1) / 10) * 10 + 1;
+  }
+  st.best = Math.max(st.best, Math.min(st.g, AUTO_LAST));
+  return { g, won, reward };
+}
+/** Combats auto en retard (jeu fermé ou en arrière-plan) : 8 h au maximum, et au plus « max » combats d'un coup */
+export function autoCatchUp(acc, team, max = 40, now = Date.now()) {
+  const st = autoState(acc);
+  if (st.g > AUTO_LAST) { st.last = now; return []; }
+  if (now - st.last > AUTO.offlineMaxMs) st.last = now - AUTO.offlineMaxMs;
+  const out = [];
+  while (now - st.last >= AUTO.palierMs && out.length < max && st.g <= AUTO_LAST) {
+    out.push(autoResolve(acc, team));
+    st.last += AUTO.palierMs;
+  }
+  return out;
+}
+/** Récupère la réserve : les clefs pour le perso actif, les coffres de combat pour le compte */
+export function autoClaim(acc, hero) {
+  const b = autoState(acc).bank;
+  const got = { keys: b.keys, chests: b.chests };
+  hero.keys = (hero.keys || 0) + b.keys;
+  acc.combatChests += b.chests;
+  b.keys = 0; b.chests = 0;
+  return got;
 }
 
 // ------------------------------ Le trône ------------------------------

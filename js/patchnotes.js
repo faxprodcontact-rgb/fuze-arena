@@ -6,6 +6,18 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1649', date: '19/10/2026', time: '16h49', title: 'Nouveau : le combat auto',
+    sections: [
+      { title: 'Combat auto', items: [
+        'Tout en haut de l’onglet Combats : tes 4 persos se battent tout seuls contre des vagues de monstres, en continu.',
+        '10 difficultés de 100 paliers, à la suite. Un palier toutes les 30 secondes, même quand le jeu est fermé (jusqu’à 8 h rattrapées à ton retour).',
+        'Tous les 10 paliers : 1 clef + 1 coffre de combat mis en réserve. Récupère la réserve quand tu veux (les clefs vont à ton perso actif).',
+        'Une défaite te renvoie au début de la dizaine : perdu au palier 37 → retour au 31.',
+        'Tous les 10 paliers, un boss t’attend. Pas d’XP dans ce mode.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-19-1320', date: '19/10/2026', time: '13h20', title: 'Tout fusionner d’un coup',
     sections: [
       { title: 'Sac', items: [

@@ -646,6 +646,14 @@ export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
 // Le trône : classement de la semaine (lundi 0 h), défis illimités contre ceux au-dessus de soi (échange de places)
 // clefs de fin de semaine pour CHAQUE perso du compte : roi 5, 2e 3, 3e 2, tous les autres 1
 export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
+// Combat auto : 10 difficultés de 100 paliers, joués à la suite par tes 4 persos, tout seuls (même jeu fermé, 8 h max)
+// Un palier toutes les 30 s. Tous les 10 paliers : 1 clef + 1 coffre de combat (en réserve). Défaite : retour au palier x1.
+export const AUTO = {
+  palierMs: 30000, offlineMaxMs: 8 * 3600 * 1000, diffs: 10, paliers: 100,
+  levelPerPalier: 0.1,      // niveau des monstres = 1 + 0,1 par palier (palier 1000 = niveau 100)
+  diffBoost: 0.03,          // + 3 % de stats par difficulté
+  boss: { power: 1.2, hp: 2.6 },   // tous les 10 paliers : un boss et 2 sbires
+};
 export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
 
 export const COSMETICS = [
