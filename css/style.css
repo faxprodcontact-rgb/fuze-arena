@@ -1369,3 +1369,11 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .auto-claim canvas.px { width: 16px; height: auto; vertical-align: middle; }
 .auto-empty, .auto-done { margin: 4px 0 0; font-size: 11px; color: var(--muted); text-align: center; }
 .auto-done { color: var(--gold); font-weight: 800; }
+
+/* en-tête de fenêtre qui reste en haut quand on fait défiler, avec une croix pour fermer */
+.modal-top { position: sticky; top: -20px; z-index: 3; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  margin: -20px -16px 0; padding: 20px 16px 10px; background: #2a2340; box-shadow: 0 6px 10px -6px rgba(0,0,0,.6); }
+.modal-top h3 { margin: 6px 0 0; }
+.modal-x { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #3d3456; color: #fff; font-size: 22px; line-height: 1;
+  font-weight: 800; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 2px 6px rgba(0,0,0,.4); }
+.modal-x:active { transform: scale(.92); }
