@@ -1345,3 +1345,12 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .tr-rank { position: absolute; top: 4px; left: 6px; font-family: var(--pixel); font-size: 9px; color: var(--muted); }
 .tr-go { margin-top: 4px; padding: 4px 6px; font-size: 8px; max-width: 100%; white-space: nowrap; }
 .tr-go canvas.ico { width: 10px; height: 10px; }
+
+/* Tout fusionner : liste des objets obtenus */
+.fuse-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; max-height: 50vh; overflow-y: auto; }
+.fl-row { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left;
+  padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--rc) 12%, #17131f); }
+.fl-row .it { grid-row: span 2; position: relative; width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; }
+.fl-row .it canvas { width: 30px; height: auto; }
+.fl-row b { font-size: 13px; }
+.fl-row small { color: var(--rc); font-weight: 800; font-size: 11px; }

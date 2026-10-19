@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019130856';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019130856';
+} from './data.js?v=20261019132013';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019132013';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -912,6 +912,21 @@ export function fuse(hero, itemId, rarity) {
   const slot = ITEMS[itemId].slot;
   if (wasEquipped) hero.equipped[slot] = res.uid;
   return res;
+}
+
+/**
+ * Fusionne tout ce qui peut l'être, en chaîne : on part des Communs, et les objets créés peuvent à leur tour
+ * être fusionnés (2 Communs → 1 Peu commun, et s'il y en avait déjà un → 1 Rare…).
+ * Renvoie { fusions, made } : le nombre de fusions et les objets obtenus à la fin (ceux qui n'ont pas été refusionnés).
+ */
+export function fuseAll(hero) {
+  const created = [];
+  for (let r = 0; r < RARITIES.length - 1; r++) {
+    const ids = [...new Set(hero.inventory.filter(i => i.rarity === r).map(i => i.itemId))];
+    for (const itemId of ids) while (stackOf(hero, itemId, r).length >= 2) created.push(fuse(hero, itemId, r));
+  }
+  const left = new Set(hero.inventory.map(i => i.uid));
+  return { fusions: created.length, made: created.filter(it => left.has(it.uid)) };
 }
 
 // ------------------------------- Bots ----------------------------------

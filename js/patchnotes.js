@@ -6,6 +6,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1320', date: '19/10/2026', time: '13h20', title: 'Tout fusionner d’un coup',
+    sections: [
+      { title: 'Sac', items: [
+        'Nouveau bouton « Tout fusionner » dans le Sac : toutes les fusions possibles d’un coup, en chaîne (les objets obtenus sont refusionnés tant que c’est possible).',
+        'Avant de valider, tu vois la liste des objets que tu vas obtenir.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-19-1308', date: '19/10/2026', time: '13h08', title: 'Nouveau mode : Le trône',
     sections: [
       { title: 'Le trône', items: [

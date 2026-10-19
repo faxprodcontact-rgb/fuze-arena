@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019130856';
-import * as E from './engine.js?v=20261019130856';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019130856';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019130856';
-import { hashStr, makeRng } from './rng.js?v=20261019130856';
-import { APP_VERSION } from './version.js?v=20261019130856';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019130856';
-import * as NET from './net.js?v=20261019130856';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019130856';
+} from './data.js?v=20261019132013';
+import * as E from './engine.js?v=20261019132013';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019132013';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019132013';
+import { hashStr, makeRng } from './rng.js?v=20261019132013';
+import { APP_VERSION } from './version.js?v=20261019132013';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019132013';
+import * as NET from './net.js?v=20261019132013';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019132013';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -650,11 +650,23 @@ function viewBag() {
         <button class="${bagMode === 'rarity' ? 'on' : ''}" data-act="bagMode" data-mode="rarity">Par rareté</button>
         <button class="${bagMode === 'set' ? 'on' : ''}" data-act="bagMode" data-mode="set">Par panoplie</button>
       </div>
+      ${countFusable() ? `<button class="btn small block fuse-all" style="margin-bottom:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuseAll">${ico('sparkle')} Tout fusionner</button>` : ''}
       ${body}
       ${commons ? `<button class="btn small block sell-all" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
       <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
       ${moreBtn('bag')}
     </section>`;
+}
+
+/** Liste des objets obtenus par « Tout fusionner », les plus rares d'abord */
+function fuseSummary(made) {
+  const groups = {};
+  for (const it of made) (groups[it.itemId + ':' + it.rarity] ||= { ...it, n: 0 }).n++;
+  return Object.values(groups).sort((a, b) => b.rarity - a.rarity).map(g => `
+    <div class="fl-row" style="--rc:${RARITIES[g.rarity].color}">
+      <span class="it r${g.rarity}" style="--rc:${RARITIES[g.rarity].color}"><canvas class="px" data-icon="${g.itemId}"></canvas></span>
+      <b>${esc(ITEMS[g.itemId].name)}</b><small>${RARITIES[g.rarity].name}${g.n > 1 ? ` ×${g.n}` : ''}</small>
+    </div>`).join('');
 }
 
 function statLines(stats, compare = null) {
@@ -3120,6 +3132,31 @@ const ACTIONS = {
       if (ic) ic.classList.add('burst');
       toast(`Fusion réussie : ${ITEMS[res.itemId].name} ${RARITIES[res.rarity].name} !`);
     }, 600);
+  },
+  fuseAll: (d) => {
+    // d'abord, on montre ce que ça va donner (sur une copie du sac), puis on confirme
+    const preview = E.fuseAll(JSON.parse(JSON.stringify(hero)));
+    if (!preview.fusions) return;
+    if (!d.sure) {
+      openModal(`
+        <h3>${ico('sparkle')} Tout fusionner ?</h3>
+        <p class="hint" style="margin-top:8px"><b>${preview.fusions} fusion${preview.fusions > 1 ? 's' : ''}</b> en chaîne : les objets obtenus sont refusionnés tant que c’est possible. Ton équipement reste équipé (avec sa nouvelle rareté).</p>
+        <div class="fuse-list">${fuseSummary(preview.made)}</div>
+        <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn primary" data-act="fuseAll" data-sure="1">Fusionner</button></div>`);
+      return;
+    }
+    const res = E.fuseAll(hero);
+    for (let i = 0; i < res.fusions; i++) E.missionEvent(acc, 'fuse');
+    SFX.fuse();
+    save();
+    closeModal();
+    render();
+    const best = Math.max(...res.made.map(it => it.rarity));
+    openModal(`
+      <h3>${ico('sparkle')} ${res.fusions} fusion${res.fusions > 1 ? 's' : ''} réussie${res.fusions > 1 ? 's' : ''} !</h3>
+      <div class="fuse-list">${fuseSummary(res.made)}</div>
+      <div class="close-row"><button class="btn primary" data-act="closeModal">Super</button></div>`);
+    SFX.loot(best);
   },
   fight: (d) => startFight(d.id),
   friendly: (d) => startFriendly(d.id),
