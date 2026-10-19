@@ -442,6 +442,9 @@ const PET_HD = {
 };
 
 export function petCanvas(itemId) {
+  return vecArt('familiers', itemId) || petCanvasPixel(itemId);
+}
+export function petCanvasPixel(itemId) {
   return cached('pet2:' + itemId, () => {
     const it = ITEMS[itemId];
     const [m, l] = it.colors;
@@ -820,9 +823,12 @@ Object.assign(PET_MAPS, {
 });
 
 export function itemIcon(itemId) {
+  return vecArt(ITEMS[itemId].slot === 'pet' ? 'familiers' : 'objets', itemId) || itemIconPixel(itemId);
+}
+export function itemIconPixel(itemId) {
   return cached('icon:' + itemId, () => {
     const it = ITEMS[itemId];
-    if (it.slot === 'pet') return petCanvas(itemId);
+    if (it.slot === 'pet') return petCanvasPixel(itemId);
     const [m, a] = it.colors;
     const skin = it.skin || '#f1c08f';
     const pal = {
@@ -1137,6 +1143,53 @@ export function modeEmblem(id) {
 }
 
 
+
+// =====================================================================
+//  OBJETS, FAMILIERS ET SORTS VECTORIELS (refonte) : art/objets.json, art/familiers.json, art/sorts.json
+//  ({ id: "<svg…>" }, générés par refonte/outils/objets.cjs). Images décodées au démarrage, dessinées à la 1re utilisation.
+// =====================================================================
+const ART_IMG = { objets: new Map(), familiers: new Map(), sorts: new Map() };
+const ART_CV = new Map();
+export async function loadItemArt() {
+  const q = new URL(import.meta.url).search;
+  await Promise.all(Object.keys(ART_IMG).map(async (k) => {
+    try {
+      const res = await fetch(new URL(`../art/${k}.json${q}`, import.meta.url));
+      if (!res.ok) return;
+      const all = await res.json();
+      await Promise.all(Object.entries(all).map(async ([id, svg]) => { try { ART_IMG[k].set(id, await svgImage(svg)); } catch (e) { /* dessin pixel */ } }));
+    } catch (e) { console.warn('Dessins indisponibles :', k, e); }
+  }));
+}
+function vecArt(k, id) {
+  const key = k + ':' + id;
+  if (ART_CV.has(key)) return ART_CV.get(key);
+  const img = ART_IMG[k].get(id);
+  if (!img) return null;
+  let c;
+  if (k === 'familiers') {
+    // recadré sur le dessin, à la hauteur de l'ancien familier pixel (même taille en combat)
+    const big = document.createElement('canvas'); big.width = big.height = 192;
+    const bx = big.getContext('2d'); bx.imageSmoothingQuality = 'high'; bx.drawImage(img, 0, 0, 192, 192);
+    const data = bx.getImageData(0, 0, 192, 192).data;
+    let x0 = 192, y0 = 192, x1 = 0, y1 = 0;
+    for (let y = 0; y < 192; y++) for (let x = 0; x < 192; x++) if (data[(y * 192 + x) * 4 + 3] > 12) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 <= x0) return null;
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+    c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    c.getContext('2d').drawImage(big, x0, y0, cw, ch, 0, 0, cw, ch);
+    const old = petCanvasPixel(id);
+    c.lh = lh(old) * 1.1; c.lw = c.lh * cw / ch;
+  } else {
+    c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, 128, 128);
+    c.lw = c.lh = 16;
+  }
+  c.smooth = true;
+  ART_CV.set(key, c);
+  return c;
+}
+
 // =====================================================================
 //  ICÔNES VECTORIELLES (refonte) : art/ui/<nom>.svg, générées par refonte/outils/icones.cjs
 //  Elles remplacent les icônes pixel : petites icônes, emblèmes des modes (emb-*), coffres, Flouze, clef.
@@ -1297,6 +1350,9 @@ function spellBadge(sp) {
 }
 /** Icône carrée d'un sort (16×16 pixels) */
 export function spellIcon(id) {
+  return vecArt('sorts', id) || spellIconPixel(id);
+}
+export function spellIconPixel(id) {
   return cached('spell:' + id, () => {
     const sp = SPELLS[id] || {};
     const [gname, over] = SPELL_ART[id] || ['star'];

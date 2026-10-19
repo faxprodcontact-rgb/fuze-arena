@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « guerre » (préfixe embwar-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « guerre » (préfixe embwar-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="embwar-c0"><path d="M33 60L13 6L18 4L37 58Z"/></clipPath><clipPath id="embwar-c1"><path d="M31 60L51 6L46 4L27 58Z"/></clipPath><clipPath id="embwar-c2"><path d="M14 8C8 9 4 13 2 16L8 38C11 34 16 32 22 30Z"/></clipPath><clipPath id="embwar-c3"><path d="M50 8C56 9 60 13 62 16L56 38C53 34 48 32 42 30Z"/></clipPath><clipPath id="embwar-c4"><path d="M11.5 6A3.5 3.5 0 1 0 18.5 6A3.5 3.5 0 1 0 11.5 6Z"/></clipPath><clipPath id="embwar-c5"><path d="M45.5 6A3.5 3.5 0 1 0 52.5 6A3.5 3.5 0 1 0 45.5 6Z"/></clipPath>
 <linearGradient id="embwar-e6-bouclier-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7c4"/><stop offset="0.45" stop-color="#f7bc2a"/><stop offset="1" stop-color="#d98a16"/></linearGradient>
 <clipPath id="embwar-e6-bouclier-bordure-doree"><path d="M32 5.4C39.6 9.4 47.6 10.4 55.6 9.4C57 31 52 47.6 32 58.6C12 47.6 7 31 8.4 9.4C16.4 10.4 24.4 9.4 32 5.4Z"/></clipPath>

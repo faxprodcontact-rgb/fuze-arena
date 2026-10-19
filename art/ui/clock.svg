@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « horloge » (préfixe clock-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « horloge » (préfixe clock-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="clock-c0"><path d="M29 3L35 3Q37 3 37 5L37 8Q37 10 35 10L29 10Q27 10 27 8L27 5Q27 3 29 3Z"/></clipPath><clipPath id="clock-c1"><path d="M7 35A25 25 0 1 0 57 35A25 25 0 1 0 7 35Z"/></clipPath><clipPath id="clock-c2"><path d="M13.5 35A18.5 18.5 0 1 0 50.5 35A18.5 18.5 0 1 0 13.5 35Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M29 3L35 3Q37 3 37 5L37 8Q37 10 35 10L29 10Q27 10 27 8L27 5Q27 3 29 3Z" fill="#1b1530" stroke="#1b1530" stroke-width="6"/><g clip-path="url(#clock-c0)"><rect x="-8" y="-8" width="80" height="80" fill="#8f4c0a"/><path transform="translate(-1.28 -1.44)" d="M29 3L35 3Q37 3 37 5L37 8Q37 10 35 10L29 10Q27 10 27 8L27 5Q27 3 29 3Z" fill="#cd7e15"/><path transform="translate(-3.2 -3.52)" d="M29 3L35 3Q37 3 37 5L37 8Q37 10 35 10L29 10Q27 10 27 8L27 5Q27 3 29 3Z" fill="#f7bc2a"/></g><path d="M29 3L35 3Q37 3 37 5L37 8Q37 10 35 10L29 10Q27 10 27 8L27 5Q27 3 29 3Z" fill="none" stroke="#1b1530" stroke-width="2.2"/>

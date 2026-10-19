@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « amulette » (préfixe amulet-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « amulette » (préfixe amulet-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="amulet-c0"><path d="M32 26L47 41L32 59L17 41Z"/></clipPath><clipPath id="amulet-c1"><path d="M32 32L41 41L32 52L23 41Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M13 5C13 23 23 30 32 31C41 30 51 23 51 5" fill="none" stroke="#1b1530" stroke-width="7"/><path d="M13 5C13 23 23 30 32 31C41 30 51 23 51 5" fill="none" stroke="#f7bc2a" stroke-width="2.6"/><path d="M13 5C13 23 23 30 32 31C41 30 51 23 51 5" fill="none" stroke="#fff7c4" stroke-width="1" transform="translate(-0.6 -0.8)"/>

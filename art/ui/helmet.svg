@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « casque » (préfixe helmet-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « casque » (préfixe helmet-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="helmet-c0"><path d="M24 8C26 2 38 2 40 8L38 16L26 16Z"/></clipPath><clipPath id="helmet-c1"><path d="M11 42C11 22 19 10 32 10C45 10 53 22 53 42L53 52L11 52Z"/></clipPath><clipPath id="helmet-c2"><path d="M31.5 33L32.5 33Q35 33 35 35.5L35 49.5Q35 52 32.5 52L31.5 52Q29 52 29 49.5L29 35.5Q29 33 31.5 33Z"/></clipPath><clipPath id="helmet-c3"><path d="M11 49L53 49Q56 49 56 52L56 54Q56 57 53 57L11 57Q8 57 8 54L8 52Q8 49 11 49Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M24 8C26 2 38 2 40 8L38 16L26 16Z" fill="#1b1530" stroke="#1b1530" stroke-width="6"/><g clip-path="url(#helmet-c0)"><rect x="-8" y="-8" width="80" height="80" fill="#6e1129"/><path transform="translate(-0.8 -0.9)" d="M24 8C26 2 38 2 40 8L38 16L26 16Z" fill="#a81d35"/><path transform="translate(-2 -2.2)" d="M24 8C26 2 38 2 40 8L38 16L26 16Z" fill="#e3343d"/></g><path d="M24 8C26 2 38 2 40 8L38 16L26 16Z" fill="none" stroke="#1b1530" stroke-width="2.2"/>

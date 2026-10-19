@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « médaille 2 » (préfixe medal2-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « médaille 2 » (préfixe medal2-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="medal2-c0"><path d="M18 3L30 3L35 22L26 26Z"/></clipPath><clipPath id="medal2-c1"><path d="M46 3L34 3L29 22L38 26Z"/></clipPath><clipPath id="medal2-c2"><path d="M14 40A18 18 0 1 0 50 40A18 18 0 1 0 14 40Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M18 3L30 3L35 22L26 26Z" fill="#1b1530" stroke="#1b1530" stroke-width="6"/><g clip-path="url(#medal2-c0)"><rect x="-8" y="-8" width="80" height="80" fill="#3773d8"/><path transform="translate(-0.56 -0.63)" d="M18 3L30 3L35 22L26 26Z" fill="#3773d8"/><path transform="translate(-1.4 -1.54)" d="M18 3L30 3L35 22L26 26Z" fill="#3773d8"/></g><path d="M18 3L30 3L35 22L26 26Z" fill="none" stroke="#1b1530" stroke-width="2.2"/>

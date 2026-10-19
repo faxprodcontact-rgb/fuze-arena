@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Aperçu des objets, familiers et sorts : ancien dessin pixel à gauche, nouveau dessin vectoriel à droite.
+     ?k=objets|sorts ; à ouvrir via python3 -m http.server 8091 à la racine du dossier. -->
+<meta charset="utf-8">
+<body style="margin:0;padding:12px;background:linear-gradient(180deg,#221a5e,#100a30);color:#b8afe6;font:10px sans-serif">
+<div id="g" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+<script type="module">
+import { ITEMS, SPELLS } from '../js/data.js';
+import * as S from '../js/sprites.js';
+const q = new URLSearchParams(location.search), kind = q.get('k') || 'objets', big = +(q.get('s') || 64);
+if (S.loadItemArt) await S.loadItemArt();
+const g = document.getElementById('g');
+const only = q.get('ids');
+const ids = only ? only.split(',') : kind === 'sorts' ? Object.keys(SPELLS).filter(id => !/^[xr]_/.test(id)) : Object.keys(ITEMS);
+for (const id of ids) {
+  const d = document.createElement('div'); d.style.cssText = `width:${big * 2 + 16}px;text-align:center`;
+  const a = document.createElement('canvas'), b = document.createElement('canvas');
+  for (const c of [a, b]) { c.style.cssText = `width:${big}px;height:${big}px;object-fit:contain;image-rendering:pixelated`; }
+  const old = kind === 'sorts' ? S.spellIconPixel?.(id) : S.itemIconPixel?.(id);
+  if (old) S.paint(a, old, { scale: 4 });
+  S.paint(b, kind === 'sorts' ? S.spellIcon(id) : S.itemIcon(id), { scale: 4 });
+  d.append(a, b, document.createElement('br'), id + (kind === 'sorts' ? '' : ' · ' + ITEMS[id].slot + ':' + ITEMS[id].icon));
+  g.append(d);
+}
+document.title = 'ok';
+</script>

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « tour infinie » (préfixe embtower-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « tour infinie » (préfixe embtower-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="embtower-c0"><path d="M33 3L46 7L33 11Z"/></clipPath><clipPath id="embtower-c1"><path d="M20 28L32 11L44 28Z"/></clipPath><clipPath id="embtower-c2"><path d="M19 62L21 28L43 28L45 62Z"/></clipPath><clipPath id="embtower-c3"><path d="M16 25H48V31H16Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M32 3V14" fill="none" stroke="#1b1530" stroke-width="6.800000000000001"/><path d="M32 3V14" fill="none" stroke="#9a6234" stroke-width="2.4"/>

@@ -9,7 +9,7 @@ import {
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt } from './sprites.js?v=20261019191031';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt } from './sprites.js?v=20261019191031';
 import { hashStr, makeRng } from './rng.js?v=20261019191031';
 import { APP_VERSION } from './version.js?v=20261019191031';
 import { PATCH_NOTES } from './patchnotes.js?v=20261019191031';
@@ -3504,7 +3504,7 @@ setInterval(checkUpdate, 5 * 60 * 1000);
 
 async function boot() {
   // dessins vectoriels des héros (refonte) : chargés une fois avant le premier affichage
-  await Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {})]);
+  await Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {}), loadItemArt().catch(() => {})]);
   if (NET.online) {
     app.innerHTML = '<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
     try {

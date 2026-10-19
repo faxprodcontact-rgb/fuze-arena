@@ -823,7 +823,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       const { x: px, y: py, pw, ph } = petBox(f);
       ctx.save();
       ctx.translate(px + pw / 2, 0); ctx.scale(f.dir, 1); ctx.translate(-(px + pw / 2), 0);
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = !!f.pet.smooth;
       ctx.drawImage(f.pet, px, py, pw, ph);
       ctx.restore();
     }
@@ -1287,7 +1287,7 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.globalAlpha = 0.25; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(ox + HERO_W * sc / 2, (HERO_H + 2.5) * sc, 9 * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    if (pet) { ctx.imageSmoothingEnabled = false; ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
+    if (pet) { ctx.imageSmoothingEnabled = !!pet.smooth; ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
     ctx.drawImage(sprite, ox, oy, HERO_W * sc, HERO_H * sc);
     ctx.save();
     ctx.translate(ox + hand.x * sc, oy + hand.y * sc);
@@ -1912,7 +1912,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     // familier
     if (pet) {
       const pw = lw(pet) * 0.9, ph = lh(pet) * 0.9;
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = !!pet.smooth;
       ctx.drawImage(pet, ox + 2 - pw * 0.3, feet - ph + Math.sin(t * 3.2) * 0.8, pw, ph);
       ctx.imageSmoothingEnabled = !!idle.smooth;
     }

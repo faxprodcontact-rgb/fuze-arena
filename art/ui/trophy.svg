@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « coupe » (préfixe trophy-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « coupe » (préfixe trophy-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="trophy-c0"><path d="M28 37L36 37L35 47L29 47Z"/></clipPath><clipPath id="trophy-c1"><path d="M21 46L43 46Q46 46 46 49L46 54Q46 57 43 57L21 57Q18 57 18 54L18 49Q18 46 21 46Z"/></clipPath><clipPath id="trophy-c2"><path d="M15 8L49 8L47 24C46 33 40 39 32 39C24 39 18 33 17 24Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M18 14C7 13 7 28 20 29" fill="none" stroke="#1b1530" stroke-width="8.4"/><path d="M18 14C7 13 7 28 20 29" fill="none" stroke="#f7bc2a" stroke-width="4"/><path d="M18 14C7 13 7 28 20 29" fill="none" stroke="#fff7c4" stroke-width="1.2" transform="translate(-0.6 -0.8)"/>

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « cadenas » (préfixe lock-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « cadenas » (préfixe lock-), générée par refonte/outils/icones.cjs -->
 <defs><clipPath id="lock-c0"><path d="M18 27L46 27Q52 27 52 33L52 52Q52 58 46 58L18 58Q12 58 12 52L12 33Q12 27 18 27Z"/></clipPath></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M21 30V20C21 12 26 7 32 7C38 7 43 12 43 20V30" fill="none" stroke="#1b1530" stroke-width="9.4"/><path d="M21 30V20C21 12 26 7 32 7C38 7 43 12 43 20V30" fill="none" stroke="#c3cce0" stroke-width="5"/><path d="M21 30V20C21 12 26 7 32 7C38 7 43 12 43 20V30" fill="none" stroke="#ffffff" stroke-width="1.5" transform="translate(-0.6 -0.8)"/>

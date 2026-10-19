@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « arène » (préfixe embarena-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « arène » (préfixe embarena-), générée par refonte/outils/icones.cjs -->
 <defs>
 <linearGradient id="embarena-e0-epee-acier" x1="0" y1="0" x2="1" y2="0.35"><stop offset="0" stop-color="#f7f9ff"/><stop offset="0.45" stop-color="#c3cce0"/><stop offset="1" stop-color="#8a95b2"/></linearGradient>
 <linearGradient id="embarena-e0-epee-or-horizontal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff7c4"/><stop offset="0.45" stop-color="#f7bc2a"/><stop offset="1" stop-color="#d98a16"/></linearGradient>

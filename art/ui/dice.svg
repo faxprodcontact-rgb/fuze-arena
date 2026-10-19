@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Fuze Arena : icône « dé » (préfixe dice-), générée par refonte/outils/icones.cjs -->
+<!-- Fuze Arena : « dé » (préfixe dice-), générée par refonte/outils/icones.cjs -->
 <defs></defs>
 <g stroke-linejoin="round" stroke-linecap="round">
 <path d="M32 6L56 17L56 46L32 58L8 46L8 17Z" fill="#1b1530" stroke="#1b1530" stroke-width="6"/>
