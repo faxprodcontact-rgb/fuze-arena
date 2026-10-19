@@ -1600,7 +1600,7 @@ function openPatchNotes() {
         <div class="gift-art"><canvas class="px" data-chest="war" data-open="${got ? 1 : 0}"></canvas></div>
         <p>${esc(g.text)}</p>
         ${got ? `<div class="gift-done">${ico('check')} ${giftLabel(g)} récupéré${g.amount ? 's' : ''}</div>`
-          : `<button class="btn primary block gift-btn" data-act="claimGift" data-id="${g.id}">Récupérer ${g.amount ? `${g.amount}<canvas class="px" data-clat></canvas>` : giftLabel(g)}</button>`}
+          : `<button class="btn primary block gift-btn" data-act="claimGift" data-id="${g.id}">Récupérer ${giftLabel(g)}</button>`}
       </div>`;
   };
   openModal(`
