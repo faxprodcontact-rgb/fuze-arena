@@ -628,13 +628,35 @@ function invGrid(list) {
     </button>`).join('')}</div>`;
 }
 
+/** Choix d'un objet pour un emplacement : l'objet porté en haut, puis tous ceux qui vont à cet endroit */
+function openSlotPicker(slot) {
+  const cur = E.equippedItems(hero)[slot];
+  const list = stacks().filter(s => ITEMS[s.itemId].slot === slot);
+  const statsTxt = (itemId, r) => Object.entries(E.itemStats(itemId, r)).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ');
+  const row = (s) => `
+    <button class="pick-row ${s.equipped ? 'on' : ''}" style="--rc:${RARITIES[s.rarity].color}" data-act="${s.equipped ? 'item' : 'equip'}" data-id="${s.itemId}" data-r="${s.rarity}">
+      <span class="it r${s.rarity} pick-ic" style="--rc:${RARITIES[s.rarity].color}"><canvas class="px" data-icon="${s.itemId}"></canvas>${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}</span>
+      <span class="pick-txt"><b>${esc(ITEMS[s.itemId].name)}</b><small style="color:${RARITIES[s.rarity].color}">${RARITIES[s.rarity].name}${ITEMS[s.itemId].set ? ` · ${esc(SETS[ITEMS[s.itemId].set].name)}` : ''}</small><small class="pick-st">${statsTxt(s.itemId, s.rarity)}</small></span>
+      <span class="pick-go">${s.equipped ? 'Porté' : 'Équiper'}</span>
+    </button>`;
+  openModal(`
+    <h3>${SLOT_GLYPH[slot]} ${SLOTS[slot].name}</h3>
+    <p class="hint" style="margin-top:4px">${list.length ? 'Touche un objet pour l’équiper tout de suite.' : 'Aucun objet pour cet emplacement : va ouvrir des coffres !'}</p>
+    <div class="pick-list">${list.map(row).join('')}</div>
+    <div class="close-row">
+      ${cur ? `<button class="btn" data-act="item" data-id="${cur.itemId}" data-r="${cur.rarity}">Voir la fiche</button><button class="btn danger" data-act="unequip" data-slot="${slot}">Retirer</button>` : ''}
+      <button class="btn" data-act="closeModal">Fermer</button>
+    </div>`);
+}
+
 function viewBag() {
   const eq = E.equippedItems(hero);
   const slotHtml = (slot) => {
     const it = eq[slot];
     return it
-      ? `<button class="slot filled r${it.rarity}" style="--rc:${RARITIES[it.rarity].color}" data-act="item" data-id="${it.itemId}" data-r="${it.rarity}"><canvas class="px" data-icon="${it.itemId}"></canvas><span class="sl-name">${SLOTS[slot].name}</span></button>`
-      : `<div class="slot empty-slot"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><span class="sl-name">${SLOTS[slot].name}</span></div>`;
+      ? `<button class="slot filled r${it.rarity}" style="--rc:${RARITIES[it.rarity].color}" data-act="slotPick" data-slot="${slot}"><canvas class="px" data-icon="${it.itemId}"></canvas><span class="sl-name">${SLOTS[slot].name}</span></button>`
+      : `<button class="slot empty-slot" data-act="slotPick" data-slot="${slot}"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><span class="sl-name">${SLOTS[slot].name}</span></button>`;
   };
   const power = E.powerScore(E.snapshot(hero));
   const filled = Object.keys(eq).length;
@@ -3506,6 +3528,7 @@ const ACTIONS = {
     E.missionEvent(acc, 'equip');
     save(); closeModal(); render(); toast(`${ITEMS[d.id].name} équipé !`);
   },
+  slotPick: (d) => openSlotPicker(d.slot),
   unequip: (d) => { delete hero.equipped[d.slot]; save(); closeModal(); render(); },
   fuse: (d) => {
     const anim = document.getElementById('fuse-anim');
