@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019164950';
-import * as E from './engine.js?v=20261019164950';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019164950';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019164950';
-import { hashStr, makeRng } from './rng.js?v=20261019164950';
-import { APP_VERSION } from './version.js?v=20261019164950';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019164950';
-import * as NET from './net.js?v=20261019164950';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019164950';
+} from './data.js?v=20261019165729';
+import * as E from './engine.js?v=20261019165729';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019165729';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019165729';
+import { hashStr, makeRng } from './rng.js?v=20261019165729';
+import { APP_VERSION } from './version.js?v=20261019165729';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019165729';
+import * as NET from './net.js?v=20261019165729';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019165729';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1765,6 +1765,7 @@ function autoTick() {
   if (st.g > E.AUTO_LAST) return;
   const pending = Math.floor((Math.min(Date.now() - st.last, AUTO.offlineMaxMs)) / AUTO.palierMs);
   if (!pending) return;
+  if (autoCtl && pending < 3) return;   // le petit écran montre les combats : ils s'enchaînent tout seuls, sans attendre
   if (pending > 2 && !autoAway) autoAway = { fights: 0, rewards: 0, from: st.g };
   const res = E.autoCatchUp(acc, autoTeam(), 30);
   if (!res.length) return;
@@ -1792,7 +1793,7 @@ function autoInfoHtml() {
   return `
     <div class="auto-head"><b>${autoLabel(st.g)}</b><small>Record : ${autoLabel(st.best)}</small></div>
     <div class="auto-bar"><i style="width:${(inTen - 1) * 10}%"></i><span>Palier ${next} : 1 clef + 1 coffre</span></div>
-    <div class="auto-next">Prochain palier dans <b data-auto-next>${fmt(Math.max(0, AUTO.palierMs - (Date.now() - st.last)))}</b></div>
+    <div class="auto-next">Les combats s’enchaînent sans pause</div>
     ${autoBankHtml(st)}`;
 }
 function autoBankHtml(st) {
@@ -1810,7 +1811,7 @@ function autoCard() {
       ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
       ${done ? '' : '<div class="auto-stage"><canvas data-auto></canvas></div>'}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos combattent un palier toutes les ${AUTO.palierMs / 1000} s, même quand le jeu est fermé (jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 clef + 1 coffre de combat</b> mis en réserve (les clefs vont au perso actif quand tu récupères). Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Pas d’XP ici.</div>
+      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 clef + 1 coffre de combat</b> mis en réserve (les clefs vont au perso actif quand tu récupères). Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Pas d’XP ici.</div>
       ${moreBtn('auto')}
     </section>`;
 }
@@ -1827,20 +1828,27 @@ function startAutoVisual(canvas) {
     autoVis = { n, played: 0 };
     const short = team.map(m => ({ ...m, name: CLASSES[m.classId].name }));
     const ctl = playMelee(canvas, short, mons, E.createMelee(team, mons, E.autoSeed(acc, n)), {
-      silent: true, skipFirst: skip, speed: 3, colors: ['#3d9bff', '#ff5d6c'], theme: ['cave', 'forest', 'crypt', 'swamp', 'mine', 'volcano', 'glacier', 'castle', 'abyss', 'meeting'][E.autoDiff(g) - 1],
+      silent: true, skipFirst: skip, speed: 4, colors: ['#3d9bff', '#ff5d6c'], theme: ['cave', 'forest', 'crypt', 'swamp', 'mine', 'volcano', 'glacier', 'castle', 'abyss', 'meeting'][E.autoDiff(g) - 1],
       onEvent: () => { if (autoVis.n === n) autoVis.played++; },
     });
     autoCtl = ctl;
     if (E.autoState(acc).n > n) ctl.skip();
-    let poll = null, stopped = false;
-    holder.stop = () => { stopped = true; clearTimeout(poll); ctl.destroy(); if (autoCtl === ctl) autoCtl = null; };
+    let stopped = false;
+    holder.stop = () => { stopped = true; ctl.destroy(); if (autoCtl === ctl) autoCtl = null; };
     ctl.promise.then(() => {
-      // le combat affiché est fini : on attend qu'il soit compté, puis on passe au suivant
-      const again = () => {
-        if (stopped || !canvas.isConnected) return;
-        if (E.autoState(acc).n > n) { ctl.destroy(); play(); } else poll = setTimeout(again, 400);
-      };
-      again();
+      if (stopped || !canvas.isConnected) return;
+      // le combat affiché est fini : on le compte tout de suite (même graine, même résultat) et le suivant démarre aussitôt
+      const st2 = E.autoState(acc);
+      if (st2.n === n) {
+        const r = E.autoResolve(acc, team);
+        st2.last = Date.now();
+        save();
+        if (r.reward) toast(`Combat auto : palier ${E.autoPalier(r.g)} franchi ! +1 clef et +1 coffre de combat en réserve`);
+        const box = document.querySelector('[data-auto-info]');
+        if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
+      }
+      ctl.destroy();
+      play();
     });
   };
   play();
@@ -3452,8 +3460,6 @@ setInterval(() => {
   document.querySelectorAll('[data-timer="half"]').forEach(el => { el.textContent = el.textContent.replace(/\d\d:\d\d:\d\d/, fmt(E.msToNextHalf())); });
   document.querySelectorAll('[data-countdown]').forEach(el => { el.textContent = fmt(+el.dataset.countdown - Date.now()); });
   document.querySelectorAll('[data-endlong]').forEach(el => { el.textContent = fmtLong(Math.max(0, +el.dataset.endlong - Date.now())); });
-  const an = document.querySelector('[data-auto-next]');
-  if (an) an.textContent = fmt(Math.max(0, AUTO.palierMs - (Date.now() - E.autoState(acc).last)));
   const wk = document.querySelector('[data-timer="week"]');
   if (wk) wk.textContent = `Fin dans ${fmtLong(E.msToWeekEnd())}`;
 }, 1000);
