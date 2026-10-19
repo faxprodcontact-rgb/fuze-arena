@@ -152,7 +152,9 @@ export const IDLE_ANGLE = { sword: 38, staff: 16, bow: 26, hammer: 34 };
 export const HAND_ATK = { x: 16.5, y: 14.5 };   // pose d'attaque : bras tendu vers l'avant
 export const HERO_W = 22, HERO_H = 28;
 const HAND_RUN = { x: HAND.x + 1.5, y: HAND.y + 0.5 };   // en course, le buste est penché : la main suit
-export const handOf = (pose) => (pose === 'atk' ? HAND_ATK : pose === 'run1' || pose === 'run2' ? HAND_RUN : HAND);
+const handPixel = (pose) => (pose === 'atk' ? HAND_ATK : pose === 'run1' || pose === 'run2' ? HAND_RUN : HAND);
+/** Position de la main qui tient l'arme (unités logiques du héros). classId : pour les héros dessinés en vectoriel. */
+export const handOf = (pose, classId = null) => (classId && VEC[classId] ? VEC[classId].hands[pose] || VEC[classId].hands.idle : handPixel(pose));
 
 // Petits outils de dessin (grille 2× plus fine que la taille logique du héros)
 function ellipse(g, cx, cy, rx, ry, c) {
@@ -218,6 +220,8 @@ function paintLayer(g, segs, dx, dy, pal, stride = 0) {
  * dyeId = teinture achetée à la boutique ; pose = 'idle' (garde), 'atk' (fente d'attaque, bras tendu) ou 'run1' / 'run2' (course).
  */
 export function heroCanvas(classId, dyeId = null, pose = 'idle') {
+  const v = vecHero(classId, dyeId, pose);
+  if (v) return v;
   return cached(`hero5:${classId}:${dyeId || ''}:${pose}`, () => {
     const dye = dyeId && COSMETIC[dyeId] && (!COSMETIC[dyeId].cls || COSMETIC[dyeId].cls === classId) ? COSMETIC[dyeId].look || COSMETIC[dyeId].dye : null;   // skin de la classe (ou ancienne teinture)
     const L = { ...LOOKS[classId], ...(dye || {}) };
@@ -234,6 +238,151 @@ export function heroCanvas(classId, dyeId = null, pose = 'idle') {
     paintLayer(g, A.over, ux, uy, pal);
     return toCanvas(outline2(g), U);
   });
+}
+
+
+// =====================================================================
+//  HÉROS VECTORIELS (refonte graphique) : dessins SVG dans art/heros/
+//  Chaque fichier a 3 parties : l'ombre au sol (ignorée, le jeu dessine la sienne), le corps (avec la tête)
+//  et l'arme (dessinée autour du poing, en 0,0). Le jeu fait des images à partir de ces dessins au démarrage.
+// =====================================================================
+const VEC = {};                                   // classe → { svg, hands, weapon, pivot, angle }
+const VEC_IMG = new Map();                        // clé → image déjà dessinée (canvas)
+const VEC_BY_WEAPON = { sword: 'guerrier', staff: 'mage', bow: 'archer', hammer: 'paladin' };
+const VK = 300 / HERO_H;                          // unités du dessin par unité logique du héros
+const VBX = (240 - HERO_W * VK) / 2;              // on recadre un peu la largeur pour garder la taille 22 × 28
+const VR = 10;                                    // résolution : pixels par unité logique
+// Poses : le haut du corps se penche (rotation autour des pieds) en attaque et en course
+const VPOSE = { idle: [0, 0, 0], atk: [8, 7, 0], run1: [6, 4, -3], run2: [6, 4, 1] };
+const FEET = [120, 292];
+
+function vecParse(txt) {
+  const i0 = txt.indexOf('<!-- ===== OMBRE AU SOL');
+  const i1 = txt.indexOf('<!-- =====', i0 + 10);
+  const iw = txt.indexOf('<!-- ===== ARME');
+  const end = txt.lastIndexOf('</g>');
+  const weapon = txt.slice(iw, end);
+  const m = weapon.match(/<g transform="translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\)">/);
+  return {
+    head: txt.slice(0, i0).replace(/<svg [^>]*>/, ''), body: txt.slice(i1, iw), weapon,
+    weaponLocal: weapon.replace(m[0], '<g>'), wx: +m[1], wy: +m[2], angle: +m[3],
+  };
+}
+const svgDoc = (vb, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}">${inner}</svg>`;
+function svgImage(svg) {
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  return img.decode().then(() => img);
+}
+function toCanvasImg(img, w, h, lwv, lhv) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(w); c.height = Math.round(h);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  c.lw = lwv; c.lh = lhv; c.smooth = true;
+  return c;
+}
+
+// --- Recoloration (skins et anciennes teintures) : on remplace les couleurs du dessin par celles du skin
+const CLOTH = {
+  guerrier: ['#ff6d60', '#e3343d', '#a81d35', '#6e1129'], mage: ['#b57cf2', '#7d47cc', '#532b96', '#351868'],
+  archer: ['#8edc5e', '#4ea83c', '#2f7432', '#1c4a26'], paladin: ['#fffaf0', '#f3e6c8', '#cdb68e', '#9c8460'],
+};
+const CAPE = ['#6aaeff', '#3773d8', '#23499c', '#162f6c'];
+const HAIR = {
+  guerrier: ['#a8714a', '#6e4329', '#48291a', '#3a2114'], archer: ['#a8714a', '#6e4329', '#48291a', '#3a2114'],
+  mage: ['#ffffff', '#e2e7f2', '#aeb7cf', '#7f88a6'], paladin: ['#fff2a8', '#ffd45a', '#e0a42c', '#a8701a'],
+};
+const STEEL = [['#f7f9ff', 0.6], ['#eef2fa', 0.5], ['#c3cce0', 0], ['#9ba7c3', -0.2], ['#8a95b2', -0.28], ['#6f7a9b', -0.4], ['#4a5273', -0.6]];
+const TONES = [0.3, 0, -0.3, -0.5];
+function recolor(txt, classId, look) {
+  if (!look) return txt;
+  const map = {};
+  const tones = (list, base) => list.forEach((hex, i) => { map[hex] = shadeC(base, TONES[i]); });
+  if (look.body) tones(CLOTH[classId], look.body);
+  if (look.cape && classId === 'paladin') tones(CAPE, look.cape);
+  if (look.hair && classId !== 'mage') tones(HAIR[classId], look.hair);
+  if (look.beard && classId === 'mage') tones(HAIR.mage, look.beard);
+  if (look.headC && classId !== 'mage' && classId !== 'archer') STEEL.forEach(([hex, a]) => { map[hex] = shadeC(look.headC, a); });
+  return txt.replace(/#[0-9a-fA-F]{6}\b/g, (h) => map[h.toLowerCase()] || h);
+}
+const lookOf = (classId, dyeId) => {
+  const c = dyeId && COSMETIC[dyeId];
+  if (!c || (c.cls && c.cls !== classId)) return null;
+  return c.look || c.dye || null;
+};
+
+/** Prépare les images d'un héros (une couleur) : corps pour chaque pose, et portrait */
+async function vecBuild(classId, dyeId) {
+  const A = VEC[classId];
+  const look = lookOf(classId, dyeId);
+  const head = recolor(A.p.head, classId, look), body = recolor(A.p.body, classId, look), weapon = recolor(A.p.weapon, classId, look);
+  const key = `${classId}:${look ? dyeId : ''}`;
+  const vb = `${VBX} 0 ${HERO_W * VK} 300`;
+  for (const pose of Object.keys(VPOSE)) {
+    const [a, dx, dy] = VPOSE[pose];
+    const img = await svgImage(svgDoc(vb, `${head}<g transform="translate(${dx} ${dy}) rotate(${a} ${FEET[0]} ${FEET[1]})">${body}</g></g>`));
+    VEC_IMG.set(`${key}:${pose}`, toCanvasImg(img, HERO_W * VR, HERO_H * VR, HERO_W, HERO_H));
+  }
+  // portrait : le dessin complet avec son arme, centré dans un cadre 32 × 28 (comme avant)
+  const full = await svgImage(svgDoc('0 0 240 300', `${head}${body}${weapon}</g>`));
+  const pc = document.createElement('canvas');
+  const PR = 8, PW = HERO_W + 10;
+  pc.width = PW * PR; pc.height = HERO_H * PR;
+  const fw = (240 / VK) * PR;
+  pc.getContext('2d').drawImage(full, (pc.width - fw) / 2, 0, fw, HERO_H * PR);
+  pc.lw = PW; pc.lh = HERO_H; pc.smooth = true;
+  VEC_IMG.set(`${key}:portrait`, pc);
+}
+const vecKey = (classId, dyeId) => `${classId}:${lookOf(classId, dyeId) ? dyeId : ''}`;
+const vecPending = new Set();
+function vecGet(classId, dyeId, what) {
+  if (!VEC[classId]) return null;
+  const k = vecKey(classId, dyeId);
+  const got = VEC_IMG.get(`${k}:${what}`);
+  if (got) return got;
+  // skin pas encore prêt : on le prépare en arrière-plan et on affiche la version de base en attendant
+  if (!vecPending.has(k)) { vecPending.add(k); vecBuild(classId, dyeId).catch(() => {}); }
+  return VEC_IMG.get(`${classId}::${what}`) || null;
+}
+function vecHero(classId, dyeId, pose) { return vecGet(classId, dyeId, pose); }
+function vecPortrait(classId, dyeId) { return vecGet(classId, dyeId, 'portrait'); }
+
+/** Charge les 4 héros vectoriels (à appeler avant le premier affichage). Sans réseau, le jeu garde le pixel art. */
+export async function loadHeroArt() {
+  const q = new URL(import.meta.url).search;
+  await Promise.all(Object.keys(HERO_ART).map(async (classId) => {
+    try {
+      const res = await fetch(new URL(`../art/heros/${classId}.svg${q}`, import.meta.url));
+      if (!res.ok) return;
+      const p = vecParse(await res.text());
+      // arme seule, autour du poing (0,0) : on la dessine dans une grande zone puis on la recadre
+      const AW = 260, AH = 360, AX = -130, AY = -270, PX = VR / VK;
+      const wImg = await svgImage(svgDoc(`${AX} ${AY} ${AW} ${AH}`, `${p.head}${p.weaponLocal}</g>`));
+      const big = document.createElement('canvas');
+      big.width = Math.round(AW * PX); big.height = Math.round(AH * PX);
+      const bx = big.getContext('2d');
+      bx.drawImage(wImg, 0, 0, big.width, big.height);
+      const data = bx.getImageData(0, 0, big.width, big.height).data;
+      let x0 = big.width, y0 = big.height, x1 = 0, y1 = 0;
+      for (let y = 0; y < big.height; y++) for (let x = 0; x < big.width; x++) if (data[(y * big.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const wc = document.createElement('canvas');
+      wc.width = x1 - x0 + 1; wc.height = y1 - y0 + 1;
+      wc.getContext('2d').drawImage(big, -x0, -y0);
+      wc.lw = wc.width / VR; wc.lh = wc.height / VR; wc.smooth = true;
+      const pivot = [(-AX * PX - x0) / VR, (-AY * PX - y0) / VR];
+      // main (pivot de l'arme) pour chaque pose
+      const hands = {};
+      for (const [pose, [a, dx, dy]] of Object.entries(VPOSE)) {
+        const r = (a * Math.PI) / 180, ox = p.wx - FEET[0], oy = p.wy - FEET[1];
+        const x = FEET[0] + ox * Math.cos(r) - oy * Math.sin(r) + dx, y = FEET[1] + ox * Math.sin(r) + oy * Math.cos(r) + dy;
+        hands[pose] = { x: (x - VBX) / VK, y: y / VK };
+      }
+      const kind = Object.keys(VEC_BY_WEAPON).find(k => VEC_BY_WEAPON[k] === classId);
+      VEC[classId] = { p, hands, weapon: wc, pivot, angle: p.angle };
+      IDLE_ANGLE[kind] = p.angle;
+      await vecBuild(classId, null);
+    } catch (e) { delete VEC[classId]; console.warn('Dessin du héros indisponible :', classId, e); }
+  }));
 }
 
 // =====================================================================
@@ -258,6 +407,8 @@ const WEAPON_MAPS = {
     pal: { l: '#c3cad3', W: '#eef2f6', m: '#8f96a0', d: '#5c6670', G: '#e5b33a', b: '#7a4e2a', B: '#a0703c', k: '#4a2f1a', g: '#e5b33a' } },
 };
 export function weaponCanvas(kind) {
+  const vk = VEC_BY_WEAPON[kind];
+  if (vk && VEC[vk]) return VEC[vk].weapon;
   return cached('weapon2:' + kind, () => {
     const w = WEAPON_MAPS[kind];
     const c = renderHi(fromMap(w.rows, w.pal));
@@ -265,7 +416,7 @@ export function weaponCanvas(kind) {
     return c;
   });
 }
-export function weaponPivot(kind) { return WEAPON_MAPS[kind].pivot; }
+export function weaponPivot(kind) { const vk = VEC_BY_WEAPON[kind]; return vk && VEC[vk] ? VEC[vk].pivot : WEAPON_MAPS[kind].pivot; }
 
 // =====================================================================
 //  FAMILIERS
@@ -662,6 +813,15 @@ export function chestCanvas(kind = 'normal', open = false) {
 //  Aide : dessiner un sprite dans un <canvas> de l'interface
 // =====================================================================
 export function paint(canvas, sprite, { scale = 4, pad = 0, bg = null } = {}) {
+  if (sprite.smooth) {   // dessin vectoriel : on le garde à sa résolution, lissé
+    canvas.width = sprite.width + pad * 2; canvas.height = sprite.height + pad * 2;
+    canvas.style.imageRendering = 'auto';
+    const c2 = canvas.getContext('2d');
+    if (bg) { c2.fillStyle = bg; c2.fillRect(0, 0, canvas.width, canvas.height); }
+    c2.drawImage(sprite, pad, pad);
+    return;
+  }
+  canvas.style.imageRendering = '';
   // échelle entière par rapport au dessin HD, pour des pixels bien nets
   const u = sprite.width / lw(sprite);
   const k = Math.max(u, Math.round(scale / u) * u);
@@ -675,6 +835,8 @@ export function paint(canvas, sprite, { scale = 4, pad = 0, bg = null } = {}) {
 
 /** Portrait : héros + son arme */
 export function heroPortrait(classId, weaponKind, dyeId = null) {
+  const v = vecPortrait(classId, dyeId);
+  if (v) return v;
   return cached(`portrait:${classId}:${dyeId || ''}`, () => {
     const h = heroCanvas(classId, dyeId);
     const w = weaponCanvas(weaponKind);

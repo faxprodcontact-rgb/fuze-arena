@@ -264,8 +264,8 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     return { x, y, pw, ph, cx: x + pw / 2, cy: y + ph / 2 };
   };
   const handPos = (f) => f.weapon ? {
-    x: fx(f) + (-f.sw * S / 2 + handOf(f.pose).x * S * f.k) * f.dir,
-    y: GROUND + f.offY - f.sh * S + handOf(f.pose).y * S * f.k,
+    x: fx(f) + (-f.sw * S / 2 + handOf(f.pose, f.snap.classId).x * S * f.k) * f.dir,
+    y: GROUND + f.offY - f.sh * S + handOf(f.pose, f.snap.classId).y * S * f.k,
   } : { x: fx(f) + f.sw * S * 0.3 * f.dir, y: GROUND + f.offY - f.sh * S * 0.6 };
 
   // ---------- particules & textes ----------
@@ -667,6 +667,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       const { x: px, y: py, pw, ph } = petBox(f);
       ctx.save();
       ctx.translate(px + pw / 2, 0); ctx.scale(f.dir, 1); ctx.translate(-(px + pw / 2), 0);
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(f.pet, px, py, pw, ph);
       ctx.restore();
     }
@@ -692,11 +693,12 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     const runF = f.run && f.spriteRun ? Math.floor(time * 9) % 2 : -1;
     const bodyPose = runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' && f.spriteAtk ? f.spriteAtk : f.sprite;
+    ctx.imageSmoothingEnabled = !!body.smooth;   // héros vectoriels : lissés
     ctx.drawImage(body, sx, sy, SW, SH);
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), sx, sy, SW, SH); ctx.globalAlpha = f.alpha; }
     if (!f.wSprite) { ctx.restore(); drawAfter(f); return; }
     // arme (dans la main, qui bouge en pose d'attaque)
-    const H = handOf(bodyPose), WS = S * f.k;
+    const H = handOf(bodyPose, f.snap.classId), WS = S * f.k;
     const hx = sx + H.x * WS + (f.weapon === 'bow' ? f.wOff : 0), hy = sy + H.y * WS;
     ctx.save();
     ctx.translate(hx, hy);
@@ -1157,24 +1159,26 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   const weapon = CLASSES[classId].weapon;
   const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;
-  const sc = 4;
+  const sc = sprite.smooth ? 10 : 4;   // héros vectoriels : plus de résolution, lissés
   const Wc = (HERO_W + 26) * sc, Hc = (HERO_H + 4) * sc;
   canvas.width = Wc; canvas.height = Hc;
+  canvas.style.imageRendering = sprite.smooth ? 'auto' : '';
+  const hand = handOf('idle', classId);
   let alive = true;
   const t0 = performance.now();
   function loop(now) {
     if (!alive || !canvas.isConnected) return;
     const t = (now - t0) / 1000;
     ctx.clearRect(0, 0, Wc, Hc);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = !!sprite.smooth;
     const ox = 18 * sc, oy = 3 * sc + Math.sin(t * 3) * 2;
     ctx.globalAlpha = 0.25; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(ox + HERO_W * sc / 2, (HERO_H + 2.5) * sc, 9 * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    if (pet) ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75);
+    if (pet) { ctx.imageSmoothingEnabled = false; ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
     ctx.drawImage(sprite, ox, oy, HERO_W * sc, HERO_H * sc);
     ctx.save();
-    ctx.translate(ox + HAND.x * sc, oy + HAND.y * sc);
+    ctx.translate(ox + hand.x * sc, oy + hand.y * sc);
     ctx.rotate(((IDLE_ANGLE[weapon] + Math.sin(t * 3) * 3) * Math.PI) / 180);
     ctx.drawImage(wS, -px * sc, -py * sc, lw(wS) * sc, lh(wS) * sc);
     ctx.restore();
@@ -1354,9 +1358,10 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
     const runF = f.running ? Math.floor(time * 9) % 2 : -1;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
+    ctx.imageSmoothingEnabled = !!body.smooth;
     ctx.drawImage(body, -SW / 2, -SH, SW, SH);
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
-    const H = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose);
+    const H = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose, f.classId);
     ctx.translate(-SW / 2 + H.x * SC, -SH + H.y * SC);
     ctx.rotate((f.wAng * Math.PI) / 180);
     ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
@@ -1650,11 +1655,12 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     const runF = f.running && f.spriteRun ? Math.floor(time * 9) % 2 : -1;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
     if (f.glow > 0.01) { ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 12 * f.glow; }
+    ctx.imageSmoothingEnabled = !!body.smooth;
     ctx.drawImage(body, -SW / 2, -SH, SW, SH);
     ctx.shadowBlur = 0;
     if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
     if (f.weapon) {
-      const Hd = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose);
+      const Hd = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose, f.s && f.s.classId);
       ctx.translate(-SW / 2 + Hd.x * SC, -SH + Hd.y * SC);
       ctx.rotate((f.wAng * Math.PI) / 180);
       ctx.drawImage(f.wS, -f.pivot[0] * SC, -f.pivot[1] * SC, lw(f.wS) * SC, lh(f.wS) * SC);
@@ -1776,9 +1782,10 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
  */
 export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
-  const sc = 6, LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
-  canvas.width = LW * sc; canvas.height = LH * sc;
   const idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
+  const sc = idle.smooth ? 10 : 6, LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
+  canvas.width = LW * sc; canvas.height = LH * sc;
+  canvas.style.imageRendering = idle.smooth ? 'auto' : '';
   const weapon = CLASSES[classId].weapon;
   const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;
@@ -1789,7 +1796,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     const t = (now - t0) / 1000;
     ctx.setTransform(sc, 0, 0, sc, 0, 0);
     ctx.clearRect(0, 0, LW, LH);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = !!idle.smooth;
     // pose d'attaque quelques instants toutes les 4 secondes
     const cyc = t % 4, inAtk = cyc > 3.2 && cyc < 3.85;
     const pose = inAtk ? 'atk' : 'idle';
@@ -1806,12 +1813,14 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     // familier
     if (pet) {
       const pw = lw(pet) * 0.9, ph = lh(pet) * 0.9;
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(pet, ox + 2 - pw * 0.3, feet - ph + Math.sin(t * 3.2) * 0.8, pw, ph);
+      ctx.imageSmoothingEnabled = !!idle.smooth;
     }
     // héros + arme
     const oy = feet - H + bob;
     ctx.drawImage(pose === 'atk' ? atk : idle, ox, oy, W, H);
-    const hand = handOf(pose);
+    const hand = handOf(pose, classId);
     const swing = inAtk ? Math.sin(((cyc - 3.2) / 0.65) * Math.PI) : 0;
     const ang = IDLE_ANGLE[weapon] + Math.sin(t * 2.6) * 3 + swing * (weapon === 'bow' ? -20 : 70);
     ctx.save();
