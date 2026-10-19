@@ -1,10 +1,17 @@
 // =====================================================================
 //  NOTES DE MISE À JOUR — la plus récente en premier.
 //  Pour une nouvelle mise à jour : ajouter une entrée tout en haut de la liste.
-//  gift = cadeau à récupérer une seule fois par compte (Flouze).
+//  gift = cadeau à récupérer une seule fois par compte (amount = Flouze, combatChests = coffres de combat).
 //  for = liste de pseudos : la note (et son cadeau) n'est visible que par ces comptes.
 // =====================================================================
 export const PATCH_NOTES = [
+  {
+    id: '2026-10-19-1211', date: '19/10/2026', time: '12h11', title: 'Bonne semaine !',
+    gift: { id: 'bonne-semaine-2026-10-19-1211', amount: 0, combatChests: 1, text: 'Bonne semaine les zgueg' },
+    sections: [
+      { title: 'Cadeau', items: ['1 coffre de combat offert à tout le monde. Bonne semaine les zgueg !'] },
+    ],
+  },
   {
     id: '2026-10-19-0825', date: '19/10/2026', time: '08h25', title: 'Fin du bonus des persos secondaires',
     sections: [

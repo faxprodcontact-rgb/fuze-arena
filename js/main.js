@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019082513';
-import * as E from './engine.js?v=20261019082513';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261019082513';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019082513';
-import { hashStr, makeRng } from './rng.js?v=20261019082513';
-import { APP_VERSION } from './version.js?v=20261019082513';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019082513';
-import * as NET from './net.js?v=20261019082513';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019082513';
+} from './data.js?v=20261019121203';
+import * as E from './engine.js?v=20261019121203';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261019121203';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019121203';
+import { hashStr, makeRng } from './rng.js?v=20261019121203';
+import { APP_VERSION } from './version.js?v=20261019121203';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019121203';
+import * as NET from './net.js?v=20261019121203';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019121203';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1494,6 +1494,8 @@ function maybeShowGift() {
   giftShown = true;
   setTimeout(() => { if (!modalRoot.innerHTML && !document.querySelector('.battle')) openPatchNotes(); }, 700);
 }
+/** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
+const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : ''].filter(Boolean).join(' + ');
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }
   const b = document.getElementById('patch-badge');
@@ -1504,8 +1506,8 @@ function openPatchNotes() {
       <div class="gift ${got ? 'got' : ''}">
         <div class="gift-art"><canvas class="px" data-chest="war" data-open="${got ? 1 : 0}"></canvas></div>
         <p>${esc(g.text)}</p>
-        ${got ? `<div class="gift-done">${ico('check')} ${g.amount} Flouze récupérés</div>`
-          : `<button class="btn primary block gift-btn" data-act="claimGift" data-id="${g.id}">Récupérer ${g.amount}<canvas class="px" data-clat></canvas></button>`}
+        ${got ? `<div class="gift-done">${ico('check')} ${giftLabel(g)} récupéré${g.amount ? 's' : ''}</div>`
+          : `<button class="btn primary block gift-btn" data-act="claimGift" data-id="${g.id}">Récupérer ${g.amount ? `${g.amount}<canvas class="px" data-clat></canvas>` : giftLabel(g)}</button>`}
       </div>`;
   };
   openModal(`
@@ -2723,7 +2725,7 @@ const ACTIONS = {
     const got = n ? E.claimGift(acc, n.gift) : 0;
     if (!got) return;
     SFX.loot(4); save(); render(); openPatchNotes();
-    toast(`+${got} Flouze, cadeau !`);
+    toast(`+${giftLabel(n.gift)}, cadeau !`);
   },
   playerCard: (d) => openPlayerCard(d.id, d.h !== undefined ? +d.h : null),
   podiumMsg: () => openPodiumMsg(),
