@@ -17,6 +17,7 @@ const DAYS = 150, RUNS = 8;
 const NEED = (process.env.FUSE || '2,2,2,2,2,2').split(',').map(Number);
 function fuseAllN(hero) {
   for (let r = 0; r < RARITIES.length - 1; r++) {
+    if (r + 1 === RARITIES.length - 1 && hero.level < (+process.env.CHAOS || 0)) continue;   // Chaotique bloqué avant ce niveau
     const by = {};
     for (const it of hero.inventory) if (it.rarity === r) (by[it.itemId] ||= []).push(it);
     for (const [itemId, list] of Object.entries(by)) {
@@ -42,6 +43,7 @@ function run(seed) {
   };
   for (let day = 1; day <= DAYS; day++) {
     const lvl = lvlAt(day);
+    hero.level = lvl;
     let keys = 10;                                                   // clefs de donjon
     for (let l = prevLvl + 1; l <= lvl; l++) keys += E.levelKeys(l);  // clefs de montée de niveau
     prevLvl = lvl;

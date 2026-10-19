@@ -5,7 +5,7 @@
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
-  CHAMP, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  CHAMP, CHAOS_LEVEL, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -1084,8 +1084,12 @@ export function stackOf(hero, itemId, rarity) {
 }
 
 /** Fusionne 2 objets identiques en 1 de rareté supérieure. */
+/** Fusion vers ce rang encore bloquée pour ce perso ? (le Chaotique s'ouvre au niveau CHAOS_LEVEL) */
+export const fusionLocked = (hero, rarity) => rarity + 1 === RARITIES.length - 1 && hero.level < CHAOS_LEVEL;
+export { CHAOS_LEVEL };
+
 export function fuse(hero, itemId, rarity) {
-  if (rarity >= RARITIES.length - 1) return null;
+  if (rarity >= RARITIES.length - 1 || fusionLocked(hero, rarity)) return null;
   const stack = stackOf(hero, itemId, rarity);
   if (stack.length < 2) return null;
   // On consomme en priorité les objets non équipés
@@ -1108,6 +1112,7 @@ export function fuse(hero, itemId, rarity) {
 export function fuseAll(hero) {
   const created = [];
   for (let r = 0; r < RARITIES.length - 1; r++) {
+    if (fusionLocked(hero, r)) continue;
     const ids = [...new Set(hero.inventory.filter(i => i.rarity === r).map(i => i.itemId))];
     for (const itemId of ids) while (stackOf(hero, itemId, r).length >= 2) created.push(fuse(hero, itemId, r));
   }

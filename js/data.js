@@ -44,6 +44,9 @@ export const RARITIES = [
 export const CHEST_LUCK = { step: { normal: 100, combat: 50, war: 25 }, gain: 2, floor: 10 };
 export const OPEN_MAX = 10;                       // coffres ouverts au maximum d'un coup
 
+// La fusion en Chaotique (2 Mythiques → 1 Chaotique) n'est possible qu'à partir de ce niveau du perso
+export const CHAOS_LEVEL = 90;
+
 // Probabilités de rareté dans les coffres (en %)
 export const CHEST_ODDS = {
   normal: [72, 22, 5, 1, 0],
