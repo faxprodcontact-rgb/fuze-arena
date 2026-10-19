@@ -298,9 +298,9 @@ function countFusable() {
   let n = 0;
   for (const it of hero.inventory) {
     const key = it.itemId + ':' + it.rarity;
-    if (seen.has(key) || it.rarity >= RARITIES.length - 1 || E.fusionLocked(hero, it.rarity)) continue;
+    if (seen.has(key) || it.rarity >= RARITIES.length - 1) continue;
     seen.add(key);
-    if (E.stackOf(hero, it.itemId, it.rarity).length >= 2) n++;
+    if (E.stackOf(hero, it.itemId, it.rarity).length >= E.fuseNeed(it.rarity)) n++;
   }
   return n;
 }
@@ -624,7 +624,7 @@ function invGrid(list) {
       <canvas class="px" data-icon="${s.itemId}"></canvas>
       ${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}
       ${s.equipped ? '<span class="eq">ÉQUIPÉ</span>' : ''}
-      ${s.items.length >= 2 && s.rarity < RARITIES.length - 1 && !E.fusionLocked(hero, s.rarity) ? '<span class="fu">✦</span>' : ''}
+      ${s.items.length >= E.fuseNeed(s.rarity) && s.rarity < RARITIES.length - 1 ? '<span class="fu">✦</span>' : ''}
     </button>`).join('')}</div>`;
 }
 
@@ -732,7 +732,7 @@ function viewBag() {
       ${countFusable() ? `<button class="btn small block fuse-all" style="margin-bottom:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuseAll">${ico('sparkle')} Tout fusionner</button>` : ''}
       ${body}
       ${commons ? `<button class="btn small block sell-all" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
-      <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Mythique et Chaotique ne s’obtiennent que par fusion, et la fusion en Chaotique s’ouvre au niveau ${E.CHAOS_LEVEL}. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
+      <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Mythique et Chaotique ne s’obtiennent que par fusion, et il faut <b>3 Mythiques</b> identiques pour 1 Chaotique. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
       ${moreBtn('bag')}
     </section>`;
 }
@@ -783,8 +783,8 @@ function openItem(itemId, rarity) {
   const isEq = stack.some(s => s.uid === curUid);
   const cur = !isEq && curUid ? hero.inventory.find(i => i.uid === curUid) : null;
   const curStats = cur ? E.itemStats(cur.itemId, cur.rarity) : null;
-  const locked = E.fusionLocked(hero, rarity);
-  const canFuse = stack.length >= 2 && rarity < RARITIES.length - 1 && !locked;
+  const need = E.fuseNeed(rarity);
+  const canFuse = stack.length >= need && rarity < RARITIES.length - 1;
   const spare = stack.filter(s => s.uid !== curUid).length;
   const R = RARITIES[rarity];
   const next = RARITIES[rarity + 1];
@@ -806,16 +806,13 @@ function openItem(itemId, rarity) {
       <div class="fuse-box">
         <div style="font-weight:800">Fusion disponible !</div>
         <div class="fuse-anim" id="fuse-anim">
-          <div class="it" style="--rc:${R.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
-          <b>+</b>
-          <div class="it" style="--rc:${R.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
+          ${Array.from({ length: need }, () => `<div class="it" style="--rc:${R.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>`).join('<b>+</b>')}
           <b>→</b>
           <div class="it" style="--rc:${next.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
         </div>
         ${statLines(E.itemStats(itemId, rarity + 1), stats)}
         <button class="btn block" style="margin-top:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuse" data-id="${itemId}" data-r="${rarity}">Fusionner en ${next.name}</button>
-      </div>` : locked ? `<p class="hint" style="margin-top:12px">La fusion en <b style="color:${next.color}">${next.name}</b> s’ouvre au <b>niveau ${E.CHAOS_LEVEL}</b> (ton ${CLASSES[hero.classId].name} est niveau ${hero.level})${stack.length < 2 ? ' : garde aussi un 2ᵉ exemplaire' : ''}.</p>`
-      : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Trouve un 2ᵉ exemplaire pour le fusionner en <b style="color:${next.color}">${next.name}</b>.</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
+      </div>` : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Il faut ${need} exemplaires pour le fusionner en <b style="color:${next.color}">${next.name}</b> (tu en as ${stack.length}).</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
     ${spare ? `
       <div class="sell-box">
         <span>Revente : <b>${SELL_PRICE[rarity]}</b> Flouze pièce${isEq ? ' (l’objet équipé est gardé)' : ''}</span>
@@ -3009,7 +3006,7 @@ function openChestFlow(kind, all = false) {
           </div>`).join('')}
       </div>
       <p class="loot-xp">+${res.xp} XP${all && E.openableChests(hero) > 0 ? ` · encore ${E.openableChests(hero)} coffre${E.openableChests(hero) > 1 ? 's' : ''} à ouvrir` : ''}</p>
-      ${res.items.some(it => E.stackOf(hero, it.itemId, it.rarity).length >= 2 && it.rarity < RARITIES.length - 1 && !E.fusionLocked(hero, it.rarity)) ? '<p style="color:#c58bff;font-weight:800;margin:6px 0 0">✦ Une fusion est possible !</p>' : ''}
+      ${res.items.some(it => E.stackOf(hero, it.itemId, it.rarity).length >= E.fuseNeed(it.rarity) && it.rarity < RARITIES.length - 1) ? '<p style="color:#c58bff;font-weight:800;margin:6px 0 0">✦ Une fusion est possible !</p>' : ''}
       <div class="close-row"><button class="btn primary" data-act="closeAndRender">Super !</button></div>`;
     hydrate(document.getElementById('loot'));
     announce(res);

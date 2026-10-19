@@ -44,8 +44,9 @@ export const RARITIES = [
 export const CHEST_LUCK = { step: { normal: 100, combat: 50, war: 25 }, gain: 2, floor: 10 };
 export const OPEN_MAX = 10;                       // coffres ouverts au maximum d'un coup
 
-// La fusion en Chaotique (2 Mythiques → 1 Chaotique) n'est possible qu'à partir de ce niveau du perso
-export const CHAOS_LEVEL = 90;
+// Objets identiques (même objet, même rareté) qu'il faut fusionner pour monter d'un rang, depuis Commun … jusqu'à Mythique.
+// 3 Mythiques pour 1 Chaotique : un joueur à fond finit tout en Chaotique vers le niveau 90 (voir refonte/simulations/equipement.mjs).
+export const FUSE_NEED = [2, 2, 2, 2, 2, 3];
 
 // Probabilités de rareté dans les coffres (en %)
 export const CHEST_ODDS = {
