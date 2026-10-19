@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019165729';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019165729';
+} from './data.js?v=20261019172108';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019172108';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -591,7 +591,8 @@ export const autoDiff = (g) => Math.ceil(g / AUTO.paliers);
 export const autoPalier = (g) => ((g - 1) % AUTO.paliers) + 1;
 export const AUTO_LAST = AUTO.diffs * AUTO.paliers;
 export function autoState(acc) {
-  acc.auto ||= { g: 1, n: 0, best: 1, last: Date.now(), bank: { keys: 0, chests: 0 } };
+  acc.auto ||= { g: 1, n: 0, best: 1, last: Date.now(), bank: { chests: 0 } };
+  delete acc.auto.bank.keys;   // le combat auto ne donne plus de clefs (seulement des coffres)
   return acc.auto;
 }
 /** Les monstres d'un palier : 4 monstres, ou un boss et 2 sbires tous les 10 paliers */
@@ -612,7 +613,7 @@ export function autoMonsters(g) {
 /** Graine du n-ième combat auto d'un compte (le même combat est montré à l'écran et compté) */
 export const autoSeed = (acc, n) => hashStr(`auto:${acc.pseudo}:${n}`);
 /**
- * Joue le combat du palier en cours. Victoire : palier suivant (et tous les 10 paliers, 1 clef + 1 coffre en réserve).
+ * Joue le combat du palier en cours. Victoire : palier suivant (et tous les 10 paliers, 1 coffre de combat en réserve).
  * Défaite : retour au premier palier de la dizaine (perdu au 37 → 31, donc jamais deux fois la même récompense).
  */
 export function autoResolve(acc, team) {
@@ -622,7 +623,7 @@ export function autoResolve(acc, team) {
   st.n++;
   let reward = false;
   if (won) {
-    if (g % 10 === 0) { st.bank.keys++; st.bank.chests++; reward = true; }
+    if (g % 10 === 0) { st.bank.chests++; reward = true; }
     st.g = Math.min(AUTO_LAST + 1, g + 1);   // AUTO_LAST + 1 = tout est fini
   } else {
     st.g = Math.floor((g - 1) / 10) * 10 + 1;
@@ -642,13 +643,12 @@ export function autoCatchUp(acc, team, max = 40, now = Date.now()) {
   }
   return out;
 }
-/** Récupère la réserve : les clefs pour le perso actif, les coffres de combat pour le compte */
-export function autoClaim(acc, hero) {
+/** Récupère la réserve : les coffres de combat vont au compte */
+export function autoClaim(acc) {
   const b = autoState(acc).bank;
-  const got = { keys: b.keys, chests: b.chests };
-  hero.keys = (hero.keys || 0) + b.keys;
-  acc.combatChests += b.chests;
-  b.keys = 0; b.chests = 0;
+  const got = b.chests;
+  acc.combatChests += got;
+  b.chests = 0;
   return got;
 }
 
