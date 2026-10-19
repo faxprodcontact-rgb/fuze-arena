@@ -6,6 +6,12 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1251', date: '19/10/2026', time: '12h51', title: 'Correctif : pseudos colorés',
+    sections: [
+      { title: 'Correctif', items: ['Les pseudos arc-en-ciel, de feu et galaxie s’affichent partout correctement, y compris en haut à gauche et sur la fiche du héros (ils apparaissaient assombris).'] },
+    ],
+  },
+  {
     id: '2026-10-19-1242', date: '19/10/2026', time: '12h42', title: 'Nouvelles raretés : Mythique et Chaotique',
     sections: [
       { title: 'Objets', items: [

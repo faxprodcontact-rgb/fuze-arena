@@ -1195,6 +1195,9 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 /* ---------- Boutique ---------- */
 .pname.fire { background: linear-gradient(90deg, #ff3a1a, #ff9f1a, #ffd84a, #ff9f1a, #ff3a1a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbow 1.4s linear infinite; }
 .pname.galaxy { background: linear-gradient(90deg, #b05cff, #3d9bff, #ff8fc7, #ffffff, #b05cff); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbow 3s linear infinite; }
+/* pseudos en dégradé : le texte est transparent, donc une ombre de texte se verrait à travers (pseudo noir).
+   On enlève l'ombre de texte et on met une ombre portée autour des lettres à la place. */
+.pname.rainbow, .pname.fire, .pname.galaxy { text-shadow: none; filter: drop-shadow(0 2px 0 rgba(0,0,0,.85)); }
 .key-deal { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px;
   background: radial-gradient(ellipse 50% 100% at 12% 50%, rgba(255,216,74,.2), transparent 70%), linear-gradient(180deg, #241d36, #17131f); box-shadow: inset 0 0 0 2px rgba(255,216,74,.4), 0 3px 0 rgba(0,0,0,.35); }
 .kd-art { width: 52px; height: 52px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(0,0,0,.35); }
