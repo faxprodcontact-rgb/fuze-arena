@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261019181526';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261019191031';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;

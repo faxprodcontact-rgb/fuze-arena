@@ -6,6 +6,14 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1910', date: '19/10/2026', time: '19h10', title: 'Cadeau pour Le Stein',
+    for: ['Le Stein'],
+    gift: { id: 'lestein-30-coffres-2026-10-19', amount: 0, chests: 30, text: 'Un cadeau rien que pour toi : 30 coffres à ouvrir ! Ils vont à ton perso actif quand tu les récupères.' },
+    sections: [
+      { title: 'Cadeau', items: ['30 coffres offerts, rien que pour toi. Choisis bien ton perso actif avant de les récupérer : c’est lui qui les reçoit.'] },
+    ],
+  },
+  {
     id: '2026-10-19-1814', date: '19/10/2026', time: '18h14', title: 'Cadeau pour Tchomb',
     for: ['Tchomb'],
     gift: { id: 'tchomb-30-coffres-2026-10-19', amount: 0, chests: 30, text: 'Un cadeau rien que pour toi : 30 coffres à ouvrir ! Ils vont à ton perso actif quand tu les récupères.' },
