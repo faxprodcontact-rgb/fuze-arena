@@ -1,7 +1,7 @@
 // =====================================================================
 //  PIXEL ART — tous les dessins du jeu sont générés ici, pixel par pixel
 // =====================================================================
-import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261019125243';
+import { ITEMS, RARITIES, COSMETIC, SPELLS } from './data.js?v=20261019130856';
 
 const OUT = '#16121f';
 const cache = new Map();
@@ -817,6 +817,17 @@ const EMBLEMS = {
     for (const x of [7, 11, 15]) rr(g, x, 8, 2, 2, '#1b1530');
     ellipse(g, 19, 16, 8, 6, '#3d9bff'); tri(g, [[22, 19], [26, 18], [26, 24]], '#3d9bff');
     for (const x of [16, 19, 22]) rr(g, x, 15, 2, 2, '#f4f8fc');
+    return g;
+  },
+  throne() {   // trône de velours rouge à cadre doré, avec la couronne posée dessus
+    const g = grid(28, 28);
+    rr(g, 7, 6, 14, 14, '#c98a1a'); rr(g, 9, 8, 10, 11, '#a8182c'); rr(g, 10, 9, 3, 9, '#d63a4a');   // dossier
+    rr(g, 6, 5, 3, 3, '#ffd84a'); rr(g, 19, 5, 3, 3, '#ffd84a');                                    // pommeaux
+    rr(g, 3, 15, 5, 3, '#ffd84a'); rr(g, 20, 15, 5, 3, '#ffd84a');                                 // accoudoirs
+    rr(g, 5, 19, 18, 3, '#ffd84a'); rr(g, 7, 17, 14, 3, '#c0283a'); rr(g, 8, 17, 5, 1, '#e8566a');  // assise et coussin
+    rr(g, 6, 22, 3, 5, '#c98a1a'); rr(g, 19, 22, 3, 5, '#c98a1a');                                 // pieds
+    rr(g, 10, 2, 8, 3, '#ffd84a'); rr(g, 10, 0, 2, 2, '#ffd84a'); rr(g, 13, 0, 2, 2, '#ffd84a'); rr(g, 16, 0, 2, 2, '#ffd84a');   // couronne
+    rr(g, 13, 3, 2, 1, '#3d9bff'); rr(g, 11, 3, 1, 1, '#e8364a'); rr(g, 16, 3, 1, 1, '#e8364a');
     return g;
   },
   ranking() {   // podium 1-2-3 et coupe dorée

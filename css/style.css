@@ -1321,3 +1321,27 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .pips-vs { display: inline-flex; gap: 2px; vertical-align: middle; }
 .pips-vs i { width: 6px; height: 6px; border-radius: 2px; background: rgba(255,255,255,.2); }
 .pips-vs i.on { background: #7bf09a; box-shadow: 0 0 4px #4cd964; }
+
+/* ---------- Le trône ---------- */
+.throne-hall { text-align: center; padding-top: 10px; background: radial-gradient(circle at 50% 0%, rgba(255,216,74,.18), transparent 60%), var(--card); }
+.tr-king { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 14px; }
+.tr-king-art { position: relative; height: 128px; display: grid; place-items: end center; }
+.tr-king-art::before { content: ''; position: absolute; left: 50%; bottom: 2px; width: 150px; height: 26px; transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,216,74,.45), transparent 70%); }
+.tr-king-art canvas { position: relative; width: 92px; height: auto; }
+.tr-crown { position: relative; z-index: 2; margin-bottom: -78px; animation: crownBob 2.4s ease-in-out infinite; }
+.tr-crown canvas.ico { width: 34px; height: auto; filter: drop-shadow(0 0 8px rgba(255,216,74,.8)); }
+@keyframes crownBob { 50% { transform: translateY(-4px); } }
+.tr-king-name { font-family: var(--pixel); font-size: 14px; color: var(--gold); text-shadow: 0 2px 0 #000; }
+.tr-pow { color: var(--muted); font-weight: 800; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; }
+.tr-pow canvas.ico { width: 10px; height: 10px; }
+.tr-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 0 auto 8px; }
+.tr-card { position: relative; flex: 0 1 calc((100% - 6px * (var(--n) - 1)) / var(--n)); min-width: 72px; max-width: 120px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; border-radius: 12px; background: #17131f;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+.tr-card.me { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(255,216,74,.3); }
+.tr-card > canvas.px { width: calc(46px - var(--n) * 3px); height: auto; }
+.tr-card .tr-name { font-weight: 800; font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-rank { position: absolute; top: 4px; left: 6px; font-family: var(--pixel); font-size: 9px; color: var(--muted); }
+.tr-go { margin-top: 4px; padding: 4px 6px; font-size: 8px; max-width: 100%; white-space: nowrap; }
+.tr-go canvas.ico { width: 10px; height: 10px; }

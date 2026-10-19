@@ -3,13 +3,13 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, PVP, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, THRONE, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS,
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019125243';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019125243';
+} from './data.js?v=20261019130856';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019130856';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -408,6 +408,225 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
     /** Termine le combat (si besoin) et renvoie { log, winner, usedManual, hp } (hp = PV restants de chacun) */
     result() { while (!ended) advance(); out.length = 0; return { log, winner, usedManual, hp: F.map(f => Math.max(0, Math.round(f.hp))), carry: F.map(f => ({ cdsLeft: { ...f.cds }, shieldLeft: Math.round(f.shield) })) }; },
   };
+}
+
+/**
+ * Mêlée en équipe (le trône) : les deux équipes (jusqu'à 4 persos chacune) se battent toutes en même temps.
+ * Chacun joue selon sa vitesse (même jauge qu'en duel) et frappe un adversaire encore debout, tiré au hasard.
+ * Mêmes règles qu'un duel : sorts, critiques, esquives, boucliers, brûlures, étourdissements, familiers, rage.
+ * Les index des persos vont de 0 à n−1 (l'équipe A d'abord). Événements : ceux d'un duel (avec « target »),
+ * plus { type: 'ko', target } quand un perso tombe. L'équipe qui n'a plus personne debout perd.
+ */
+export function createMelee(A, B, seed, { maxActions = null } = {}) {
+  const rng = makeRng(seed);
+  const F = [...A.map(s => [s, 0]), ...B.map(s => [s, 1])].map(([s, side], i) => ({
+    i, side, s, hp: s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
+    cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0, petN: 0,
+    pet: (s.v || 0) >= 2 ? petSpell(s.pet) : null,
+  }));
+  const limit = maxActions ?? Math.round(MAX_ACTIONS * F.length / 2);   // plus de monde = combat plus long
+  const rageAt = Math.round(RAGE_START * F.length / 2);
+  const log = [], out = [];
+  let actions = 0, rage = 1, winner = null, ended = false;
+
+  const stat = (f, k) => {
+    let pct = 0;
+    for (const b of f.buffs) if (b.stat === k) pct += b.pct;
+    return Math.max(1, f.s.stats[k] * (1 + pct));
+  };
+  const power = (f, scale) => (scale === 'mix' ? (stat(f, 'atk') + stat(f, 'mag')) * 0.9 : stat(f, scale));
+  const standing = (side) => F.filter(f => f.side === side && f.hp > 0);
+  const summary = () => F.map(f => ({
+    hp: f.hp, shield: Math.round(f.shield),
+    tags: [
+      ...f.buffs.map(b => ({ n: b.name, k: b.pct > 0 ? 'buff' : 'debuff' })),
+      ...f.dots.map(d => ({ n: d.name, k: d.kind })),
+      ...(f.stun > 0 ? [{ n: 'Étourdi', k: 'stun' }] : []),
+    ],
+  }));
+  const push = (e) => { e.s = summary(); log.push(e); out.push(e); };
+  const ko = (f) => push({ type: 'ko', target: f.i, side: f.side });
+
+  const worth = (sp, f) => {
+    if (!isSelfOnly(sp)) return true;
+    const effs = sp.effects || [];
+    if (effs.some(e => e.k === 'heal')) return f.hp / f.max < 0.6;
+    if (effs.some(e => e.k === 'shield')) return f.shield < f.max * 0.05;
+    if (effs.some(e => e.k === 'buff')) return !f.buffs.some(b => b.src === sp.id);
+    return true;
+  };
+  const choose = (f) => {
+    for (const id of f.s.spells) {
+      const sp = SPELLS[id];
+      if (sp && !((f.cds[id] || 0) > 0) && worth(sp, f)) return sp;
+    }
+    return { ...(f.s.basic || CLASSES[f.s.classId].basic), id: null };
+  };
+
+  const perform = (f, foe, sp, pet = false) => {
+    const act = { type: 'action', actor: f.i, target: foe.i, id: sp.id, name: sp.name, fx: sp.fx, melee: !!sp.melee, selfOnly: isSelfOnly(sp), hits: sp.mult ? (sp.hits || 1) : 0, results: [] };
+    if (pet) { act.pet = sp.petKind; act.id = null; }
+    const R = act.results;
+    let landed = false;
+    if (sp.mult) {
+      for (let h = 0; h < (sp.hits || 1); h++) {
+        if (foe.hp <= 0) break;
+        const dodgeP = (foe.s.v || 0) >= 3 ? finalDodge(stat(foe, 'lck'), foe.s.dodgeB || 0) : dodgeChance(stat(foe, 'lck'));
+        if (rng() < dodgeP) { R.push({ step: h, type: 'dodge', target: foe.i }); continue; }
+        let dmg = power(f, sp.scale) * sp.mult;
+        dmg *= 100 / (100 + stat(foe, 'def') * (1 - (sp.pierce || 0)));
+        dmg *= 0.9 + rng() * 0.2;
+        if (sp.execute && foe.hp / foe.max < 0.35) dmg *= 1 + sp.execute;
+        const critP = (f.s.v || 0) >= 3 ? finalCrit(stat(f, 'lck'), f.s.critB || 0) : critChance(stat(f, 'lck'));
+        const crit = rng() < critP + (sp.crit || 0);
+        if (crit) dmg *= 1.6;
+        dmg = Math.max(1, Math.round(dmg * rage));
+        const absorbed = Math.min(Math.round(foe.shield), dmg);
+        foe.shield = Math.max(0, foe.shield - absorbed);
+        foe.hp = Math.max(0, foe.hp - (dmg - absorbed));
+        landed = true;
+        R.push({ step: h, type: 'hit', target: foe.i, dmg, absorbed, crit, hp: foe.hp });
+        if (sp.lifesteal) {
+          const amount = Math.round(dmg * sp.lifesteal);
+          f.hp = Math.min(f.max, f.hp + amount);
+          R.push({ step: h, type: 'heal', target: f.i, amount, hp: f.hp });
+        }
+      }
+    }
+    const last = Math.max(0, (sp.hits || 1) - 1);
+    for (const e of sp.effects || []) {
+      const onFoe = e.k === 'dot' || e.k === 'stun' || e.k === 'debuff';
+      if (onFoe && (!landed || foe.hp <= 0)) continue;
+      if (e.k === 'dot') {
+        const dmg = Math.max(1, Math.round(power(f, sp.scale) * e.mult * 100 / (100 + stat(foe, 'def') * 0.5)));
+        foe.dots = foe.dots.filter(d => d.kind !== e.kind);
+        foe.dots.push({ kind: e.kind, name: e.name, dmg, turns: e.turns });
+        R.push({ step: last, type: 'status', target: foe.i, k: e.kind, n: e.name });
+      } else if (e.k === 'stun') {
+        if (foe.stunImmune <= 0 && rng() < e.chance) { foe.stun = 1; R.push({ step: last, type: 'status', target: foe.i, k: 'stun', n: 'Étourdi' }); }
+      } else if (e.k === 'debuff') {
+        foe.buffs = foe.buffs.filter(b => b.src !== sp.id);
+        foe.buffs.push({ stat: e.stat, pct: -e.pct, turns: e.turns, src: sp.id, name: `${STAT_SHORT[e.stat]} −${Math.round(e.pct * 100)}%` });
+        R.push({ step: last, type: 'status', target: foe.i, k: 'debuff', n: `${STAT_SHORT[e.stat]} −${Math.round(e.pct * 100)}%` });
+      } else if (e.k === 'buff') {
+        f.buffs = f.buffs.filter(b => b.src !== sp.id);
+        f.buffs.push({ stat: e.stat, pct: e.pct, turns: e.turns + 1, src: sp.id, name: `${STAT_SHORT[e.stat]} +${Math.round(e.pct * 100)}%` });
+        R.push({ step: last, type: 'status', target: f.i, k: 'buff', n: `${STAT_SHORT[e.stat]} +${Math.round(e.pct * 100)}%` });
+      } else if (e.k === 'heal') {
+        const amount = Math.round(e.pctMax ? f.max * e.pctMax : power(f, e.scale) * e.mult);
+        f.hp = Math.min(f.max, f.hp + amount);
+        R.push({ step: last, type: 'heal', target: f.i, amount, hp: f.hp });
+      } else if (e.k === 'shield') {
+        const amount = Math.round(power(f, e.scale) * e.mult);
+        f.shield = Math.min(f.max * 0.6, f.shield + amount);
+        R.push({ step: last, type: 'shield', target: f.i, amount, shield: Math.round(f.shield) });
+      }
+    }
+    if (sp.id) f.cds[sp.id] = sp.cd;
+    push(act);
+    if (foe.hp <= 0) ko(foe);
+  };
+
+  const wiped = (side) => !standing(side).length;
+  function step() {
+    let actor = null;
+    while (!actor) {
+      for (const f of F) if (f.hp > 0) f.gauge += stat(f, 'spd') + 60;
+      actor = F.filter(f => f.hp > 0 && f.gauge >= GAUGE).sort((a, b) => b.gauge - a.gauge)[0] || null;
+    }
+    actor.gauge -= GAUGE;
+    actions++;
+    if (actions === rageAt) push({ type: 'rage' });
+    if (actions >= rageAt && actions % 10 === 0) rage += 0.15;
+    for (const id in actor.cds) if (actor.cds[id] > 0) actor.cds[id]--;
+
+    for (const d of actor.dots) {
+      const dmg = Math.max(1, Math.round(d.dmg * rage));
+      actor.hp = Math.max(0, actor.hp - dmg);
+      d.turns--;
+      push({ type: 'dot', target: actor.i, k: d.kind, n: d.name, dmg, hp: actor.hp });
+      if (actor.hp <= 0) break;
+    }
+    actor.dots = actor.dots.filter(d => d.turns > 0);
+    if (actor.hp <= 0) { ko(actor); if (wiped(actor.side)) winner = 1 - actor.side; return; }
+
+    if (actor.stun > 0) {
+      actor.stun = 0;
+      actor.stunImmune = 2;
+      push({ type: 'stunned', target: actor.i });
+    } else {
+      const foes = standing(1 - actor.side);
+      const foe = foes[Math.floor(rng() * foes.length)];   // un adversaire encore debout, au hasard
+      perform(actor, foe, choose(actor));
+      if (wiped(foe.side)) { winner = actor.side; return; }
+      if (actor.pet && ++actor.petN % PET_EVERY === 0) {
+        const left = standing(1 - actor.side);
+        perform(actor, left[Math.floor(rng() * left.length)], actor.pet, true);
+        if (wiped(1 - actor.side)) { winner = actor.side; return; }
+      }
+    }
+    for (const b of actor.buffs) b.turns--;
+    actor.buffs = actor.buffs.filter(b => b.turns > 0);
+    if (actor.stunImmune > 0) actor.stunImmune--;
+    if (actions >= limit) {
+      // temps écoulé : l'équipe qui a gardé le plus de PV (en part de ses PV max) gagne
+      const left = (side) => F.filter(f => f.side === side).reduce((t, f) => t + f.hp / f.max, 0);
+      winner = left(0) >= left(1) ? 0 : 1;
+    }
+  }
+  function advance() {
+    step();
+    if (winner !== null) { push({ type: 'end', winner }); ended = true; }
+  }
+  return {
+    next() { while (!out.length && !ended) advance(); return out.shift() || null; },
+    queue() {}, get queued() { return null; }, setManual() {}, get manual() { return false; },
+    result() { while (!ended) advance(); out.length = 0; return { log, winner, hp: F.map(f => Math.max(0, Math.round(f.hp))) }; },
+  };
+}
+
+// ------------------------------ Le trône ------------------------------
+/** La semaine du trône commence le lundi à 0 h : renvoie la date de ce lundi (« 2026-10-19 ») */
+export function throneWeek(d = new Date()) {
+  const m = new Date(d);
+  m.setHours(0, 0, 0, 0);
+  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+  return dayKey(m);
+}
+/** Début (en ms) de la semaine du trône, et de la suivante */
+export function throneWeekStart(d = new Date()) {
+  const m = new Date(d);
+  m.setHours(0, 0, 0, 0);
+  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+  return m.getTime();
+}
+export const msToNextThroneWeek = (d = new Date()) => { const n = new Date(throneWeekStart(d)); n.setDate(n.getDate() + 7); return n - d; };
+/**
+ * Classement du trône : l'ordre de départ de la semaine (par puissance), puis chaque victoire contre quelqu'un
+ * au-dessus échange les deux places. ids = tous les joueurs actuels, du plus puissant au moins puissant
+ * (ceux qui n'étaient pas là au début de la semaine arrivent en bas).
+ */
+export function throneRanking(startOrder, fights, ids) {
+  const known = new Set(ids);
+  const order = (startOrder || []).filter(id => known.has(id));
+  for (const id of ids) if (!order.includes(id)) order.push(id);
+  for (const f of fights) {
+    if (f.winner !== 0) continue;
+    const a = order.indexOf(f.attacker_id), d = order.indexOf(f.defender_id);
+    if (a > d && d >= 0) { order[a] = f.defender_id; order[d] = f.attacker_id; }
+  }
+  return order;
+}
+/** Clefs de fin de semaine selon la place (0 = le roi), pour chaque perso */
+export const throneKeys = (rank) => (rank < THRONE.keys.length ? THRONE.keys[rank] : THRONE.keysRest);
+/** Donne les clefs de la semaine finie à chaque perso du compte (une seule fois) */
+export function claimThrone(acc, week, rank) {
+  acc.throne ||= { claimed: {} };
+  if (acc.throne.claimed[week] !== undefined) return 0;
+  const n = throneKeys(rank);
+  acc.throne.claimed[week] = rank;
+  for (const h of acc.heroes) h.keys = (h.keys || 0) + n;
+  return n;
 }
 
 /** XP d'un assaut de raid (à chaque assaut, selon le niveau du perso) */

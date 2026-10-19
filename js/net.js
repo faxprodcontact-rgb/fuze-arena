@@ -4,7 +4,7 @@
 //  progression (data). Chacun peut lire les autres (pour les combats,
 //  la guerre, le classement) mais ne peut modifier que la sienne.
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261019125243';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261019130856';
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export const MAX_PLAYERS = 8;
@@ -181,8 +181,19 @@ export async function fetchMyFights(limit = 40) {
   const c = await client();
   const { data, error } = await c.from('fight_log')
     .select('id, attacker_id, defender_id, attacker_name, defender_name, kind, winner, seed, a_snap, d_snap, created_at')
-    .or(`attacker_id.eq.${userId},defender_id.eq.${userId}`)
+    .or(`attacker_id.eq.${userId},defender_id.eq.${userId}`).neq('kind', 'throne_start')
     .order('created_at', { ascending: false }).limit(limit);
+  if (error) throw new Error(frError(error));
+  return data || [];
+}
+
+/** Le trône : l'ordre de départ de chaque semaine et les défis, depuis une date (rangés dans le journal des combats) */
+export async function fetchThrone(sinceIso) {
+  const c = await client();
+  const { data, error } = await c.from('fight_log')
+    .select('id, attacker_id, defender_id, attacker_name, defender_name, kind, winner, seed, a_snap, created_at')
+    .in('kind', ['throne_start', 'throne']).gte('created_at', sinceIso)
+    .order('id', { ascending: true }).limit(2000);
   if (error) throw new Error(frError(error));
   return data || [];
 }

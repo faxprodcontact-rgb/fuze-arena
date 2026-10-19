@@ -4,17 +4,17 @@
 import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
-  DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
+  THRONE, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019125243';
-import * as E from './engine.js?v=20261019125243';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview } from './battle.js?v=20261019125243';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019125243';
-import { hashStr, makeRng } from './rng.js?v=20261019125243';
-import { APP_VERSION } from './version.js?v=20261019125243';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019125243';
-import * as NET from './net.js?v=20261019125243';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019125243';
+} from './data.js?v=20261019130856';
+import * as E from './engine.js?v=20261019130856';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019130856';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019130856';
+import { hashStr, makeRng } from './rng.js?v=20261019130856';
+import { APP_VERSION } from './version.js?v=20261019130856';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019130856';
+import * as NET from './net.js?v=20261019130856';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019130856';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1209,7 +1209,7 @@ const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p 
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
+const PARENT = { throne: 'combat', pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 const PARENT_NAME = { combat: 'Combats', social: 'Social' };
 
 function setBadge(id, n) {
@@ -1314,6 +1314,7 @@ function viewCombat() {
     { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
     { id: 'raid', name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
+    { id: 'throne', name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, wide: true, c: '#ffd84a' },
     { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
     { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd84a' },
   ];
@@ -1526,7 +1527,7 @@ function openPatchNotes() {
 let journal = [];
 let journalUnseen = 0;
 const JOURNAL_SEEN = 'fuze-journal-seen';
-const KIND_NAME = { arena: 'Arène', war: 'Guerre', rematch: 'Revanche', revenge: 'Vengeance' };
+const KIND_NAME = { arena: 'Arène', war: 'Guerre', rematch: 'Revanche', revenge: 'Vengeance', throne: 'Trône' };
 
 async function loadJournal() {
   if (!NET.online) return;
@@ -1551,6 +1552,15 @@ function logFight(kind, foeId, foeName, me, foeSnap, seed, won) {
 }
 
 function replayFight(row) {
+  if (row.kind === 'throne') {   // le trône : mêlée à 4 contre 4, rejouée à l'identique avec la même graine
+    const A = row.a_snap.team, B = row.d_snap.team;
+    runMelee({
+      teamA: A, teamB: B, fight: E.createMelee(A, B, Number(row.seed)),
+      title: `Rediffusion · ${esc(row.attacker_name)} <span style="color:var(--gold)">VS</span> ${esc(row.defender_name)}`,
+      finish: (r) => ({ headline: `${(r.winner === 0 ? row.attacker_name : row.defender_name).toUpperCase()} GAGNE !`, headClass: 'win' }),
+    });
+    return;
+  }
   const result = E.simulate(row.a_snap, row.d_snap, Number(row.seed));
   const winName = result.winner === 0 ? row.attacker_name : row.defender_name;
   runBattle({
@@ -1595,7 +1605,7 @@ function viewJournal() {
           <div class="j-btns">
             <button class="ibtn" data-act="replayLog" data-id="${f.id}" aria-label="Revoir">${ico('play')}</button>
             <button class="ibtn" data-act="shareLog" data-id="${f.id}" aria-label="Partager">${ico('chat')}</button>
-            ${attacked && o ? `<button class="ibtn red" data-act="revenge" data-id="${otherId}" aria-label="Vengeance">${ico('fist')}</button>` : ''}
+            ${attacked && o && f.kind !== 'throne' ? `<button class="ibtn red" data-act="revenge" data-id="${otherId}" aria-label="Vengeance">${ico('fist')}</button>` : ''}
           </div>
         </div>`;
       }).join('') : '<p class="empty">Aucun combat pour l’instant.</p>'}
@@ -1726,6 +1736,225 @@ function viewBets() {
       return `<div class="opp"><div class="o-body"><div class="o-name">${ico('trophy')} ${esc(win === 0 ? c.from_name : c.to_name)} a gagné</div><div class="o-sub">${esc(c.from_name)} vs ${esc(c.to_name)}</div></div>
         <button class="btn small" data-act="replayDuel" data-id="${c.id}">${ico('play')} Revoir</button></div>`;
     }).join('')}</section>` : ''}`;
+}
+
+// ------------------------------ Le trône ------------------------------
+// Classement de la semaine (lundi 0 h) : l'ordre de départ par puissance, puis chaque victoire contre quelqu'un
+// au-dessus de soi échange les deux places. En ligne, l'ordre de départ et les défis sont rangés dans le journal
+// des combats (kind « throne_start » et « throne »). Hors ligne, contre les bots.
+let throneInfo = { week: '', order: [], prevWeek: '', prevOrder: [] };
+let throneLoading = null, throneError = '';
+const throneRank = (id = myId()) => throneInfo.order.indexOf(id);
+
+/** L'équipe du trône d'un compte : ses 4 persos, les plus forts devant */
+const throneTeam = (data, pseudo) => teamOf(data, pseudo).reverse();
+/** Équipe d'un bot hors ligne : 4 persos autour de son niveau */
+function botThroneTeam(o) {
+  const classes = [o.classId, ...Object.keys(CLASSES).filter(c => c !== o.classId)].slice(0, 3);
+  return [0, 1, 2, 3].map(j => E.snapshot(E.buildBot({ id: `${o.id}-t${j}`, name: o.name, classId: classes[j % classes.length] }, Math.max(1, o.level - j * 2), E.throneWeek())));
+}
+/** Tous les prétendants au trône : moi et les autres joueurs (ou les bots hors ligne) */
+function throneContenders() {
+  const me = { id: myId(), name: acc.pseudo, data: acc, team: throneTeam(acc, acc.pseudo) };
+  const rest = NET.online
+    ? players.filter(p => p.data && p.data.heroes && p.data.heroes.length).map(p => ({ id: p.id, name: p.pseudo, data: p.data, team: throneTeam(p.data, p.pseudo) }))
+    : opponents().map(o => ({ id: o.id, name: o.name, data: null, classId: o.classId, team: botThroneTeam(o) }));
+  return [me, ...rest].map(c => ({ ...c, power: Math.round(c.team.reduce((t, m) => t + E.powerScore(m), 0)) }));
+}
+const byPower = (list) => [...list].sort((a, b) => b.power - a.power).map(c => c.id);
+
+function loadThrone() {
+  if (throneLoading) return throneLoading;
+  throneError = '';
+  throneLoading = (async () => {
+    try {
+      const all = throneContenders();
+      const ids = byPower(all);
+      const week = E.throneWeek();
+      const prevWeek = E.throneWeek(new Date(E.throneWeekStart() - 3 * 86400000));
+      if (!NET.online) {
+        // hors ligne : le classement est gardé dans la sauvegarde
+        acc.throne ||= { claimed: {} };
+        let L = acc.throne.local;
+        if (!L || L.week !== week) {
+          if (L && L.week === prevWeek) acc.throne.prev = { week: prevWeek, order: E.throneRanking(L.order, L.fights, ids) };
+          L = acc.throne.local = { week, order: ids, fights: [] };
+          save();
+        }
+        const P = acc.throne.prev && acc.throne.prev.week === prevWeek ? acc.throne.prev : null;
+        throneInfo = { week, order: E.throneRanking(L.order, L.fights, ids), prevWeek, prevOrder: P ? P.order : [] };
+        return;
+      }
+      const since = new Date(E.throneWeekStart() - 7 * 86400000).toISOString();
+      let rows = await NET.fetchThrone(since);
+      const startOf = (w) => rows.find(r => r.kind === 'throne_start' && r.a_snap && r.a_snap.week === w);
+      const fightsOf = (w) => rows.filter(r => r.kind === 'throne' && r.a_snap && r.a_snap.week === w);
+      if (!startOf(week)) {
+        // premier passage de la semaine : on fixe l'ordre de départ, par puissance (le plus ancien enregistrement fait foi)
+        await NET.logFight({ defender_id: null, attacker_name: acc.pseudo, defender_name: '', kind: 'throne_start', winner: 0, seed: 0, a_snap: { week, order: ids }, d_snap: {} });
+        rows = await NET.fetchThrone(since);
+      }
+      const start = startOf(week), prev = startOf(prevWeek);
+      throneInfo = {
+        week, prevWeek,
+        order: E.throneRanking(start ? start.a_snap.order : ids, fightsOf(week), ids),
+        prevOrder: prev ? E.throneRanking(prev.a_snap.order, fightsOf(prevWeek), ids) : [],
+      };
+    } catch (e) {
+      throneError = e.message || 'Erreur inconnue';
+    } finally {
+      throneLoading = null;
+    }
+  })();
+  return throneLoading;
+}
+
+function viewThrone() {
+  if (throneInfo.week !== E.throneWeek() || !throneInfo.order.length) {
+    if (throneError) {
+      return `<section class="card"><h2>Le trône</h2><p class="auth-msg">Impossible de charger le trône : ${esc(throneError)}</p>
+        <button class="btn primary block" style="margin-top:12px" data-act="retryThrone">Réessayer</button></section>`;
+    }
+    if (!throneLoading) loadThrone().then(() => { if (tab === 'throne') softRender(); });
+    return offlineCard('Le trône', 'Chargement du classement…');
+  }
+  const all = throneContenders();
+  const byId = Object.fromEntries(all.map(c => [c.id, c]));
+  const list = throneInfo.order.map(id => byId[id]).filter(Boolean);
+  const me = myId();
+  const myRank = list.findIndex(c => c.id === me);
+  const king = list[0];
+  // récompense de la semaine dernière
+  const prevRank = throneInfo.prevOrder.indexOf(me);
+  const claimed = acc.throne && acc.throne.claimed && acc.throne.claimed[throneInfo.prevWeek] !== undefined;
+  const prevCard = prevRank >= 0 && !claimed ? `
+    <section class="card war-reward">
+      <h2>Trône : la semaine dernière</h2>
+      <div class="big-res">${prevRank === 0 ? 'Tu étais le roi !' : `Tu as fini ${prevRank + 1}ᵉ`}</div>
+      <p class="hint">+${E.throneKeys(prevRank)} clef${E.throneKeys(prevRank) > 1 ? 's' : ''} pour chacun de tes persos.</p>
+      <button class="btn primary block" data-act="claimThrone">Récupérer mes clefs</button>
+    </section>` : '';
+  const heroOf = (c) => (c.data ? E.strongestHero(c.data) : { classId: c.classId || c.team[0].classId, dye: null });
+  const canFight = (i) => myRank > i;   // on ne défie que ceux au-dessus de soi
+  const fightBtn = (c, i) => (canFight(i) ? `<button class="btn small danger tr-go" data-act="throneFight" data-id="${c.id}">${ico('swords')} Défier</button>` : '');
+  const card = (c, i) => {
+    const h = heroOf(c);
+    return `
+      <div class="tr-card ${c.id === me ? 'me' : ''}">
+        <span class="tr-rank">${i + 1}</span>
+        <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
+        <div class="tr-name">${nameHtml(c.name, c.data)}</div>
+        <small class="tr-pow">${ico('bolt')} ${fmtNum(c.power)}</small>
+        ${fightBtn(c, i)}
+      </div>`;
+  };
+  // pyramide sous le roi : 2, puis 3, puis 4… joueurs par rangée
+  const rows = [];
+  for (let i = 1, n = 2; i < list.length; i += n, n++) rows.push(list.slice(i, i + n).map((c, j) => card(c, i + j)).join(''));
+  const kh = heroOf(king);
+  const kpet = king.data ? petOf(kh) : '';
+  return prevCard + modeHead({
+    id: 'throne', c: '#ffd84a', art: '<canvas class="px" data-emblem="throne"></canvas>',
+    title: 'Le trône', sub: 'Défie ceux au-dessus de toi et prends leur place',
+    chips: [
+      mchip(ico('crown'), 'Ta place', `${myRank + 1} / ${list.length}`, myRank === 0 ? 'hot' : ''),
+      mchip(ico('medal1'), 'Le roi', esc(king.name)),
+      mchip(ico('hourglass'), 'Fin de semaine', `<span data-endlong="${Date.now() + E.msToNextThroneWeek()}">${fmtLong(E.msToNextThroneWeek())}</span>`),
+    ],
+    info: `Tout le monde est classé, au début de la semaine, selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.<br><br>Lundi à 0 h, chaque perso du compte reçoit : <b>${THRONE.keys[0]} clefs</b> pour le roi, <b>${THRONE.keys[1]}</b> pour le 2ᵉ, <b>${THRONE.keys[2]}</b> pour le 3ᵉ, <b>${THRONE.keysRest}</b> pour tous les autres. Puis le classement repart selon la puissance.`,
+  }) + `
+    <section class="card hx throne-hall" style="--hc:#ffd84a">
+      <div class="tr-king ${king.id === me ? 'me' : ''}">
+        <span class="tr-crown">${ico('crown')}</span>
+        <div class="tr-king-art"><canvas class="px" data-hero="${kh.classId}" data-pet="${kpet}" data-dye="${kh.dye || ''}"></canvas></div>
+        <div class="tr-king-name">${nameHtml(king.name, king.data)}</div>
+        <small class="tr-pow">${ico('bolt')} ${fmtNum(king.power)} · Roi de la semaine</small>
+        ${fightBtn(king, 0)}
+      </div>
+      ${rows.map((r, j) => `<div class="tr-row" style="--n:${j + 2}">${r}</div>`).join('')}
+    </section>`;
+}
+
+function claimThroneReward() {
+  const rank = throneInfo.prevOrder.indexOf(myId());
+  if (rank < 0) return;
+  const n = E.claimThrone(acc, throneInfo.prevWeek, rank);
+  if (!n) return;
+  SFX.loot(3); save(); render();
+  toast(`+${n} clef${n > 1 ? 's' : ''} pour chacun de tes persos !`);
+}
+
+/** Défi du trône : mon équipe contre la sienne, en mêlée à 4 contre 4 */
+function startThrone(targetId) {
+  const all = throneContenders();
+  const foe = all.find(c => c.id === targetId), meC = all.find(c => c.id === myId());
+  const ri = throneRank(targetId), mi = throneRank();
+  if (!foe || !meC || ri < 0 || mi <= ri) { toast('Tu ne peux défier que quelqu’un au-dessus de toi.'); return; }
+  const seed = (Math.random() * 2 ** 31) | 0;
+  const week = throneInfo.week;
+  const fight = E.createMelee(meC.team, foe.team, seed);
+  runMelee({
+    teamA: meC.team, teamB: foe.team, fight,
+    title: `Le trône <span style="color:var(--gold)">·</span> ${esc(acc.pseudo)} <span style="color:var(--gold)">VS</span> ${esc(foe.name)} (${ri + 1}ᵉ)`,
+    finish: (result) => {
+      const won = result.winner === 0;
+      const row = { attacker_id: myId(), defender_id: foe.id, winner: won ? 0 : 1 };
+      if (NET.online) {
+        NET.logFight({ defender_id: foe.id, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', winner: won ? 0 : 1, seed, a_snap: { week, team: meC.team }, d_snap: { team: foe.team } })
+          .then(r => { journal.unshift({ ...r, ...row, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', seed, a_snap: { week, team: meC.team }, d_snap: { team: foe.team } }); return loadThrone(); })
+          .then(() => { if (tab === 'throne' && !document.querySelector('.battle')) softRender(); })
+          .catch(e => toast(e.message));
+      } else if (acc.throne && acc.throne.local && acc.throne.local.week === week) {
+        acc.throne.local.fights.push(row);
+      }
+      if (won) { const o = throneInfo.order; o[mi] = foe.id; o[ri] = myId(); }   // échange des places tout de suite à l'écran
+      save();
+      return {
+        headline: won ? (ri === 0 ? 'TU ES LE ROI !' : `TU PRENDS LA ${ri + 1}ᵉ PLACE !`) : 'DÉFAITE…',
+        headClass: won ? 'win' : 'lose',
+        rewardsHtml: `<p style="color:var(--muted);margin:0">${won ? `${esc(foe.name)} descend à ta place (${mi + 1}ᵉ).` : 'Tu gardes ta place. Retente quand tu veux !'}</p>`,
+      };
+    },
+  });
+}
+
+/** Écran de combat du trône (mêlée), sur le même modèle que runBattle */
+function runMelee({ teamA, teamB, fight, title, finish }) {
+  stopPreviews.forEach(f => f());
+  stopPreviews = [];
+  const short = (team) => team.map(m => ({ ...m, name: CLASSES[m.classId].name }));
+  const ov = document.createElement('div');
+  ov.className = 'battle';
+  ov.innerHTML = `
+    <div class="battle-vs">${title}</div>
+    <div class="battle-wrap"><canvas id="arena"></canvas></div>
+    <div class="battle-ctrl">
+      <div class="ctrl-row">
+        <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
+        <button class="btn small" data-act="skip">Passer ${ico('skip')}</button>
+        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
+      </div>
+    </div>
+    <div class="battle-after" id="result-slot"></div>`;
+  document.body.appendChild(ov);
+  hydrate(ov);
+  battleFight = null;
+  battleCtl = playMelee(ov.querySelector('#arena'), short(teamA), short(teamB), fight, { colors: ['#3d9bff', '#ff5d6c'] });
+  battleCtl.speedIdx = 0;
+  battleCtl.promise.then(() => {
+    const result = fight.result();
+    const out = finish(result) || {};
+    const won = result.winner === 0;
+    ov.querySelector('.battle-ctrl')?.remove();
+    const slot = ov.querySelector('#result-slot');
+    slot.innerHTML = `
+      <div class="result">
+        <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${pxCaps(out.headline || (won ? 'VICTOIRE' : 'DÉFAITE…')).replace(/\s*!+\s*$/, '')}</h2>
+        ${out.rewardsHtml || ''}
+        <button class="btn primary" data-act="endFight">Continuer</button>
+      </div>`;
+    hydrate(slot);
+  });
 }
 
 // ------------------------------ PvP en direct ------------------------------
@@ -2302,7 +2531,10 @@ function onLive(kind, row) {
     setBadge('social', journalUnseen + chatUnread);
     const won = row.winner === 0;
     SFX.message();
-    toast(`${row.attacker_name} t’a attaqué (${KIND_NAME[row.kind] || ''}) : ${won ? 'il a gagné' : 'tu as gagné'} !`);
+    if (row.kind === 'throne') {
+      toast(`${row.attacker_name} t’a défié pour le trône : ${won ? 'il prend ta place !' : 'tu gardes ta place !'}`);
+      loadThrone().then(() => { if (tab === 'throne' && !document.querySelector('.battle')) softRender(); });
+    } else toast(`${row.attacker_name} t’a attaqué (${KIND_NAME[row.kind] || ''}) : ${won ? 'il a gagné' : 'tu as gagné'} !`);
     if (tab === 'journal') { markJournalSeen(); softRender(); }
   } else if (kind === 'challenge') {
     if (row.to_id === NET.myId() && row.status === 'pending') { SFX.message(); toast(`${row.from_name} te défie en duel !`); }
@@ -2327,7 +2559,7 @@ function updateXpBonus() {
   E.setXpBonus(catchup, E.altXpBonus(acc, hero));   // persos secondaires : ×2 en plus, jusqu'au niveau du perso le plus haut du compte
 }
 
-const VIEWS = { hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
+const VIEWS = { throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
   combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
@@ -2695,6 +2927,7 @@ const ACTIONS = {
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets' || d.id === 'pvp') refreshBets().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'raid') loadRaid().then(() => { if (tab === 'raid') softRender(); });
+    if (d.id === 'throne') refreshPlayers().then(loadThrone).then(() => { if (tab === 'throne') softRender(); });
   },
   authMode: (d) => { authMode = d.mode; renderAuth(); },
   auth: () => doAuth(),
@@ -2729,6 +2962,9 @@ const ACTIONS = {
   },
   playerCard: (d) => openPlayerCard(d.id, d.h !== undefined ? +d.h : null),
   podiumMsg: () => openPodiumMsg(),
+  throneFight: (d) => startThrone(d.id),
+  claimThrone: () => claimThroneReward(),
+  retryThrone: () => { throneError = ''; loadThrone().then(() => { if (tab === 'throne') softRender(); }); },
   podiumMsgSave: (d) => {
     const v = d.clear ? '' : (document.getElementById('pod-msg')?.value || '').trim().slice(0, 60);
     acc.podiumMsg = v ? { text: v, at: Date.now() } : null;

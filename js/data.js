@@ -643,6 +643,9 @@ const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, 
 const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price, look });
 // PvP en direct : défi entre joueurs en ligne, tous les persos de chacun à la suite (relais)
 export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
+// Le trône : classement de la semaine (lundi 0 h), défis illimités contre ceux au-dessus de soi (échange de places)
+// clefs de fin de semaine pour CHAQUE perso du compte : roi 5, 2e 3, 3e 2, tous les autres 1
+export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
 export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
 
 export const COSMETICS = [

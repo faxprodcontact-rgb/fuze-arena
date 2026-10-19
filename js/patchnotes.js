@@ -6,6 +6,19 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1308', date: '19/10/2026', time: '13h08', title: 'Nouveau mode : Le trône',
+    sections: [
+      { title: 'Le trône', items: [
+        'Dans Combats › Le trône : le classement de tous les joueurs. Celui du sommet est le roi, couronne sur la tête !',
+        'Au début de chaque semaine (lundi 0 h), tout le monde est classé selon la puissance de ses 4 persos.',
+        'Défie qui tu veux au-dessus de toi, autant de fois que tu veux : si tu gagnes, vous échangez vos places. Si tu perds, rien ne bouge.',
+        'Combat à 4 contre 4 : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.',
+        'Fin de semaine : chacun de tes persos reçoit 5 clefs si tu es roi, 3 si tu es 2ᵉ, 2 si tu es 3ᵉ, et 1 clef pour tous les autres.',
+        'Les défis du trône apparaissent dans le journal : tu peux les revoir et les partager.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-19-1251', date: '19/10/2026', time: '12h51', title: 'Correctif : pseudos colorés',
     sections: [
       { title: 'Correctif', items: ['Les pseudos arc-en-ciel, de feu et galaxie s’affichent partout correctement, y compris en haut à gauche et sur la fiche du héros (ils apparaissaient assombris).'] },
