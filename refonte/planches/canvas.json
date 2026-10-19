@@ -1,0 +1,18 @@
+{
+  "v": 3,
+  "attachments": {},
+  "createdOnFiles": { "at": "2026-10-19T17:56:10.438Z", "v": 1 },
+  "title": "Fuze Arena — refonte graphique",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Écran de combat" },
+    "Accueil.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Fiche Héros" },
+    "Interface.dc.html": { "x": 940, "y": 0, "w": 1240, "h": 900, "title": "Kit d'interface" },
+    "Heros.dc.html": { "x": 0, "y": 1020, "w": 1360, "h": 820, "title": "Les héros" },
+    "Monstres.dc.html": { "x": 1440, "y": 1020, "w": 1100, "h": 640, "title": "Les monstres" }
+  },
+  "order": ["Main.dc.html", "Accueil.dc.html", "Interface.dc.html", "Heros.dc.html", "Monstres.dc.html"],
+  "notes": {},
+  "designSystems": []
+}
