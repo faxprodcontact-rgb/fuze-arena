@@ -494,7 +494,7 @@ export const FRIENDS = [
 //  AIDE AUX RETARDATAIRES — bonus d'XP selon le retard sur le perso le plus haut du jeu
 // =====================================================================
 export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de retard sur le perso le plus haut du jeu, max +100 %
-export const ALT_XP_MULT = 2;      // persos secondaires : XP ×2 tant qu'ils sont sous le niveau de ton perso le plus haut
+export const ALT_XP_MULT = 1;      // persos secondaires : plus de bonus (avant ×2) ; seule l'aide aux retardataires reste
 // clefs gagnées à chaque niveau : 1, puis 2 dès le niveau 30, 3 dès le 50, 4 dès le 70, 5 dès le 90 (et toujours 5 aux niveaux 10, 20, 30…)
 export const LEVEL_KEYS = { each: 1, tiers: [[90, 5], [70, 4], [50, 3], [30, 2]], every10: 5 };
 // Remise à zéro exceptionnelle de tous les compteurs (une seule fois, à cette heure-là)

@@ -6,6 +6,15 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-0825', date: '19/10/2026', time: '08h25', title: 'Fin du bonus des persos secondaires',
+    sections: [
+      { title: 'XP', items: [
+        'Les persos secondaires n’ont plus l’XP ×2.',
+        'L’aide aux retardataires reste : +5 % d’XP par niveau de retard sur le perso le plus haut du jeu, jusqu’à +100 %.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-18-2158', date: '18/10/2026', time: '21h58', title: 'Raid : de nouveaux boss arrivent',
     sections: [
       { title: 'Raid', items: [
