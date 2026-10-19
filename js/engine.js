@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019173345';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019173345';
+} from './data.js?v=20261019175626';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019175626';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -591,21 +591,36 @@ export const autoDiff = (g) => Math.ceil(g / AUTO.paliers);
 export const autoPalier = (g) => ((g - 1) % AUTO.paliers) + 1;
 export const AUTO_LAST = AUTO.diffs * AUTO.paliers;
 export function autoState(acc) {
-  acc.auto ||= { g: 1, n: 0, best: 1, last: Date.now(), bank: { chests: 0 } };
-  delete acc.auto.bank.keys;   // le combat auto ne donne plus de clefs (seulement des coffres)
-  return acc.auto;
+  acc.auto ||= { v: 2, g: 1, n: 0, best: 1, paid: 0, last: Date.now(), bank: { chests: 0 } };
+  const st = acc.auto;
+  delete st.bank.keys;   // le combat auto ne donne plus de clefs (seulement des coffres)
+  if (st.v !== 2) {
+    // nouvelle difficulté : tout le monde repart du palier 1, sans regagner les coffres déjà gagnés
+    st.paid = Math.max(st.paid || 0, Math.floor((Math.min(st.best, AUTO_LAST + 1) - 1) / 10) * 10);
+    st.g = 1; st.best = 1; st.v = 2;
+  }
+  return st;
 }
-/** Les monstres d'un palier : 4 monstres, ou un boss et 2 sbires tous les 10 paliers */
+/** Puissance d'équipe qu'il faut pour passer le palier g (montée régulière entre les repères de AUTO.need) */
+export function autoNeed(g) {
+  const N = AUTO.need;
+  let i = 1;
+  while (i < N.length - 1 && g > N[i][0]) i++;
+  const [g0, p0] = N[i - 1], [g1, p1] = N[i];
+  const t = Math.max(0, Math.min(1, (g - g0) / (g1 - g0)));
+  return p0 * Math.pow(p1 / p0, t);
+}
+/** Les monstres d'un palier : 4 monstres, ou un boss et 2 sbires tous les 10 paliers. Leur force suit la puissance demandée. */
 export function autoMonsters(g) {
   const pool = DUNGEONS.flatMap(dungeonFoes);
-  const lvl = Math.min(MAX_LEVEL, Math.round(1 + (g - 1) * AUTO.levelPerPalier));
-  const boost = 1 + AUTO.diffBoost * (autoDiff(g) - 1);
+  const f = autoNeed(g) * AUTO.monsterK;
   const boss = g % 10 === 0;
   return (boss ? [0, 1, 2] : [0, 1, 2, 3]).map(j => {
-    const m = buildMonster({ ...pool[(g * 7 + j * 11) % pool.length], lvl });
-    const k = boost * (boss && j === 0 ? AUTO.boss.power : 1);
+    const m = buildMonster({ ...pool[(g * 7 + j * 11) % pool.length], lvl: 50 });
+    const k = f * (boss && j === 0 ? AUTO.boss.power : 1);
     for (const q in m.stats) m.stats[q] = Math.max(1, Math.round(m.stats[q] * k));
-    m.maxHp = Math.round(m.maxHp * (boss && j === 0 ? AUTO.boss.hp : boss ? 0.8 : 1));
+    m.maxHp = Math.max(10, Math.round(m.maxHp * f * (boss && j === 0 ? AUTO.boss.hp : boss ? 0.8 : 1)));
+    m.level = Math.max(1, Math.round(g / 10));
     if (boss && j === 0) m.boss = true;
     return m;
   });
@@ -623,7 +638,7 @@ export function autoResolve(acc, team) {
   st.n++;
   let reward = false;
   if (won) {
-    if (g % 10 === 0) { st.bank.chests++; reward = true; }
+    if (g % 10 === 0 && g > (st.paid || 0)) { st.bank.chests++; st.paid = g; reward = true; }   // jamais deux fois le même coffre
     st.g = Math.min(AUTO_LAST + 1, g + 1);   // AUTO_LAST + 1 = tout est fini
   } else {
     st.g = Math.floor((g - 1) / 10) * 10 + 1;

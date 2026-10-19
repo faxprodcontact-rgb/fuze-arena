@@ -650,9 +650,11 @@ export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
 // À l'écran, les combats s'enchaînent sans pause ; ailleurs (autre écran, jeu fermé) : un palier toutes les 10 s (la durée d'un combat). Tous les 10 paliers : 1 coffre normal (en réserve, pour le perso actif), pas de clef. Défaite : retour au palier x1.
 export const AUTO = {
   palierMs: 10000, offlineMaxMs: 8 * 3600 * 1000, diffs: 10, paliers: 100,
-  levelPerPalier: 0.1,      // niveau des monstres = 1 + 0,1 par palier (palier 1000 = niveau 100)
-  diffBoost: 0.03,          // + 3 % de stats par difficulté
-  boss: { power: 1.2, hp: 2.6 },   // tous les 10 paliers : un boss et 2 sbires
+  // Puissance d'équipe (les 4 persos additionnés) qu'il faut pour passer un palier, entre ces repères (palier global 1 à 1000) :
+  // départ ~200, difficulté 3 palier 50 = 2 000, difficulté 10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~6 980)
+  need: [[1, 200], [250, 2100], [1000, 6700]],
+  monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
+  boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
 };
 export const SHOP_DAILY = { count: 3, price: 10, rarity: 0 };   // 3 objets gris (Communs) à 10 Flouze, changés chaque jour
 

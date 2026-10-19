@@ -6,6 +6,16 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
+    id: '2026-10-19-1756', date: '19/10/2026', time: '17h56', title: 'Combat auto : nouvelle difficulté',
+    sections: [
+      { title: 'Combat auto', items: [
+        'Les monstres sont maintenant réglés sur la puissance de ton équipe (tes 4 persos additionnés) : plus tu es puissant, plus tu montes.',
+        'Repères : une équipe de 2 000 de puissance s’arrête vers la difficulté 3, palier 50. Le palier 100 de la difficulté 10 demande l’équipe parfaite : 4 persos niveau 100, tout en Chaotique avec la panoplie.',
+        'Tout le monde repart du palier 1. Les coffres déjà gagnés ne sont pas redonnés : tu n’en regagnes qu’en dépassant ton ancien record.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-19-1649', date: '19/10/2026', time: '16h49', title: 'Nouveau : le combat auto',
     sections: [
       { title: 'Combat auto', items: [
