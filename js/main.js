@@ -1887,12 +1887,23 @@ function autoBankHtml(st) {
 function autoCard() {
   const st = E.autoState(acc);
   const done = st.g > E.AUTO_LAST;
+  const txt = `${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${String(AUTO.xpPerWin * 100).replace('.', ',')} % d’un niveau, au plus ${String(AUTO.xpDayCap * 100).replace('.', ',')} % d’un niveau par jour), pour ton perso actif.`;
+  // en haut de l'onglet Combats : le combat sur toute la largeur, du bandeau jusqu'à « Ton combattant »
+  if (!done) return `
+    <section class="auto-hero ${infoCls('auto')}" data-info="auto">
+      <div class="auto-stage"><canvas data-auto></canvas></div>
+      <div class="auto-panel">
+        <div class="auto-top">${ico('swords')}<b>Combat auto</b><small>même jeu fermé</small></div>
+        <div data-auto-info>${autoInfoHtml()}</div>
+        <div class="more-txt">${txt}</div>
+        ${moreBtn('auto')}
+      </div>
+    </section>`;
   return `
     <section class="card hx auto-card ${infoCls('auto')}" data-info="auto" style="--hc:#4cd964">
       ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
-      ${done ? '' : '<div class="auto-stage"><canvas data-auto></canvas></div>'}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${String(AUTO.xpPerWin * 100).replace('.', ',')} % d’un niveau, au plus ${String(AUTO.xpDayCap * 100).replace('.', ',')} % d’un niveau par jour), pour ton perso actif.</div>
+      <div class="more-txt">${txt}</div>
       ${moreBtn('auto')}
     </section>`;
 }
@@ -1909,7 +1920,7 @@ function startAutoVisual(canvas) {
     autoVis = { n, played: 0 };
     const short = team.map(m => ({ ...m, name: CLASSES[m.classId].name }));
     const ctl = playMelee(canvas, short, mons, E.createMelee(team, mons, E.autoSeed(acc, n)), {
-      silent: true, skipFirst: skip, speed: 4, colors: ['#3d9bff', '#ff5d6c'], theme: ['cave', 'forest', 'crypt', 'swamp', 'mine', 'volcano', 'glacier', 'castle', 'abyss', 'meeting'][E.autoDiff(g) - 1],
+      silent: true, ground: 0.9, skipFirst: skip, speed: 4, colors: ['#3d9bff', '#ff5d6c'], theme: ['cave', 'forest', 'crypt', 'swamp', 'mine', 'volcano', 'glacier', 'castle', 'abyss', 'meeting'][E.autoDiff(g) - 1],
       onEvent: () => { if (autoVis.n === n) autoVis.played++; },
     });
     autoCtl = ctl;

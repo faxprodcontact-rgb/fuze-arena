@@ -1604,7 +1604,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
  * teams = [équipe A, équipe B] (snapshots), colors = couleur de chaque équipe.
  * Renvoie { promise, setSpeed, skip, destroy } (comme playBattle).
  */
-export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#ff5d6c'], theme = 'castle', silent = false, skipFirst = 0, onEvent = null, speed: speed0 = 1 } = {}) {
+export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#ff5d6c'], theme = 'castle', silent = false, skipFirst = 0, onEvent = null, speed: speed0 = 1, ground = null } = {}) {
   const ctx = canvas.getContext('2d');
   const SFX = silent ? NO_SFX : SFX_ON;   // combat auto : sans le son
   const W = 360;
@@ -1618,7 +1618,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     canvas.height = Math.max(1, Math.round(r.height * dpr));
     k = canvas.width / W;
     H = Math.round(W * (r.height / Math.max(1, r.width)));
-    GROUND = H > W ? Math.round(H * 0.6) : H - 22;   // téléphone en portrait : la scène au milieu de l'écran
+    GROUND = ground ? Math.round(H * ground) : H > W ? Math.round(H * 0.6) : H - 22;   // téléphone en portrait : la scène au milieu de l'écran (ground = place choisie du sol)
   }
   resize();
   const ro = new ResizeObserver(resize);

@@ -1529,3 +1529,17 @@ button.slot.empty-slot { cursor: pointer; }
 .pick-st i { font-style: normal; margin-right: 4px; }
 .pick-go { font-family: var(--pixel); font-size: 13px; color: #7bf09a; text-shadow: var(--ol); flex-shrink: 0; }
 .pick-row.on .pick-go { color: var(--gold); }
+
+/* combat auto en grand, en haut de l'onglet Combats (toute la largeur, du bandeau jusqu'à « Ton combattant ») */
+.auto-hero { position: relative; margin: -14px -14px 0; }
+.auto-hero .auto-stage { height: max(280px, calc(100svh - 330px - var(--safe-top) - var(--safe-bot))); margin: 0; border-radius: 0; box-shadow: none; }
+.auto-panel { position: relative; padding: 10px 14px 14px; background: linear-gradient(180deg, #241c6e, #170f4a);
+  border-top: 2px solid rgba(255,212,90,.55); border-bottom: 2px solid var(--ink); box-shadow: 0 -2px 0 var(--ink), 0 10px 22px rgba(5,2,20,.45); }
+.auto-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; padding-right: 30px; }
+.auto-top canvas.ico { width: 20px; height: 20px; align-self: center; }
+.auto-top b { font-family: var(--pixel); font-weight: 400; font-size: 19px; color: #fff; text-shadow: var(--ol); white-space: nowrap; }
+.auto-top small { color: var(--muted); font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.auto-hero .auto-head { margin-bottom: 6px; }
+.auto-hero .auto-head b { font-size: 16px; }
+.auto-hero .auto-next { margin: 4px 0 8px; }
+.auto-panel .more-btn { top: 10px; bottom: auto; }
