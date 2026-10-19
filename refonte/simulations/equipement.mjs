@@ -13,6 +13,17 @@ import { makeRng } from '../../js/rng.js';
 
 const LEVELS = [15, 23, 29, 35, 40, 44, 47, 50, 53, 56, 59, 61, 63, 65, 67, 69, 71, 72, 74, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 88, 89, 89, 90, 91, 92, 93, 94, 95, 96, 96, 97, 98, 99, 99, 100];
 const DAYS = 150, RUNS = 8;
+// essais : FUSE=« 2,2,2,2,3,3 » = objets identiques qu'il faut pour monter de Commun→Peu commun, … Mythique→Chaotique
+const NEED = (process.env.FUSE || '2,2,2,2,2,2').split(',').map(Number);
+function fuseAllN(hero) {
+  for (let r = 0; r < RARITIES.length - 1; r++) {
+    const by = {};
+    for (const it of hero.inventory) if (it.rarity === r) (by[it.itemId] ||= []).push(it);
+    for (const [itemId, list] of Object.entries(by)) {
+      while (list.length >= NEED[r]) { const used = list.splice(0, NEED[r]); hero.inventory = hero.inventory.filter(i => !used.includes(i)); E.addItem(hero, itemId, r + 1); }
+    }
+  }
+}
 const lvlAt = (d) => LEVELS[Math.min(d, LEVELS.length) - 1];
 
 function run(seed) {
@@ -39,7 +50,7 @@ function run(seed) {
     open('normal', 37 + keys + tk);
     open('combat', 2);
     open('war', wc);
-    E.fuseAll(hero);
+    fuseAllN(hero);
     // meilleur objet de chaque emplacement
     const best = Object.fromEntries(SLOT_ORDER.map(s => [s, -1]));
     for (const it of hero.inventory) { const s = ITEMS[it.itemId].slot; if (it.rarity > best[s]) best[s] = it.rarity; }
