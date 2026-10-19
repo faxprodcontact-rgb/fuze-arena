@@ -17,7 +17,7 @@ export const PATCH_NOTES = [
       { title: 'Objets', items: [
         'Deux nouvelles raretés au-dessus de Légendaire : Mythique et Chaotique.',
         'Elles ne sortent jamais des coffres : uniquement par fusion. 2 Légendaires identiques donnent 1 Mythique, 2 Mythiques identiques donnent 1 Chaotique.',
-        'Stats d’un objet : Légendaire ×9, Mythique ×15, Chaotique ×25 (par rapport à un Commun). Plus de critique et d’esquive aussi.',
+        'Stats d’un objet : Légendaire ×9, Mythique ×12, Chaotique ×16 (par rapport à un Commun). Un peu plus de critique et d’esquive aussi.',
         'Revente : 100 Flouze pour un Mythique, 250 pour un Chaotique.',
       ] },
     ],

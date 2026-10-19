@@ -35,8 +35,8 @@ export const RARITIES = [
   { id: 3, name: 'Épique', color: '#b05cff', mult: 5.5 },
   { id: 4, name: 'Légendaire', color: '#ff9f1a', mult: 9 },
   // ces deux-là ne sortent jamais des coffres : seulement par fusion (2 Légendaires → Mythique, 2 Mythiques → Chaotique)
-  { id: 5, name: 'Mythique', color: '#ff3d6e', mult: 15 },
-  { id: 6, name: 'Chaotique', color: '#ff2bd6', mult: 25 },
+  { id: 5, name: 'Mythique', color: '#ff3d6e', mult: 12 },
+  { id: 6, name: 'Chaotique', color: '#ff2bd6', mult: 16 },
 ];
 
 // Probabilités de rareté dans les coffres (en %)
@@ -315,8 +315,8 @@ export const SETS = {
 const FOCUS = 3, SLOT_PART = 1.2, BONUS_PART = 0.8, REST_PART = 0.25;
 // Les armes donnent aussi du critique et les bottes de l'esquive (en %, selon la rareté).
 // Plafonds : jamais plus de 40 % de critique ni de 25 % d'esquive au total.
-export const ITEM_CRIT = [0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1];
-export const ITEM_DODGE = [0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06];
+export const ITEM_CRIT = [0.01, 0.02, 0.03, 0.04, 0.06, 0.07, 0.08];
+export const ITEM_DODGE = [0.01, 0.015, 0.02, 0.03, 0.04, 0.045, 0.05];
 export const CRIT_CAP = 0.40, DODGE_CAP = 0.25;
 const SLOT_STAT = { hat: 'vit', armor: 'def', boots: 'spd', amulet: 'lck' };
 const pickFrom = (id, list) => list[[...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % list.length];
