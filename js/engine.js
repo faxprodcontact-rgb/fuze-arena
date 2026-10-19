@@ -1212,6 +1212,7 @@ export function newAccount(pseudo, classId) {
     paidWagers: [],
     trainRecord: { dmg: 0, classId: classId },
     resetId: RESET_ID,
+    specialReset: SPECIAL_RESET && SPECIAL_RESET.id,   // un compte neuf n'a pas besoin de la remise à zéro spéciale
   };
 }
 

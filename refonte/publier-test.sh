@@ -14,7 +14,8 @@ cd "$OUT"
 # Hors ligne : pas de base de données (les amis sont des bots)
 printf "// Jeu de test : hors ligne, avec des bots\nexport const SUPABASE_URL = '';\nexport const SUPABASE_KEY = '';\n" > js/config.js
 # Même site (github.io) que le vrai jeu : on renomme les sauvegardes pour ne jamais toucher à celles du vrai jeu
-sed -i '' "s/'fuze-/'fuzetest-/g" js/*.js
+# (« fuzev2- » depuis Fuze Arena 2.0 : tout le monde repart d'un compte neuf sur le jeu de test)
+sed -i '' "s/'fuze-/'fuzev2-/g" js/*.js
 # Nom « TEST » (onglet du navigateur et icône sur l'écran d'accueil)
 sed -i '' 's#<title>[^<]*</title>#<title>Fuze Arena TEST</title>#' index.html
 sed -i '' -E 's/"name": *"[^"]*"/"name": "Fuze Arena TEST"/; s/"short_name": *"[^"]*"/"short_name": "Fuze TEST"/' manifest.webmanifest
