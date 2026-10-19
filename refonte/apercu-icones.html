@@ -1,0 +1,13 @@
+<!doctype html>
+<!-- Aperçu des icônes de l'interface (art/ui), en grand et à la taille du jeu -->
+<meta charset="utf-8">
+<body style="margin:0;padding:12px;background:linear-gradient(180deg,#221a5e,#100a30);color:#b8afe6;font:11px sans-serif">
+<div id="g" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+<script type="module">
+const names = await (await fetch('../art/ui/?' + Date.now())).text();
+const q = new URLSearchParams(location.search), only = q.get('n'), big = +(q.get('s') || 72);
+const list = only ? only.split(',') : [...names.matchAll(/href="([^"]+)\.svg"/g)].map(m => m[1]);
+const g = document.getElementById('g');
+for (const n of list) g.insertAdjacentHTML('beforeend', `<div style="width:${big + 20}px;text-align:center"><img src="../art/ui/${n}.svg?${Date.now()}" style="width:${big}px;height:${big}px"><br><img src="../art/ui/${n}.svg" style="width:22px;height:22px"><br>${n}</div>`);
+document.title = 'ok';
+</script>

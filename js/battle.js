@@ -7,7 +7,16 @@ import { SFX, SFX as SFX_ON, setQuiet, startMusic, stopMusic } from './sfx.js?v=
 
 
 const S = 3;                      // taille d'un pixel de sprite
-const FONT = '"Press Start 2P", monospace';
+const FONT = '"Lilita One", "Nunito", sans-serif';
+const INK = '#1b1530';
+// taille de police : l'ancienne police pixel était plus grosse, on garde la même hauteur de lettres
+const PXF = (px) => `${Math.round(px * 1.3 * 10) / 10}px ${FONT}`;
+// rectangle arrondi
+function rrect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
 const HERO_K = 1.15;              // les héros sont affichés 15 % plus grands en combat
 
 const EASE = {
@@ -1069,9 +1078,9 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     const a = Math.min(1, t.life / 300);
     ctx.globalAlpha = a;
     const sc = 0.6 + 0.4 * EASE.outBack(t.pop);
-    ctx.font = `${Math.round(t.size * sc)}px ${FONT}`;
+    ctx.font = PXF(Math.round(t.size * sc));
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 4; ctx.strokeStyle = '#16121f'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.lineJoin = 'round';
     ctx.strokeText(t.text, t.x, t.y);
     ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
     ctx.globalAlpha = 1;
@@ -1084,49 +1093,57 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       const bw = PORTRAIT ? W - 24 : 190, bh = PORTRAIT ? 14 : 12;
       const x = PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
       const y = PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : H - SAFE_BOT - (spellBar ? 150 : 112)) : 18;
-      ctx.font = `${PORTRAIT ? 9 : 8}px ${FONT}`; ctx.textBaseline = 'alphabetic';
+      ctx.font = PXF(PORTRAIT ? 9 : 8); ctx.textBaseline = 'alphabetic';
       ctx.textAlign = left ? 'left' : 'right';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+      ctx.lineWidth = 3; ctx.strokeStyle = INK;
       const label = `${f.snap.name}  Nv.${f.snap.level}`;
       const tx = left ? x : x + bw;
       const nc = f.snap.nameColor === 'rainbow' ? `hsl(${(time * 120) % 360},90%,65%)` : (f.snap.nameColor || '#ffffff');
       ctx.strokeText(label, tx, y - 4); ctx.fillStyle = nc; ctx.fillText(label, tx, y - 4);
-      ctx.fillStyle = '#16121f'; ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
-      ctx.fillStyle = '#3a2f45'; ctx.fillRect(x, y, bw, bh);
+      // cadre sombre arrondi, rail creux, remplissage bombé, reflet
+      const R = bh / 2 + 2;
+      ctx.fillStyle = INK; rrect(ctx, x - 2.5, y - 2.5, bw + 5, bh + 5, R + 1); ctx.fill();
+      ctx.fillStyle = '#2e2550'; rrect(ctx, x, y, bw, bh, R - 1); ctx.fill();
       const pct = (v) => Math.max(0, Math.min(1, v / f.max));
-      const dirFill = (p, col) => { ctx.fillStyle = col; const w = bw * p; ctx.fillRect(left ? x : x + bw - w, y, w, bh); };
-      dirFill(pct(f.hpLag), '#ffe08a');
+      const grad = (cols) => { const g = ctx.createLinearGradient(0, y, 0, y + bh); cols.forEach((c, k) => g.addColorStop(k / (cols.length - 1), c)); return g; };
+      const dirFill = (p, fill) => { if (p <= 0) return; const w = Math.max(bh, bw * p); ctx.fillStyle = fill; rrect(ctx, left ? x : x + bw - w, y, w, bh, R - 1); ctx.fill(); };
+      ctx.save(); rrect(ctx, x, y, bw, bh, R - 1); ctx.clip();
+      dirFill(pct(f.hpLag), grad(['#fff1ec', '#ff9b8a', '#e3343d']));
       const hp = pct(f.hpShown);
-      dirFill(hp, hp > 0.5 ? '#4cd964' : hp > 0.25 ? '#feca57' : '#ff5d6c');
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, bw, 3);
+      dirFill(hp, grad(hp > 0.5 ? ['#d6ffb0', '#7fe85a', '#45bf3c', '#2f8f35'] : hp > 0.25 ? ['#fff7c4', '#ffdf5e', '#f7bc2a', '#cd7e15'] : ['#ffc8b8', '#ff6d60', '#e3343d', '#a81d35']));
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; rrect(ctx, x + 4, y + 2, Math.max(0, bw * hp - 8), bh * 0.28, 3); ctx.fill();
       if (f.shieldShown > 1) {
         ctx.fillStyle = '#7fd6ff';
         const w = bw * Math.min(1, f.shieldShown / f.max);
         ctx.fillRect(left ? x : x + bw - w, y + bh - 4, w, 4);
       }
-      ctx.font = `7px ${FONT}`; ctx.textAlign = 'center';
-      const hpTxt = `${Math.max(0, Math.round(f.hpShown))}/${f.max}`;
-      ctx.lineWidth = 3; ctx.strokeText(hpTxt, x + bw / 2, y + bh - 2); ctx.fillStyle = '#ffffff'; ctx.fillText(hpTxt, x + bw / 2, y + bh - 2);
+      ctx.restore();
+      ctx.font = PXF(7.5); ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+      const hpTxt = `${Math.max(0, Math.round(f.hpShown))} / ${f.max}`;
+      ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.strokeText(hpTxt, x + bw / 2, y + bh - 2.5); ctx.fillStyle = '#ffffff'; ctx.fillText(hpTxt, x + bw / 2, y + bh - 2.5);
       // états
       let cx = left ? x : x + bw;
-      ctx.font = `6px ${FONT}`;
+      ctx.font = PXF(6);
       for (const t of f.tags) {
         const w = ctx.measureText(t.n).width + 8;
         const bx = left ? cx : cx - w;
-        ctx.fillStyle = 'rgba(22,18,31,0.8)'; ctx.fillRect(bx, y + bh + 5, w, 11);
+        ctx.fillStyle = 'rgba(20,14,52,0.88)'; rrect(ctx, bx, y + bh + 5, w, 12, 5); ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.fillStyle = STATUS_COLOR[t.k] || '#fff'; ctx.textAlign = 'left';
-        ctx.fillText(t.n, bx + 4, y + bh + 13);
+        ctx.fillText(t.n, bx + 4, y + bh + 14.5);
         cx += (left ? 1 : -1) * (w + 3);
       }
     });
     if (banner) {
       const p = 1 - banner.life / banner.max;
       ctx.globalAlpha = Math.min(1, Math.min(p * 6, (1 - p) * 4));
-      ctx.fillStyle = 'rgba(22,18,31,0.75)'; ctx.fillRect(0, H / 2 - 30, W, 52);
-      ctx.textAlign = 'center'; ctx.font = `14px ${FONT}`; ctx.fillStyle = '#ff6b6b';
-      ctx.fillText(banner.text, W / 2, H / 2 - 4);
-      ctx.font = `7px ${FONT}`; ctx.fillStyle = '#ffffff';
-      ctx.fillText(banner.sub, W / 2, H / 2 + 14);
+      const bg = ctx.createLinearGradient(0, H / 2 - 30, 0, H / 2 + 22);
+      bg.addColorStop(0, 'rgba(40,20,90,0)'); bg.addColorStop(0.2, 'rgba(40,20,90,0.85)'); bg.addColorStop(0.8, 'rgba(26,14,64,0.85)'); bg.addColorStop(1, 'rgba(26,14,64,0)');
+      ctx.fillStyle = bg; ctx.fillRect(0, H / 2 - 30, W, 52);
+      ctx.fillStyle = 'rgba(255,212,90,.7)'; ctx.fillRect(0, H / 2 - 25, W, 1.5); ctx.fillRect(0, H / 2 + 16, W, 1.5);
+      ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
+      ctx.font = PXF(14); ctx.lineWidth = 5; ctx.strokeText(banner.text, W / 2, H / 2 - 4); ctx.fillStyle = '#ff6d60'; ctx.fillText(banner.text, W / 2, H / 2 - 4);
+      ctx.font = PXF(7); ctx.lineWidth = 3; ctx.strokeText(banner.sub, W / 2, H / 2 + 12); ctx.fillStyle = '#ffffff'; ctx.fillText(banner.sub, W / 2, H / 2 + 12);
       ctx.globalAlpha = 1;
     }
   }
@@ -1225,7 +1242,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   requestAnimationFrame(frame);
 
   const promise = (async () => {
-    await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
+    await (document.fonts ? document.fonts.load(`20px ${FONT}`).catch(() => {}) : Promise.resolve());
     if (!training) startMusic();
     await wait(training ? 200 : 600);
     let idx = 0;
@@ -1465,10 +1482,10 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     if (!f.dead) {
       const top = footY(f) - SH - 6;
       ctx.globalAlpha = 1;
-      ctx.fillStyle = '#16121f'; ctx.fillRect(x - 17, top, 34, 5);
+      ctx.fillStyle = INK; ctx.fillRect(x - 17, top, 34, 5);
       ctx.fillStyle = colors[f.side]; ctx.fillRect(x - 16, top + 1, 32 * Math.max(0, f.shown), 3);
-      ctx.font = `6px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+      ctx.font = PXF(6); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 3; ctx.strokeStyle = INK;
       const name = String(f.name || '').slice(0, 9);
       ctx.strokeText(name, x, top - 3); ctx.fillStyle = '#ffffff'; ctx.fillText(name, x, top - 3);
     }
@@ -1500,14 +1517,14 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     ctx.globalAlpha = 1;
     for (const t of texts) {
       ctx.globalAlpha = Math.min(1, t.life / 300);
-      ctx.font = `${t.size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f'; ctx.strokeText(t.text, t.x, t.y);
+      ctx.font = PXF(t.size); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.strokeText(t.text, t.x, t.y);
       ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
     // tableau des K.O.
-    ctx.font = `9px ${FONT}`; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+    ctx.font = PXF(9); ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = INK;
     ctx.textAlign = 'left'; ctx.strokeText(`K.O. ${score[0]}`, 10, 16); ctx.fillStyle = colors[0]; ctx.fillText(`K.O. ${score[0]}`, 10, 16);
     ctx.textAlign = 'right'; ctx.strokeText(`K.O. ${score[1]}`, W - 10, 16); ctx.fillStyle = colors[1]; ctx.fillText(`K.O. ${score[1]}`, W - 10, 16);
   }
@@ -1761,11 +1778,11 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     if (!f.dead) {
       const top = footY(f) - SH - 5;
       ctx.globalAlpha = 1;
-      ctx.fillStyle = '#16121f'; ctx.fillRect(x - 15, top, 30, 5);
+      ctx.fillStyle = INK; ctx.fillRect(x - 15, top, 30, 5);
       ctx.fillStyle = colors[f.side]; ctx.fillRect(x - 14, top + 1, 28 * Math.max(0, f.shown), 3);
       if (f.shield > 0) { ctx.fillStyle = '#7fd6ff'; ctx.fillRect(x - 14, top - 1, 28 * Math.min(1, f.shield / f.max), 1); }
-      ctx.font = `5px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      ctx.lineWidth = 2.5; ctx.strokeStyle = '#16121f';
+      ctx.font = PXF(5); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 2.5; ctx.strokeStyle = INK;
       const name = String(f.name || '').slice(0, 9);
       ctx.strokeText(name, x, top - 3); ctx.fillStyle = '#ffffff'; ctx.fillText(name, x, top - 3);
       if (f.stun) { ctx.fillStyle = '#feca57'; ctx.fillRect(x - 6 + Math.sin(time * 8) * 4, top - 12, 3, 3); }
@@ -1799,21 +1816,21 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     ctx.globalAlpha = 1;
     for (const t of texts) {
       ctx.globalAlpha = Math.min(1, t.life / 300);
-      ctx.font = `${t.size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#16121f'; ctx.strokeText(t.text, t.x, t.y);
+      ctx.font = PXF(t.size); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.strokeText(t.text, t.x, t.y);
       ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
     // combattants encore debout de chaque côté
     const up = (side) => F.filter(f => f.side === side && !f.dead).length;
-    ctx.font = `9px ${FONT}`; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = '#16121f';
+    ctx.font = PXF(9); ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.strokeStyle = INK;
     const hy = H > W ? Math.max(46, GROUND - 150) : 14;   // sous le titre, au-dessus de la mêlée (en haut si l'écran est petit)
     ctx.textAlign = 'left'; ctx.strokeText(`${up(0)} debout`, 10, hy); ctx.fillStyle = colors[0]; ctx.fillText(`${up(0)} debout`, 10, hy);
     ctx.textAlign = 'right'; ctx.strokeText(`${up(1)} debout`, W - 10, hy); ctx.fillStyle = colors[1]; ctx.fillText(`${up(1)} debout`, W - 10, hy);
     if (banner) {
       ctx.globalAlpha = Math.min(1, banner.life / 300);
-      ctx.font = `16px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 5;
+      ctx.font = PXF(16); ctx.textAlign = 'center'; ctx.lineWidth = 5;
       ctx.strokeText(banner.text, W / 2, H * 0.32); ctx.fillStyle = '#ff5d6c'; ctx.fillText(banner.text, W / 2, H * 0.32);
       ctx.globalAlpha = 1;
     }
@@ -1832,7 +1849,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
   requestAnimationFrame(frame);
 
   const promise = (async () => {
-    await (document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve());
+    await (document.fonts ? document.fonts.load(`20px ${FONT}`).catch(() => {}) : Promise.resolve());
     // reprise d'un combat déjà commencé : les premiers événements sont appliqués d'un coup, sans animation
     for (let j = 0; j < skipFirst; j++) {
       const e = fight.next();

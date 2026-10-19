@@ -837,6 +837,8 @@ export function itemIcon(itemId) {
 //  COFFRES
 // =====================================================================
 export function chestCanvas(kind = 'normal', open = false) {
+  const v = ICON_VEC.get(`coffre-${kind === 'combat' || kind === 'war' ? kind : 'normal'}${open ? '-ouvert' : ''}`);
+  if (v) return v;
   return cached(`chest2:${kind}:${open}`, () => {
     const wood = { combat: '#8e2b2b', war: '#3d2a6b' }[kind] || '#8a5a2b';
     const band = { combat: '#c9ccd6', war: '#ffd84a' }[kind] || '#e5b33a';
@@ -903,12 +905,14 @@ export function rarityColor(r) { return RARITIES[r].color; }
 //  FLOUZE (monnaie : une liasse de billets verts) et CLEF
 // =====================================================================
 export function clatCanvas() {
+  if (ICON_VEC.has('flouze')) return ICON_VEC.get('flouze');
   return cached('flouze', () => renderHi((fromMap(
     ['..dddddddddd', '..dGGGGGGGGd', 'dddddddddddd', 'dGGGGGGGGGGd', 'dGlGGwwGGlGd', 'dGGGwGGwGGGd', 'dGGGwGGwGGGd', 'dGlGGwwGGlGd', 'dGGGGGGGGGGd', 'dddddddddddd'],
     { G: '#2ecc71', d: '#1e8449', l: '#a8f0c0', w: '#e8fff0' },
   ))));
 }
 export function keyCanvas() {
+  if (ICON_VEC.has('key')) return ICON_VEC.get('key');
   return cached('key', () => renderHi((fromMap(
     ['.yyy........', 'yYYYy.......', 'yY.Yyyyyyyyy', 'yYYYy...y.y.', '.yyy....y.y.'],
     { y: '#e5b33a', Y: '#ffe08a' },
@@ -1128,8 +1132,34 @@ const EMBLEMS = {
   },
 };
 export function modeEmblem(id) {
+  if (ICON_VEC.has('emb-' + id)) return ICON_VEC.get('emb-' + id);
   return cached('emblem:' + id, () => renderHi(EMBLEMS[id]()));
 }
+
+
+// =====================================================================
+//  ICÔNES VECTORIELLES (refonte) : art/ui/<nom>.svg, générées par refonte/outils/icones.cjs
+//  Elles remplacent les icônes pixel : petites icônes, emblèmes des modes (emb-*), coffres, Flouze, clef.
+// =====================================================================
+const ICON_VEC = new Map();
+const ICON_NAMES = 'amulet bag bolt boom boot chat check clock coffre-combat-ouvert coffre-combat coffre-normal-ouvert coffre-normal coffre-war-ouvert coffre-war cross crown dice emb-arena emb-bets emb-dungeons emb-horde emb-journal emb-players emb-pvp emb-ranking emb-shop emb-skull emb-talk emb-throne emb-tower emb-war fire fist flag flouze gear heart helmet hourglass key lock magic medal1 medal2 medal3 mute pause paw play plus scroll shield skip skull-boss skull-done skull-wave skull sparkle speaker star sword swords target trophy up wind'.split(' ');
+export async function loadIconArt() {
+  const q = new URL(import.meta.url).search;
+  await Promise.all(ICON_NAMES.map(async (n) => {
+    try {
+      const res = await fetch(new URL(`../art/ui/${n}.svg${q}`, import.meta.url));
+      if (!res.ok) return;
+      const img = await svgImage(await res.text());
+      const px = n.startsWith('coffre') ? 240 : n.startsWith('emb-') ? 192 : 128;
+      const c = document.createElement('canvas'); c.width = c.height = px;
+      const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+      x.drawImage(img, 0, 0, px, px);
+      c.lw = c.lh = 16; c.smooth = true;
+      ICON_VEC.set(n, c);
+    } catch (e) { console.warn('Icône indisponible :', n, e); }
+  }));
+}
+export const vecIcon = (n) => ICON_VEC.get(n) || null;
 
 // =====================================================================
 //  PETITES ICÔNES DE L'INTERFACE (à la place des emojis), en pixel art
@@ -1181,6 +1211,7 @@ const UI_ICONS = {
   star: [['....y....', '....y....', '...yYy...', 'yyyyYyyyy', '.yyYYYyy.', '..yyyyy..', '..yy.yy..', '.yy...yy.', '.y.....y.']],
 };
 export function uiIcon(name) {
+  if (ICON_VEC.has(name)) return ICON_VEC.get(name);
   return cached('ui:' + name, () => {
     if (name === 'skull') return modeEmblem('skull');
     if (name === 'swords') {

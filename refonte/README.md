@@ -15,6 +15,7 @@ Canevas en ligne (privé) : https://claude.ai/artifact/5PLawLqU5eQLT7X77ZeWos
 | `planches/` | Les planches du canevas Claude Design (`*.dc.html` + `canvas.json`) |
 | `outils/` | Scripts Node qui génèrent les SVG et les planches (`*-build.cjs`), et `render.cjs` pour faire un PNG avec Playwright |
 | `outils/decors.cjs` | Les 12 décors de combat du jeu (`art/decors/<thème>.svg`, 3 plans loin / milieu / sol), avec ses briques dans `decors-kit.cjs`. `node refonte/outils/decors.cjs [thème]` |
+| `outils/icones.cjs` | Les 66 icônes de l'interface (`art/ui/<nom>.svg`) : les 15 de la maquette reprises, les autres dessinées dans le même style, les emblèmes des modes (`emb-*`) et les coffres. `node refonte/outils/icones.cjs` ; aperçu : `apercu-icones.html` |
 | `apercu-decors.html` | Aperçu des décors en portrait et en paysage avec un héros et un monstre (servir le dossier avec `python3 -m http.server 8091`) |
 | `simulations/` | Scripts d'équilibrage utilisés pour régler donjons, raid, mêlée et combat auto |
 

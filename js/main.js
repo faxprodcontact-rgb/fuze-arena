@@ -9,7 +9,7 @@ import {
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt } from './sprites.js?v=20261019191031';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt } from './sprites.js?v=20261019191031';
 import { hashStr, makeRng } from './rng.js?v=20261019191031';
 import { APP_VERSION } from './version.js?v=20261019191031';
 import { PATCH_NOTES } from './patchnotes.js?v=20261019191031';
@@ -242,14 +242,14 @@ function tabBtn(id, label, badge) {
 function paintTabIcons() {
   const src = {
     hero: () => heroPortrait(hero.classId, CLASSES[hero.classId].weapon, hero.dye),
-    combat: () => itemIcon('loic_weapon'),
-    social: () => itemIcon('tom_weapon'),
+    combat: () => uiIcon('swords'),
+    social: () => modeEmblem('players'),
     shop: () => clatCanvas(),
     chests: () => chestCanvas('normal', false),
-    bag: () => itemIcon('simon_armor'),
-    fights: () => itemIcon('loic_weapon'),
-    dungeons: () => monsterCanvas('skeleton'),
-    war: () => itemIcon('guillaume_weapon'),
+    bag: () => uiIcon('bag'),
+    fights: () => uiIcon('swords'),
+    dungeons: () => modeEmblem('dungeons'),
+    war: () => modeEmblem('war'),
   };
   app.querySelectorAll('canvas[data-tabicon]').forEach(c => paint(c, src[c.dataset.tabicon](), { scale: 2 }));
 }
@@ -702,7 +702,7 @@ function extraLines(itemId, rarity, cur) {
     const d = c ? Math.round((v - old) * 1000) / 10 : 0;
     return `<div class="st-line"><span style="color:${color}">${name}</span><span>+${pctTxt(v)}${d ? ` <span class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d} %)</span>` : ''}</span></div>`;
   };
-  return (x.crit ? line('Coups critiques', '#ffd84a', x.crit, c ? c.crit : 0) : '') + (x.dodge ? line('Esquive', '#7fd6ff', x.dodge, c ? c.dodge : 0) : '');
+  return (x.crit ? line('Coups critiques', '#ffd45a', x.crit, c ? c.crit : 0) : '') + (x.dodge ? line('Esquive', '#7fd6ff', x.dodge, c ? c.dodge : 0) : '');
 }
 
 function openItem(itemId, rarity) {
@@ -834,7 +834,7 @@ function viewFights() {
         </div>`).join('')}
     </section>
     ${done.length ? `
-    <section class="card hx" style="--hc:#8f86b0">
+    <section class="card hx" style="--hc:#9d93d6">
       ${secHead('↻', 'Déjà affrontés', 'Revanches illimitées, pour le fun')}
       ${done.map(o => {
         const won = o.done === 'win';
@@ -922,7 +922,7 @@ function viewRanking() {
   const scoreOf = rankScore(key);
   const myPos = list.findIndex(e => e.me) + 1;
   return modeHead({
-    id: 'ranking', c: '#ffd84a', art: '<canvas class="px" data-emblem="ranking"></canvas>',
+    id: 'ranking', c: '#ffd45a', art: '<canvas class="px" data-emblem="ranking"></canvas>',
     title: 'Classement', sub: 'Qui est le plus fort du groupe ?',
     chips: [
       mchip(ico('trophy'), 'Ta place', `${myPos} / ${list.length}`, myPos <= 3 ? 'hot' : ''),
@@ -931,7 +931,7 @@ function viewRanking() {
     ],
     info: `<b>Niveau</b> : ton perso le plus fort. <b>Victoires</b> : celles de tous tes persos. <b>Tour</b> : ton meilleur étage. <b>Horde</b> : ton record de monstres battus.<br><br>Touche un joueur pour voir sa carte.${NET.online ? '' : '<br><br>Hors ligne : tes amis sont des bots.'}`,
   }) + `
-    <section class="card hx" style="--hc:#ffd84a">
+    <section class="card hx" style="--hc:#ffd45a">
       <div class="seg seg4">${RANK_MODES.map(([k, n]) => `<button class="${key === k ? 'on' : ''}" data-act="rank" data-mode="${k}">${n}</button>`).join('')}</div>
       ${podium(list, scoreOf)}
       ${list.slice(3).map((e, j) => ({ e, i: j + 3 })).map(({ e, i }) => `
@@ -1337,9 +1337,9 @@ function viewCombat() {
     { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
     { id: 'raid', name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
     { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
-    { id: 'throne', name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, wide: true, c: '#ffd84a' },
+    { id: 'throne', name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, wide: true, c: '#ffd45a' },
     { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
-    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd84a' },
+    { id: 'bets', name: 'Paris & duels', sub: 'Mise ton Flouze', tag: 'Défie un pote, parie sur les duels', emblem: 'bets', badge: duels, wide: true, c: '#ffd45a' },
   ];
   return autoCard() + charsCard() + missionsCard() + `
     <section class="modes">
@@ -1358,7 +1358,7 @@ function viewSocial() {
   const tiles = [
     { id: 'journal', name: 'Journal', sub: 'Revois tes combats', emblem: 'journal', badge: journalUnseen, c: '#ff8a3d' },
     { id: 'chat', name: 'Tchat', sub: 'Chambrer les potes', emblem: 'talk', badge: chatUnread, c: '#3d9bff' },
-    { id: 'ranking', name: 'Classement', sub: 'Qui est le plus fort ?', emblem: 'ranking', badge: 0, c: '#ffd84a' },
+    { id: 'ranking', name: 'Classement', sub: 'Qui est le plus fort ?', emblem: 'ranking', badge: 0, c: '#ffd45a' },
     { id: 'players', name: 'Joueurs', sub: NET.online ? `<i class="dot-on"></i>${onlineCount()} en ligne` : 'En ligne seulement', emblem: 'players', badge: 0, c: '#4cd964' },
   ];
   const list = rankingEntries('power');
@@ -1373,7 +1373,7 @@ function viewSocial() {
           ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
         </button>`).join('')}
     </section>
-    <section class="card hx podium-card ${infoCls('podium')}" data-info="podium" style="--hc:#ffd84a">
+    <section class="card hx podium-card ${infoCls('podium')}" data-info="podium" style="--hc:#ffd45a">
       ${secHead(ico('crown'), 'Podium des champions', 'Les 3 plus puissants du groupe')}
       ${podium(list, rankScore('power'), { bubbles: true })}
       ${meTop ? `<button class="btn block pod-edit" data-act="podiumMsg">${ico('chat')} ${myMsg ? 'Changer mon message' : 'Écrire mon message de champion'}</button>` : ''}
@@ -1452,7 +1452,7 @@ function viewPlayers() {
     </section>`;
 }
 
-const CLASS_COLOR = { guerrier: '#ff5d6c', mage: '#a77bff', archer: '#4cd964', paladin: '#ffd84a' };
+const CLASS_COLOR = { guerrier: '#ff5d6c', mage: '#a77bff', archer: '#4cd964', paladin: '#ffd45a' };
 
 /** Carte d'identité d'un joueur : son héros le plus fort, son équipement, sa puissance, ses records */
 function openPlayerCard(id, heroIdx = null) {
@@ -1711,7 +1711,7 @@ function viewBets() {
   const pot = (c, side) => bets.wagers.filter(w => w.challenge_id === c.id && w.side === side).reduce((t, w) => t + w.amount, 0);
   const myBets = (c) => bets.wagers.filter(w => w.challenge_id === c.id && w.user_id === me);
   return modeHead({
-    id: 'bets', c: '#ffd84a', art: '<canvas class="px" data-emblem="bets"></canvas>',
+    id: 'bets', c: '#ffd45a', art: '<canvas class="px" data-emblem="bets"></canvas>',
     title: 'Paris & duels', sub: 'Défie un pote, tout le monde parie',
     chips: [
       mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', acc.clat),
@@ -1725,7 +1725,7 @@ function viewBets() {
       <div class="foe todo"><span class="foe-av big-ico">${ico('swords')}</span><div class="foe-body"><div class="foe-name">${esc(c.from_name)} te défie !</div><div class="foe-sub">${timeOf(c.created_at)}</div></div>
         <div class="foe-col"><button class="btn small green" data-act="acceptDuel" data-id="${c.id}">Accepter</button><button class="btn small" data-act="declineDuel" data-id="${c.id}">Refuser</button></div></div>`).join('')}</section>` : ''}
 
-    ${open.length ? `<section class="card hx" style="--hc:#ffd84a">${secHead(ico('dice'), 'Paris ouverts', 'Mise sur le gagnant avant le combat')}${open.map(c => {
+    ${open.length ? `<section class="card hx" style="--hc:#ffd45a">${secHead(ico('dice'), 'Paris ouverts', 'Mise sur le gagnant avant le combat')}${open.map(c => {
       const [oA, oB] = duelOdds(c);
       const mine = myBets(c);
       return `
@@ -1741,7 +1741,7 @@ function viewBets() {
       </div>`;
     }).join('')}</section>` : ''}
 
-    <section class="card hx" style="--hc:#ffd84a">
+    <section class="card hx" style="--hc:#ffd45a">
       ${secHead(ico('fist'), 'Lancer un défi', 'Choisis ton adversaire')}
       ${players.length ? players.map(p => {
         const h = E.strongestHero(p.data);
@@ -1754,7 +1754,7 @@ function viewBets() {
       ${sent.map(c => `<div class="log-line">${ico('hourglass')} En attente de ${esc(c.to_name)} <button class="btn small" data-act="cancelDuel" data-id="${c.id}">Annuler</button></div>`).join('')}
     </section>
 
-    ${done.length ? `<section class="card hx" style="--hc:#8f86b0">${secHead(ico('flag'), 'Derniers résultats')}${done.map(c => {
+    ${done.length ? `<section class="card hx" style="--hc:#9d93d6">${secHead(ico('flag'), 'Derniers résultats')}${done.map(c => {
       const win = duelResult(c).winner;
       return `<div class="opp"><div class="o-body"><div class="o-name">${ico('trophy')} ${esc(win === 0 ? c.from_name : c.to_name)} a gagné</div><div class="o-sub">${esc(c.from_name)} vs ${esc(c.to_name)}</div></div>
         <button class="btn small" data-act="replayDuel" data-id="${c.id}">${ico('play')} Revoir</button></div>`;
@@ -1981,7 +1981,7 @@ function viewThrone() {
   const kh = heroOf(king);
   const kpet = king.data ? petOf(kh) : '';
   return prevCard + modeHead({
-    id: 'throne', c: '#ffd84a', art: '<canvas class="px" data-emblem="throne"></canvas>',
+    id: 'throne', c: '#ffd45a', art: '<canvas class="px" data-emblem="throne"></canvas>',
     title: 'Le trône', sub: 'Défie ceux au-dessus de toi et prends leur place',
     chips: [
       mchip(ico('crown'), 'Ta place', `${myRank + 1} / ${list.length}`, myRank === 0 ? 'hot' : ''),
@@ -1990,7 +1990,7 @@ function viewThrone() {
     ],
     info: `Tout le monde est classé, au début de la semaine, selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.<br><br>Lundi à 0 h, chaque perso du compte reçoit : <b>${THRONE.keys[0]} clefs</b> pour le roi, <b>${THRONE.keys[1]}</b> pour le 2ᵉ, <b>${THRONE.keys[2]}</b> pour le 3ᵉ, <b>${THRONE.keysRest}</b> pour tous les autres. Puis le classement repart selon la puissance.`,
   }) + `
-    <section class="card hx throne-hall" style="--hc:#ffd84a">
+    <section class="card hx throne-hall" style="--hc:#ffd45a">
       <div class="tr-king ${king.id === me ? 'me' : ''}">
         <span class="tr-crown">${ico('crown')}</span>
         <div class="tr-king-art"><canvas class="px" data-hero="${kh.classId}" data-pet="${kpet}" data-dye="${kh.dye || ''}"></canvas></div>
@@ -2151,7 +2151,7 @@ function viewPvp() {
         </div>`;
       }).join('') : '<p class="empty">Dès qu’un pote ouvre l’appli, il apparaît ici.</p>'}
     </section>
-    <section class="card hx" style="--hc:#ffd84a">
+    <section class="card hx" style="--hc:#ffd45a">
       ${secHead(ico('play'), 'Matchs', 'Les derniers combats PvP : regarde-les tous')}
       ${matches.length ? matches.map(c => {
         const r = pvpResult(c);
@@ -2606,7 +2606,7 @@ function viewShop() {
     return `<div class="dots">${c.colors.map(col => `<i style="background:${col}"></i>`).join('')}</div>`;
   };
   return modeHead({
-    id: 'shop', c: '#ffd84a', art: '<canvas class="px" data-emblem="shop"></canvas>',
+    id: 'shop', c: '#ffd45a', art: '<canvas class="px" data-emblem="shop"></canvas>',
     title: 'Boutique', sub: 'Dépense ton Flouze',
     chips: [
       mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', fmtNum(acc.clat), 'hot'),
@@ -2615,7 +2615,7 @@ function viewShop() {
     ],
     info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Objets du jour</b> : 3 objets gris à ${SHOP_DAILY.price} Flouze, un seul exemplaire de chaque, renouvelés à minuit. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
   }) + `
-    <section class="card hx merchant" style="--hc:#ffd84a">
+    <section class="card hx merchant" style="--hc:#ffd45a">
       ${secHead(ico('star'), 'Le marchand', `Nouveaux objets dans <span data-timer="day3">${fmt(msToMidnight())}</span>`)}
       <div class="key-deal">
         <span class="kd-art"><canvas class="px" data-key></canvas></span>
@@ -2802,7 +2802,7 @@ function updateSpellBar(e) {
  */
 // La police pixel dessine les majuscules accentuées (É, À…) plus petites : on enlève l'accent des majuscules dans les gros titres
 const PX_CAPS = { À: 'A', Â: 'A', Ä: 'A', É: 'E', È: 'E', Ê: 'E', Ë: 'E', Î: 'I', Ï: 'I', Ô: 'O', Ö: 'O', Ù: 'U', Û: 'U', Ü: 'U', Ç: 'C' };
-const pxCaps = (t) => String(t).replace(/[ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, ch => PX_CAPS[ch]);
+const pxCaps = (t) => String(t);   // Lilita One affiche bien les capitales accentuées
 /** Pastilles de récompense : XP gagnée et clefs de montée de niveau */
 const xpPills = (rw) => `${rw && rw.xp ? `<span class="pill gold">+${fmtNum(rw.xp)} XP</span>` : ''}${rw && rw.lvlKeys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.lvlKeys} clef${rw.lvlKeys > 1 ? 's' : ''} (niveau)</span>` : ''}`;
 let waveNext = null;   // combat suivant d'une vague de donjon
@@ -2960,7 +2960,7 @@ function startDungeon(id) {
         rewardsHtml: `${waveBar(i, won)}
           <div class="rw">${xpPills(rw)}</div>
           ${rw.key ? `
-            <div class="loot-card" style="--rc:#ffd84a">
+            <div class="loot-card" style="--rc:#ffd45a">
               <canvas class="px" data-key></canvas>
               <div class="ln">+1 clef</div>
               <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
@@ -3504,7 +3504,7 @@ setInterval(checkUpdate, 5 * 60 * 1000);
 
 async function boot() {
   // dessins vectoriels des héros (refonte) : chargés une fois avant le premier affichage
-  await Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {})]);
+  await Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {})]);
   if (NET.online) {
     app.innerHTML = '<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
     try {
