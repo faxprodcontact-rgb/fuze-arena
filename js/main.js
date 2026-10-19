@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019175626';
-import * as E from './engine.js?v=20261019175626';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019175626';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019175626';
-import { hashStr, makeRng } from './rng.js?v=20261019175626';
-import { APP_VERSION } from './version.js?v=20261019175626';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019175626';
-import * as NET from './net.js?v=20261019175626';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019175626';
+} from './data.js?v=20261019181526';
+import * as E from './engine.js?v=20261019181526';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019181526';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019181526';
+import { hashStr, makeRng } from './rng.js?v=20261019181526';
+import { APP_VERSION } from './version.js?v=20261019181526';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019181526';
+import * as NET from './net.js?v=20261019181526';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019181526';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -551,7 +551,7 @@ function viewChests() {
 }
 
 // ------------------------------ Vue Sac ------------------------------
-let bagMode = 'rarity';   // 'rarity' = classé par rareté, 'set' = par panoplie
+let bagMode = 'rarity';   // 'rarity' = classé par rareté, 'slot' = par emplacement (arme, chapeau…), 'set' = par panoplie
 let bagSet = 'all';       // panoplie affichée ('all', un id de panoplie ou 'pet')
 
 function stacks() {
@@ -605,6 +605,15 @@ function viewBag() {
       const n = list.reduce((t, s) => t + s.items.length, 0);
       return `<div class="bag-head r${R.id}" style="--rc:${R.color}"><i class="gem"></i><span>${R.name}</span><small>${n} objet${n > 1 ? 's' : ''} · revente ${SELL_PRICE[R.id]} Flouze</small></div>${invGrid(list)}`;
     }).join('');
+  } else if (bagMode === 'slot') {
+    // par emplacement : chapeaux, armes, armures… (les plus rares d'abord), avec l'objet porté
+    body = SLOT_ORDER.map(slot => {
+      const list = st.filter(s => ITEMS[s.itemId].slot === slot).sort((a, b) => b.rarity - a.rarity);
+      if (!list.length) return '';
+      const n = list.reduce((t, s) => t + s.items.length, 0);
+      const worn = hero.inventory.find(i => i.uid === hero.equipped[slot]);
+      return `<div class="bag-head set"><span>${SLOTS[slot].name}</span><small>${n} objet${n > 1 ? 's' : ''}${worn ? ` · porté : ${esc(ITEMS[worn.itemId].name)} (${RARITIES[worn.rarity].name})` : ''}</small></div>${invGrid(list)}`;
+    }).join('');
   } else {
     const groups = [...Object.keys(SETS), 'pet'];
     const owned = (g) => st.filter(s => groupOf(s.itemId) === g);
@@ -647,8 +656,9 @@ function viewBag() {
     <section class="card hx bag-card ${infoCls('bag')}" data-info="bag" style="--hc:#c9a24a">
       ${secHead(ico('bag'), 'Sac', `${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}${countFusable() ? ` · <b class="fuse-hint">${countFusable()} fusion${countFusable() > 1 ? 's' : ''} possible${countFusable() > 1 ? 's' : ''}</b>` : ''}`)}
       <div class="rar-strip">${RARITIES.map(R => { const n = hero.inventory.filter(i => i.rarity === R.id).length; return `<div class="${n ? '' : 'none'}" style="--rc:${R.color}"><i></i><b>${n}</b><small>${R.name}</small></div>`; }).join('')}</div>
-      <div class="seg" style="margin-bottom:12px">
+      <div class="seg seg3" style="margin-bottom:12px">
         <button class="${bagMode === 'rarity' ? 'on' : ''}" data-act="bagMode" data-mode="rarity">Par rareté</button>
+        <button class="${bagMode === 'slot' ? 'on' : ''}" data-act="bagMode" data-mode="slot">Par type</button>
         <button class="${bagMode === 'set' ? 'on' : ''}" data-act="bagMode" data-mode="set">Par panoplie</button>
       </div>
       ${countFusable() ? `<button class="btn small block fuse-all" style="margin-bottom:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuseAll">${ico('sparkle')} Tout fusionner</button>` : ''}
@@ -1509,7 +1519,7 @@ function maybeShowGift() {
   setTimeout(() => { if (!modalRoot.innerHTML && !document.querySelector('.battle')) openPatchNotes(); }, 700);
 }
 /** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
-const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : ''].filter(Boolean).join(' + ');
+const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : ''].filter(Boolean).join(' + ');
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }
   const b = document.getElementById('patch-badge');
@@ -3072,7 +3082,7 @@ const ACTIONS = {
   pvpVs: (d) => { const c = pvpRows.find(x => String(x.id) === String(d.id)); if (c) openPvpVs(c, c.status === 'pending' && c.to_id === myId()); },
   claimGift: (d) => {
     const n = myNotes().find(x => x.gift && x.gift.id === d.id);
-    const got = n ? E.claimGift(acc, n.gift) : 0;
+    const got = n ? E.claimGift(acc, n.gift, hero) : 0;
     if (!got) return;
     SFX.loot(4); save(); render(); openPatchNotes();
     toast(`+${giftLabel(n.gift)}, cadeau !`);

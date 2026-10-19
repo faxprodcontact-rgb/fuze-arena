@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019175626';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019175626';
+} from './data.js?v=20261019181526';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019181526';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -1740,14 +1740,16 @@ export function equipCosmetic(acc, hero, id) {
 
 // ------------------------------ Cadeaux (notes de mise à jour) ------------------------------
 /** Récupère un cadeau une seule fois par compte. Renvoie le Flouze gagné (0 si déjà pris). */
-export function claimGift(acc, gift) {
+export function claimGift(acc, gift, hero = null) {
   if (!gift) return 0;
   acc.gifts ||= {};
   if (acc.gifts[gift.id]) return 0;
   acc.gifts[gift.id] = true;
   acc.clat += gift.amount || 0;
   acc.combatChests += gift.combatChests || 0;   // cadeau en coffres de combat
-  return (gift.amount || 0) + (gift.combatChests || 0);
+  const h = hero || acc.heroes[0];
+  if (gift.chests) { refreshChests(h); h.chest.stored += gift.chests; }   // coffres normaux : pour le perso actif
+  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.chests || 0);
 }
 
 // ------------------------------ Remise à zéro exceptionnelle ------------------------------

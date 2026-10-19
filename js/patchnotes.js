@@ -1,10 +1,24 @@
 // =====================================================================
 //  NOTES DE MISE À JOUR — la plus récente en premier.
 //  Pour une nouvelle mise à jour : ajouter une entrée tout en haut de la liste.
-//  gift = cadeau à récupérer une seule fois par compte (amount = Flouze, combatChests = coffres de combat).
+//  gift = cadeau à récupérer une seule fois par compte (amount = Flouze, chests = coffres normaux pour le perso actif, combatChests = coffres de combat).
 //  for = liste de pseudos : la note (et son cadeau) n'est visible que par ces comptes.
 // =====================================================================
 export const PATCH_NOTES = [
+  {
+    id: '2026-10-19-1814', date: '19/10/2026', time: '18h14', title: 'Cadeau pour Tchomb',
+    for: ['Tchomb'],
+    gift: { id: 'tchomb-30-coffres-2026-10-19', amount: 0, chests: 30, text: 'Un cadeau rien que pour toi : 30 coffres à ouvrir ! Ils vont à ton perso actif quand tu les récupères.' },
+    sections: [
+      { title: 'Cadeau', items: ['30 coffres offerts, rien que pour toi. Choisis bien ton perso actif avant de les récupérer : c’est lui qui les reçoit.'] },
+    ],
+  },
+  {
+    id: '2026-10-19-1814-sac', date: '19/10/2026', time: '18h14', title: 'Sac : tri par type d’objet',
+    sections: [
+      { title: 'Sac', items: ['Nouveau tri « Par type » dans le Sac : tes objets rangés par emplacement (chapeaux, armes, armures, bottes, amulettes, familiers), les plus rares d’abord, avec l’objet que tu portes.'] },
+    ],
+  },
   {
     id: '2026-10-19-1756', date: '19/10/2026', time: '17h56', title: 'Combat auto : nouvelle difficulté',
     sections: [
