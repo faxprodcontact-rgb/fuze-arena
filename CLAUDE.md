@@ -56,7 +56,7 @@ Un changement qui ne touche pas au jeu (comme ce fichier) n'a pas besoin de nouv
 
 ## Réglages importants actuels
 
-- XP : `xpForLevel = round((50 + 15·niv) × 1,02^niv)` ; rattrapage `XP_CATCHUP` +5 % par
+- XP : `xpForLevel = round((50 + 15·niv) × 1,04^niv × 0,65)` (`XP_CURVE` dans data.js, branche refonte : niveau 100 en ~45 jours pour un joueur à fond, voir `refonte/simulations/progression.mjs`) ; rattrapage `XP_CATCHUP` +5 % par
   niveau de retard sur le perso le plus haut du jeu (max +100 %) ; `ALT_XP_MULT = 1` (plus de ×2).
 - Coffres par niveau : `LEVEL_KEYS` (1, puis 2 dès 30, 3 dès 50, 4 dès 70, 5 dès 90).
 - Raretés : 0 à 6 ; Mythique (×12) et Chaotique (×16) seulement par fusion. Fusion « tout d'un coup » : `fuseAll`.

@@ -10,8 +10,15 @@
 // - Force du héros : celle d'un bot du même niveau (points placés, équipement selon le niveau).
 // - Scénario A : au lancement, tout le monde repart de zéro (pas d'aide aux retardataires).
 //   Scénario B : il arrive alors que les autres sont niveau 100 (aide aux retardataires, jusqu'à ×2).
+import fs from 'fs';
 import * as E from '../../js/engine.js';
-import { DUNGEONS, MAX_LEVEL, AUTO, RAID } from '../../js/data.js';
+// même ?v= que l'engine : les réglages changés ici s'appliquent bien au moteur
+const V = fs.readFileSync(new URL('../../js/engine.js', import.meta.url), 'utf8').match(/data\.js\?v=(\d+)/)[1];
+const { DUNGEONS, MAX_LEVEL, AUTO, RAID, XP_CURVE } = await import(`../../js/data.js?v=${V}`);
+// essais de courbe : GROWTH=1.03 MULT=1.2 node …
+if (process.env.GROWTH) XP_CURVE.growth = +process.env.GROWTH;
+if (process.env.MULT) XP_CURVE.mult = +process.env.MULT;
+if (process.env.BASE) XP_CURVE.base = +process.env.BASE;
 
 const cls = process.argv[2] || 'guerrier';
 const CHESTS_PER_DAY = 37, COMBAT_CHESTS = 2;
@@ -75,7 +82,8 @@ function run(catchup) {
   return { days, src };
 }
 
-const A = run(false), B = run(true);
+const A = run(false), B = process.env.QUICK ? { days: [{ level: 0 }], src: {} } : run(true);
+if (process.env.QUICK) { const r = (l) => (A.days.find(x => x.level >= l) || {}).day || '>400'; console.log(`growth ${XP_CURVE.growth} mult ${XP_CURVE.mult} base ${XP_CURVE.base} | j1 ${A.days[0].level} j3 ${A.days[2].level} j7 ${A.days[6].level} j14 ${(A.days[13] || {}).level} j21 ${(A.days[20] || {}).level} j30 ${(A.days[29] || {}).level} | niv30 j${r(30)} niv50 j${r(50)} niv75 j${r(75)} niv100 j${r(100)}`); process.exit(0); }
 const at = (res, d) => res.days[Math.min(d, res.days.length) - 1];
 const reach = (res, lvl) => (res.days.find(x => x.level >= lvl) || {}).day || '—';
 console.log(`Classe : ${cls}`);

@@ -1893,7 +1893,7 @@ function autoCard() {
       ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
       ${done ? '' : '<div class="auto-stage"><canvas data-auto></canvas></div>'}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${AUTO.xpPerWin * 100} % d’un niveau, au plus ${AUTO.xpDayCap * 100} % d’un niveau par jour), pour ton perso actif.</div>
+      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${String(AUTO.xpPerWin * 100).replace('.', ',')} % d’un niveau, au plus ${String(AUTO.xpDayCap * 100).replace('.', ',')} % d’un niveau par jour), pour ton perso actif.</div>
       ${moreBtn('auto')}
     </section>`;
 }

@@ -501,6 +501,8 @@ export const FRIENDS = [
 // =====================================================================
 //  AIDE AUX RETARDATAIRES — bonus d'XP selon le retard sur le perso le plus haut du jeu
 // =====================================================================
+// XP pour passer un niveau : round((base + per × niveau) × growth^niveau × mult)
+export const XP_CURVE = { base: 50, per: 15, growth: 1.04, mult: 0.65 };   // rapide au début, lent à la fin : niveau 100 en ~45 jours pour un joueur à fond
 export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de retard sur le perso le plus haut du jeu, max +100 %
 export const ALT_XP_MULT = 1;      // persos secondaires : plus de bonus (avant ×2) ; seule l'aide aux retardataires reste
 // clefs gagnées à chaque niveau : 1, puis 2 dès le niveau 30, 3 dès le 50, 4 dès le 70, 5 dès le 90 (et toujours 5 aux niveaux 10, 20, 30…)
@@ -661,9 +663,9 @@ export const AUTO = {
   need: [[1, 200], [250, 2100], [1000, 6700]],
   monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
   boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
-  // XP : chaque victoire met 0,5 % d'un niveau en réserve (pour le perso actif quand on récupère),
-  // au plus 25 % d'un niveau par jour : un petit coup de pouce, sans remplacer les donjons.
-  xpPerWin: 0.005, xpDayCap: 0.25,
+  // XP : chaque victoire met 0,2 % d'un niveau en réserve (pour le perso actif quand on récupère),
+  // au plus 10 % d'un niveau par jour : un petit coup de pouce, sans remplacer les donjons.
+  xpPerWin: 0.002, xpDayCap: 0.1,
 };
 // Championnat : chaque semaine (à partir du lundi), un tableau de 8 joueurs tiré au hasard.
 // Quarts le lundi, demi-finales le mardi, finale le mercredi, à 19 h 30. Chaque match se joue en 3 manches

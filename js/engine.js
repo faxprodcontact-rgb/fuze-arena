@@ -7,13 +7,13 @@ import {
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
   CHAMP, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
-  XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
+  XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
 import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019191031';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
-export const xpForLevel = (lvl) => Math.round((50 + 15 * lvl) * Math.pow(1.02, lvl));
+export const xpForLevel = (lvl) => Math.round((XP_CURVE.base + XP_CURVE.per * lvl) * Math.pow(XP_CURVE.growth, lvl) * XP_CURVE.mult);
 export const totalPoints = (lvl) => lvl * POINTS_PER_LEVEL;
 export const spentPoints = (hero) => STAT_KEYS.reduce((a, k) => a + (hero.alloc[k] || 0), 0);
 export const freePoints = (hero) => totalPoints(hero.level) - spentPoints(hero);
