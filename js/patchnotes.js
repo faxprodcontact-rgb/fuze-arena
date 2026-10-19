@@ -11,7 +11,7 @@ export const PATCH_NOTES = [
       { title: 'Combat auto', items: [
         'Tout en haut de l’onglet Combats : tes 4 persos se battent tout seuls contre des vagues de monstres, en continu.',
         '10 difficultés de 100 paliers, à la suite. Les combats s’enchaînent sans pause, et ça continue même quand le jeu est fermé (un palier toutes les 10 secondes, jusqu’à 8 h rattrapées à ton retour).',
-        'Tous les 10 paliers : 1 coffre de combat mis en réserve (pas de clef). Récupère la réserve quand tu veux.',
+        'Tous les 10 paliers : 1 coffre mis en réserve (pas de clef). Récupère la réserve quand tu veux : les coffres vont à ton perso actif.',
         'Une défaite te renvoie au début de la dizaine : perdu au palier 37 → retour au 31.',
         'Tous les 10 paliers, un boss t’attend. Pas d’XP dans ce mode.',
       ] },

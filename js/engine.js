@@ -8,8 +8,8 @@ import {
   DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261019172108';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019172108';
+} from './data.js?v=20261019172251';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019172251';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -613,7 +613,7 @@ export function autoMonsters(g) {
 /** Graine du n-ième combat auto d'un compte (le même combat est montré à l'écran et compté) */
 export const autoSeed = (acc, n) => hashStr(`auto:${acc.pseudo}:${n}`);
 /**
- * Joue le combat du palier en cours. Victoire : palier suivant (et tous les 10 paliers, 1 coffre de combat en réserve).
+ * Joue le combat du palier en cours. Victoire : palier suivant (et tous les 10 paliers, 1 coffre normal en réserve).
  * Défaite : retour au premier palier de la dizaine (perdu au 37 → 31, donc jamais deux fois la même récompense).
  */
 export function autoResolve(acc, team) {
@@ -643,11 +643,12 @@ export function autoCatchUp(acc, team, max = 40, now = Date.now()) {
   }
   return out;
 }
-/** Récupère la réserve : les coffres de combat vont au compte */
-export function autoClaim(acc) {
+/** Récupère la réserve : les coffres normaux vont au perso actif (dans son stock de coffres à ouvrir) */
+export function autoClaim(acc, hero) {
   const b = autoState(acc).bank;
   const got = b.chests;
-  acc.combatChests += got;
+  refreshChests(hero);
+  hero.chest.stored += got;
   b.chests = 0;
   return got;
 }

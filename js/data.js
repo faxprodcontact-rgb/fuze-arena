@@ -647,7 +647,7 @@ export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
 // clefs de fin de semaine pour CHAQUE perso du compte : roi 5, 2e 3, 3e 2, tous les autres 1
 export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
 // Combat auto : 10 difficultés de 100 paliers, joués à la suite par tes 4 persos, tout seuls (même jeu fermé, 8 h max)
-// À l'écran, les combats s'enchaînent sans pause ; ailleurs (autre écran, jeu fermé) : un palier toutes les 10 s (la durée d'un combat). Tous les 10 paliers : 1 coffre de combat (en réserve), pas de clef. Défaite : retour au palier x1.
+// À l'écran, les combats s'enchaînent sans pause ; ailleurs (autre écran, jeu fermé) : un palier toutes les 10 s (la durée d'un combat). Tous les 10 paliers : 1 coffre normal (en réserve, pour le perso actif), pas de clef. Défaite : retour au palier x1.
 export const AUTO = {
   palierMs: 10000, offlineMaxMs: 8 * 3600 * 1000, diffs: 10, paliers: 100,
   levelPerPalier: 0.1,      // niveau des monstres = 1 + 0,1 par palier (palier 1000 = niveau 100)

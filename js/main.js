@@ -6,15 +6,15 @@ import {
   CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
-} from './data.js?v=20261019172108';
-import * as E from './engine.js?v=20261019172108';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019172108';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019172108';
-import { hashStr, makeRng } from './rng.js?v=20261019172108';
-import { APP_VERSION } from './version.js?v=20261019172108';
-import { PATCH_NOTES } from './patchnotes.js?v=20261019172108';
-import * as NET from './net.js?v=20261019172108';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019172108';
+} from './data.js?v=20261019172251';
+import * as E from './engine.js?v=20261019172251';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee } from './battle.js?v=20261019172251';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon } from './sprites.js?v=20261019172251';
+import { hashStr, makeRng } from './rng.js?v=20261019172251';
+import { APP_VERSION } from './version.js?v=20261019172251';
+import { PATCH_NOTES } from './patchnotes.js?v=20261019172251';
+import * as NET from './net.js?v=20261019172251';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019172251';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1775,11 +1775,11 @@ function autoTick() {
   if (autoAway) {
     autoAway.fights += res.length; autoAway.rewards += rewards;
     if (Date.now() - st.last < AUTO.palierMs) {   // rattrapage fini
-      toast(`Combat auto pendant ton absence : ${autoAway.fights} combats, maintenant ${autoLabel(st.g > E.AUTO_LAST ? E.AUTO_LAST : st.g)}${autoAway.rewards ? ` · +${autoAway.rewards} coffre${autoAway.rewards > 1 ? 's' : ''} de combat en réserve` : ''}`);
+      toast(`Combat auto pendant ton absence : ${autoAway.fights} combats, maintenant ${autoLabel(st.g > E.AUTO_LAST ? E.AUTO_LAST : st.g)}${autoAway.rewards ? ` · +${autoAway.rewards} coffre${autoAway.rewards > 1 ? 's' : ''} en réserve` : ''}`);
       autoAway = null;
     }
   } else if (rewards) {
-    toast(`Combat auto : palier ${E.autoPalier(res.find(r => r.reward).g)} franchi ! +1 coffre de combat en réserve`);
+    toast(`Combat auto : palier ${E.autoPalier(res.find(r => r.reward).g)} franchi ! +1 coffre en réserve`);
   }
   const box = document.querySelector('[data-auto-info]');
   if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
@@ -1792,15 +1792,15 @@ function autoInfoHtml() {
   const inTen = ((p - 1) % 10) + 1;
   return `
     <div class="auto-head"><b>${autoLabel(st.g)}</b><small>Record : ${autoLabel(st.best)}</small></div>
-    <div class="auto-bar"><i style="width:${(inTen - 1) * 10}%"></i><span>Palier ${next} : 1 coffre de combat</span></div>
+    <div class="auto-bar"><i style="width:${(inTen - 1) * 10}%"></i><span>Palier ${next} : 1 coffre</span></div>
     <div class="auto-next">Les combats s’enchaînent sans pause</div>
     ${autoBankHtml(st)}`;
 }
 function autoBankHtml(st) {
   const n = st.bank.chests;
   return n ? `
-    <button class="btn primary block auto-claim" data-act="claimAuto">Récupérer ${n} coffre${n > 1 ? 's' : ''} <canvas class="px" data-chest="combat"></canvas></button>`
-    : '<p class="auto-empty">Réserve vide : 1 coffre de combat tous les 10 paliers.</p>';
+    <button class="btn primary block auto-claim" data-act="claimAuto">Récupérer ${n} coffre${n > 1 ? 's' : ''} <canvas class="px" data-chest="normal"></canvas></button>`
+    : '<p class="auto-empty">Réserve vide : 1 coffre tous les 10 paliers.</p>';
 }
 
 function autoCard() {
@@ -1811,7 +1811,7 @@ function autoCard() {
       ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
       ${done ? '' : '<div class="auto-stage"><canvas data-auto></canvas></div>'}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre de combat</b> mis en réserve (pas de clef). Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Pas d’XP ici.</div>
+      <div class="more-txt">${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Pas d’XP ici.</div>
       ${moreBtn('auto')}
     </section>`;
 }
@@ -1843,7 +1843,7 @@ function startAutoVisual(canvas) {
         const r = E.autoResolve(acc, team);
         st2.last = Date.now();
         save();
-        if (r.reward) toast(`Combat auto : palier ${E.autoPalier(r.g)} franchi ! +1 coffre de combat en réserve`);
+        if (r.reward) toast(`Combat auto : palier ${E.autoPalier(r.g)} franchi ! +1 coffre en réserve`);
         const box = document.querySelector('[data-auto-info]');
         if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
       }
@@ -3082,10 +3082,10 @@ const ACTIONS = {
   throneFight: (d) => startThrone(d.id),
   claimThrone: () => claimThroneReward(),
   claimAuto: () => {
-    const n = E.autoClaim(acc);
+    const n = E.autoClaim(acc, hero);
     if (!n) return;
     SFX.loot(2); save(); render();
-    toast(`+${n} coffre${n > 1 ? 's' : ''} de combat !`);
+    toast(`+${n} coffre${n > 1 ? 's' : ''} pour ${CLASSES[hero.classId].name} : va les ouvrir dans Coffres !`);
   },
   retryThrone: () => { throneError = ''; loadThrone().then(() => { if (tab === 'throne') softRender(); }); },
   podiumMsgSave: (d) => {
