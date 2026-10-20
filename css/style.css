@@ -1714,3 +1714,36 @@ button.bk-m:active { transform: scale(.96); }
   background: linear-gradient(#4a3c96, #2a2066); box-shadow: 0 0 0 2px #0d0926, inset 0 0 0 1.5px rgba(242,193,78,.5); }
 .dock-skip canvas.ico { width: 14px; height: 14px; }
 .spell-demo { height: 190px; }
+
+/* ---------- Caractéristiques (fiche du héros) ---------- */
+.pts-bar { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 10px 8px 14px; border-radius: 14px;
+  background: linear-gradient(90deg, rgba(76,217,100,.28), rgba(76,217,100,.08)); box-shadow: inset 0 0 0 2px rgba(123,240,154,.55), 0 0 16px rgba(76,217,100,.2); animation: ptsGlow 1.6s ease-in-out infinite alternate; }
+@keyframes ptsGlow { to { box-shadow: inset 0 0 0 2px rgba(123,240,154,.9), 0 0 22px rgba(76,217,100,.45); } }
+.pts-bar > b { font-family: var(--pixel); font-weight: 400; font-size: 28px; line-height: 1; color: #7bf09a; text-shadow: 0 2px 0 #06220e, 0 0 10px rgba(76,217,100,.6); }
+.pts-bar > span { flex: 1; font-weight: 900; font-size: 14px; color: #fff; }
+.pts-step { display: flex; padding: 3px; border-radius: 10px; background: rgba(0,0,0,.35); }
+.pts-step button { padding: 5px 10px; border-radius: 8px; font-family: var(--pixel); font-size: 13px; color: #c9c3ff; }
+.pts-step button.on { background: linear-gradient(#7bf09a, #2fae4f); color: #06220e; }
+.stats-card .stat-sum { margin: 12px 0 8px; }
+.srows { display: flex; flex-direction: column; gap: 8px; }
+.srow { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sc) 16%, #181147), #120c3d 70%); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sc) 30%, transparent); }
+.srow.reco { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sc) 55%, transparent), 0 0 12px color-mix(in srgb, var(--sc) 18%, transparent); }
+.sr-ico { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--sc) 55%, #1a1352), color-mix(in srgb, var(--sc) 20%, #0e0a2b)); box-shadow: 0 0 0 2px #0d0926, inset 0 2px 0 rgba(255,255,255,.15); }
+.sr-ico canvas.ico { width: 26px; height: 26px; }
+.sr-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sr-txt b { display: flex; align-items: center; gap: 6px; font-family: var(--pixel); font-weight: 400; font-size: 15px; color: #fff; text-shadow: 0 1px 0 #000; }
+.sr-txt em { font-style: normal; font-family: var(--body); font-size: 9px; font-weight: 900; letter-spacing: .4px; text-transform: uppercase; padding: 2px 6px; border-radius: 999px;
+  color: #3a2208; background: linear-gradient(#ffe27a, #f2a91e); text-shadow: none; }
+.sr-txt small { font-size: 11.5px; font-weight: 700; color: #c9c3ff; line-height: 1.25; }
+.sr-from { font-size: 10.5px; font-weight: 800; color: var(--muted); }
+.sr-from i { font-style: normal; }
+.sr-from i.p { color: #7bf09a; }
+.sr-from i.g { color: #6fb6ff; }
+.sr-val { min-width: 40px; text-align: right; font-family: var(--pixel); font-size: 22px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px color-mix(in srgb, var(--sc) 60%, transparent); }
+.sr-plus { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; font-family: var(--pixel); font-size: 22px; color: #06220e;
+  background: linear-gradient(#9dffb6, #2fae4f); box-shadow: 0 0 0 2px #0d0926, inset 0 -4px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.5), 0 0 12px rgba(76,217,100,.45); }
+.sr-plus:active { transform: translateY(2px) scale(.96); }
+.st-reset { margin-top: 12px; }
+.st-reset canvas { width: 14px; height: auto; margin-left: 4px; vertical-align: middle; }

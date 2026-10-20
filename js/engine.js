@@ -1132,7 +1132,7 @@ export function fuseAll(hero) {
 }
 
 // ------------------------------- Bots ----------------------------------
-const BOT_WEIGHTS = {
+export const BOT_WEIGHTS = {   // aussi utilisé pour conseiller les caractéristiques de chaque classe
   guerrier: { vit: 0.35, atk: 0.4, def: 0.25 },
   mage: { mag: 0.42, vit: 0.33, def: 0.1, spd: 0.15 },
   archer: { atk: 0.4, spd: 0.2, lck: 0.2, vit: 0.2 },

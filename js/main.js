@@ -193,7 +193,7 @@ function trainingBest() {
   if (NET.online) for (const p of players) { const r = p.data.trainRecord; if (r && r.dmg > best.dmg) best = { dmg: r.dmg, name: p.pseudo, data: p.data }; }
   return best;
 }
-const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `${ico('trophy')} <b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : `${ico('trophy')} Pas encore de record`; };
+const trainRecHtml = () => { const b = trainingBest(); return b.dmg ? `<b>${esc(b.name)}</b> a mis <b>${fmtNum(b.dmg)}</b> dégâts` : 'Pas encore de record'; };
 
 function onTrainingEntry(e) {
   onTrainSpells(e);
@@ -452,43 +452,38 @@ function viewHero() {
       <div class="train-stats" id="train-stats">${trainingStatsHtml()}</div>
     </section>
 
-    <section class="card hx hx-blue">
-      <div class="hx-head"><span class="hx-ico">${ico('sparkle')}</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche les + pour placer tes points' : 'Tu gagnes 3 points à chaque niveau'}</small></div>
-        ${pts > 0 ? `<span class="pts-badge">${pts}<small>point${pts > 1 ? 's' : ''}</small></span>` : ''}</div>
+    <section class="card hx hx-blue stats-card">
+      <div class="hx-head"><span class="hx-ico">${ico('sparkle')}</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche + pour rendre ton héros plus fort' : 'Tu gagnes 3 points à chaque niveau'}</small></div></div>
+      ${pts > 0 ? `<div class="pts-bar"><b>${pts}</b><span>point${pts > 1 ? 's' : ''} à placer</span>
+        ${pts >= 5 ? `<div class="pts-step">${[1, 5].map(n => `<button class="${statStep === n ? 'on' : ''}" data-act="statStep" data-n="${n}">+${n}</button>`).join('')}</div>` : ''}</div>` : ''}
       <div class="stat-sum">
         <div><small>${ico('heart')} Vie</small><b>${fmtNum(hp)}</b></div>
-        <div><small>${ico('boom')} Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} équip.` : 'max 40 %'}</i></div>
-        <div><small>${ico('wind')} Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} équip.` : 'max 25 %'}</i></div>
+        <div><small>${ico('boom')} Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} objets` : 'max 40 %'}</i></div>
+        <div><small>${ico('wind')} Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} objets` : 'max 25 %'}</i></div>
       </div>
-      <div class="stat-legend">
-        <span><i class="sl-base"></i>Base (classe + niveau)</span>
-        <span><i class="sl-pts"></i>Tes points</span>
-        <span><i class="sl-eq"></i>Équipement</span>
+      <div class="srows">
+      ${STAT_KEYS.map(k => {
+        const mine = hero.alloc[k] || 0, gear = st[k] - base[k], reco = statAdvice(hero.classId).includes(k);
+        return `
+        <div class="srow ${reco ? 'reco' : ''}" style="--sc:${STATS[k].color}">
+          <span class="sr-ico">${ico(STAT_ICON[k])}</span>
+          <div class="sr-txt">
+            <b>${STATS[k].name}${reco ? '<em>conseillé</em>' : ''}</b>
+            <small>${STATS[k].desc}</small>
+            <span class="sr-from">${raw[k]} de base${mine ? ` <i class="p">+${mine} tes points</i>` : ''}${gear > 0 ? ` <i class="g">+${gear} objets</i>` : ''}</span>
+          </div>
+          <span class="sr-val">${fmtNum(st[k])}</span>
+          ${pts > 0 ? `<button class="sr-plus" data-act="addStat" data-k="${k}" aria-label="Ajouter en ${STATS[k].name}">+${Math.min(statStep, pts) > 1 ? Math.min(statStep, pts) : ''}</button>` : ''}
+        </div>`;
+      }).join('')}
       </div>
-      ${STAT_KEYS.map(k => `
-        <div class="stat-row" style="--sc:${STATS[k].color}">
-          <span class="st-ico">${STAT_ICO[k]}</span>
-          <div style="flex:1;min-width:0">
-            <div class="stat-name">${STATS[k].name}</div>
-            <div class="stat-desc">${STATS[k].desc}</div>
-            <div class="st-bar"><i style="width:${Math.round(100 * st[k] / Math.max(...STAT_KEYS.map(x => st[x])))}%"></i></div>
-          </div>
-          <div class="stat-val">${st[k]}
-            <div class="stat-split">
-              <span class="sl-base">${raw[k]}</span>
-              ${(hero.alloc[k] || 0) > 0 ? `<span class="sl-pts">+${hero.alloc[k]}</span>` : ''}
-              ${st[k] - base[k] > 0 ? `<span class="sl-eq">+${st[k] - base[k]}</span>` : ''}
-            </div>
-          </div>
-          <button class="plus" data-act="addStat" data-k="${k}" ${pts > 0 ? '' : 'disabled'}>+</button>
-        </div>`).join('')}
       ${sets.length || aff ? `
         <div class="bonus-box">
           <div class="sub" style="margin:0 0 6px">BONUS ACTIFS</div>
           ${sets.map(a => `<div class="set-line on">${SETS[a.setId].name} (${a.count} pièces) : ${bonusText(a.bonus)}</div>`).join('')}
           ${aff ? `<div class="set-line on">Familier ${esc(ITEMS[eq.pet.itemId].name)} : +5 % ${STATS[aff.stat].name}</div>` : ''}
         </div>` : ''}
-      ${E.spentPoints(hero) > 0 ? `<div class="derived"><span class="spacer"></span><button class="btn small" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button></div>` : ''}
+      ${E.spentPoints(hero) > 0 ? `<button class="btn small block st-reset" data-act="resetStats" ${acc.clat < STAT_RESET_COST ? 'disabled' : ''}>Replacer tous mes points · ${STAT_RESET_COST}<canvas class="px" data-clat></canvas></button>` : ''}
     </section>
 
     <section class="card spells-card hx cls-${hero.classId}">
@@ -694,6 +689,10 @@ function stacks() {
 
 const groupOf = (itemId) => ITEMS[itemId].set || 'pet';
 const STAT_ICO = { vit: 'VIE', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT', lck: 'CHA' };
+const STAT_ICON = { vit: 'heart', atk: 'sword', mag: 'magic', def: 'shield', spd: 'boot', lck: 'dice' };
+/** Les 2 caractéristiques conseillées pour une classe (les plus importantes de son profil) */
+const statAdvice = (cls) => Object.entries(E.BOT_WEIGHTS[cls] || {}).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
+let statStep = 1;   // + ajoute 1 point, ou 5 d'un coup
 const SLOT_GLYPH = { hat: ico('helmet'), weapon: ico('swords'), armor: ico('shield'), boots: ico('boot'), amulet: ico('amulet'), pet: ico('paw') };
 const groupName = (g) => (g === 'pet' ? 'Familiers' : SETS[g].name.replace(/^Panoplie (de |d’|du )?/, ''));
 
@@ -3592,11 +3591,14 @@ const ACTIONS = {
     toast('Bienvenue ! Tu as 5 coffres à ouvrir.');
   },
   addStat: (d) => {
-    if (E.freePoints(hero) <= 0) return;
-    hero.alloc[d.k] = (hero.alloc[d.k] || 0) + 1;
-    E.missionEvent(acc, 'stat');
-    save(); render();
+    const n = Math.min(statStep, E.freePoints(hero));
+    if (n <= 0) return;
+    hero.alloc[d.k] = (hero.alloc[d.k] || 0) + n;
+    E.missionEvent(acc, 'stat', n);
+    SFX.click();
+    save(); softRender();
   },
+  statStep: (d) => { statStep = +d.n; softRender(); },
   resetStats: () => {
     if (acc.clat < STAT_RESET_COST) { toast(`Il faut ${STAT_RESET_COST} Flouze pour replacer tes points.`); return; }
     if (!confirm(`Replacer tous tes points pour ${STAT_RESET_COST} Flouze ?`)) return;

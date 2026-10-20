@@ -354,7 +354,7 @@ const NO_SFX = new Proxy({}, { get: () => () => {} });
  * training = entraînement silencieux (pas de musique ni de bruitages) ; onEntry = appelé à chaque étape.
  */
 export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null, onBegin = null, spellBar = false, hud = null } = {}) {
-  // hud = 'corner' : seulement la barre de vie du héros, petite, en bas à droite (aperçu d'un sort)
+  // hud = 'corner' : seulement la barre de vie du héros, petite, en bas à gauche (aperçu d'un sort)
   // Taille « logique » de la scène, recalculée selon l'écran (propre à chaque combat).
   // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
   let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
@@ -1149,9 +1149,9 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     F.forEach((f, i) => {
       if (training && i === 1) return;
       const corner = hud === 'corner';
-      const left = !corner && (PORTRAIT || i === 0);
+      const left = corner || PORTRAIT || i === 0;
       const bw = corner ? 150 : PORTRAIT ? W - 24 : 190, bh = corner ? 11 : PORTRAIT ? 14 : 12;
-      const x = corner ? W - 14 - bw : PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
+      const x = corner ? 14 : PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
       // téléphone : l'ennemi en haut, le héros juste sous ses pieds (au-dessus des boutons), jamais sur lui
       const y = corner ? H - bh - 12 : PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : Math.round(Math.max(GROUND + 26, Math.min(GROUND + 44, CTRL_TOP - bh - 12)))) : 18;
       ctx.font = PXF(corner ? 8 : PORTRAIT ? 9 : 8); ctx.textBaseline = 'alphabetic';

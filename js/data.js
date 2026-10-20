@@ -20,12 +20,12 @@ export const RESET_ID = '2026-10-18-maj';
 export const STAT_KEYS = ['vit', 'atk', 'mag', 'def', 'spd', 'lck'];
 
 export const STATS = {
-  vit: { name: 'Vitalité', short: 'VIT', color: '#ff5d6c', desc: '+8 points de vie par point' },
-  atk: { name: 'Attaque', short: 'ATQ', color: '#ff9f43', desc: 'Dégâts des coups physiques' },
-  mag: { name: 'Magie', short: 'MAG', color: '#a77bff', desc: 'Dégâts des sorts magiques et soins' },
-  def: { name: 'Défense', short: 'DÉF', color: '#54a0ff', desc: 'Réduit les dégâts reçus' },
-  spd: { name: 'Vitesse', short: 'VIT+', color: '#1dd1a1', desc: 'Joue plus souvent' },
-  lck: { name: 'Chance', short: 'CHA', color: '#feca57', desc: 'Coups critiques et esquives' },
+  vit: { name: 'Vitalité', short: 'VIT', color: '#ff5d6c', desc: 'Plus de points de vie : +8 PV par point' },
+  atk: { name: 'Attaque', short: 'ATQ', color: '#ff9f43', desc: 'Tes coups d’arme font plus mal' },
+  mag: { name: 'Magie', short: 'MAG', color: '#a77bff', desc: 'Tes sorts magiques et tes soins sont plus forts' },
+  def: { name: 'Défense', short: 'DÉF', color: '#54a0ff', desc: 'Tu prends moins de dégâts' },
+  spd: { name: 'Vitesse', short: 'VIT+', color: '#1dd1a1', desc: 'Tu joues plus souvent que l’adversaire' },
+  lck: { name: 'Chance', short: 'CHA', color: '#feca57', desc: 'Plus de coups critiques et d’esquives' },
 };
 
 export const RARITIES = [
