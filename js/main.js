@@ -790,23 +790,19 @@ function viewBag() {
     }).join('');
   }
   return `
-    <section class="arm-top cls-${hero.classId}">
-      <div class="at-main">
-        <div><h1>Armurerie</h1><p>${CLASSES[hero.classId].name} Nv.${hero.level}</p></div>
-        <div class="at-power"><small>PUISSANCE</small><b>${fmtNum(power)}</b></div>
-      </div>
-      <div class="at-chips">
-        <span class="pill ${filled === 6 ? 'gold' : ''}">${ico('swords')} ${filled}/6 équipés</span>
-        <span class="pill">${ico('bag')} ${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}</span>
-        ${setsOn.length ? setsOn.map(a => `<span class="pill green">${groupName(a.setId)} ${a.count}/5</span>`).join('') : '<span class="pill">Aucune panoplie active</span>'}
-      </div>
-    </section>
-    <section class="card armory cls-${hero.classId}">
+    <section class="card armory arm2 cls-${hero.classId}">
+      <img class="dg2-bg" src="art/decors/castle.svg" alt=""><i class="arm2-shade"></i><i class="arm2-rays"></i>
+      <div class="arm2-power">${ico('bolt')}<b>${fmtNum(power)}</b><small>Puissance</small></div>
       <div class="doll">
         <div class="doll-col">${['hat', 'armor', 'boots'].map(slotHtml).join('')}</div>
-        <div class="doll-stage"><canvas class="px" data-doll="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas>
+        <div class="doll-stage"><i class="arm2-pedestal"></i><canvas class="px" data-doll="${hero.classId}" data-pet="${eq.pet ? eq.pet.itemId : ''}" data-dye="${hero.dye || ''}"></canvas>
           <div class="doll-name">${CLASSES[hero.classId].name} <span>Nv.${hero.level}</span></div></div>
         <div class="doll-col">${['weapon', 'amulet', 'pet'].map(slotHtml).join('')}</div>
+      </div>
+      <div class="arm2-chips">
+        <span class="${filled === 6 ? 'ok' : ''}">${ico('swords')} ${filled}/6</span>
+        <span>${ico('bag')} ${hero.inventory.length}</span>
+        ${setsOn.map(a => `<span class="set">${groupName(a.setId)} ${a.count}/5</span>`).join('')}
       </div>
     </section>
     <section class="card hx bag-card ${infoCls('bag')}" data-info="bag" style="--hc:#c9a24a">
@@ -1200,7 +1196,6 @@ function podiumStage(top, order, scoreOf) {
           ${i === 0 ? `<span class="pod-crown">${ico('crown')}</span>` : ''}
           <div class="pod-av"><canvas class="px" data-hero="${e.classId}" data-pet="${e.pet || ''}" data-dye="${e.dye || ''}"></canvas></div>
           <div class="pod-step">
-            <b class="ps-rank">${i + 1}</b>
             <span class="ps-medal">${ico(['medal1', 'medal2', 'medal3'][i])}</span>
             <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
             <div class="pod-score">${scoreOf(e)}</div>
@@ -1643,7 +1638,7 @@ function viewSocial() {
   const meTop = list.slice(0, 3).some(e => e.me);
   const myMsg = (acc.podiumMsg && acc.podiumMsg.text) || '';
   return `
-    <section class="modes">
+    <section class="modes slim">
       ${tiles.map(t => `
         <button class="mode" data-act="tab" data-id="${t.id}" style="--tc:${t.c}">
           <span class="m-art"><canvas class="px" data-emblem="${t.emblem}"></canvas></span>

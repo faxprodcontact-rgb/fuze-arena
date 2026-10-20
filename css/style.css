@@ -2284,3 +2284,49 @@ canvas[data-hero] { translate: -10.4% 0; }
 .pod-step .pod-name span, .pod-step .pod-score span { display: inline; line-height: inherit; }
 .pstage .pod.me .pod-name { color: #2a1a05; }
 .pstage .pod.me.p2 .pod-name { color: #1d2430; } .pstage .pod.me.p3 .pod-name { color: #2d1608; }
+/* Social : les 4 cases en version fine (icône à gauche), pour que le podium tienne sur l'écran */
+.modes.slim { gap: 8px; margin-bottom: 10px; }
+.modes.slim .mode { min-height: 0; flex-direction: row; justify-content: flex-start; gap: 8px; padding: 8px 10px; border-radius: 14px; text-align: left; }
+.modes.slim .mode::before { inset: -150% auto -150% -40%; width: 120%; }
+.modes.slim .m-art { flex: 0 0 auto; }
+.modes.slim .m-art canvas { width: 40px; height: 40px; animation: none; }
+.modes.slim .m-txt { flex: 1; min-width: 0; align-items: flex-start; gap: 2px; }
+.modes.slim .m-txt b { font-size: 13px; line-height: 1.2; }
+.modes.slim .m-txt small { padding: 0; background: none; font-size: 10px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.modes.slim .mode .badge { top: 4px; right: 4px; }
+/* podium : un peu moins haut */
+.pstage { padding-top: 74px; }
+.pstage .pod.p1 .pod-step { height: 116px; } .pstage .pod.p2 .pod-step { height: 92px; } .pstage .pod.p3 .pod-step { height: 78px; }
+.pstage .pod.p1 .pod-step { height: 120px; } .pstage .pod.p2 .pod-step { height: 100px; } .pstage .pod.p3 .pod-step { height: 90px; }
+
+/* ---------- Sac : l'armurerie en scène ---------- */
+.arm2 { isolation: isolate; padding-top: 58px; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--hc) 55%, transparent), 0 0 24px color-mix(in srgb, var(--hc) 18%, transparent), 0 4px 0 rgba(0,0,0,.4); }
+.arm2 > .dg2-bg { z-index: -3; object-position: center 55%; transform: none; }
+.arm2-shade { position: absolute; inset: 0; z-index: -2; background: radial-gradient(ellipse 60% 50% at 50% 55%, rgba(13,9,38,.2), rgba(13,9,38,.88) 85%), linear-gradient(0deg, rgba(13,9,38,.95), transparent 35%); }
+.arm2-rays { position: absolute; left: 50%; top: 46%; width: 380px; height: 380px; margin: -190px 0 0 -190px; z-index: -1; border-radius: 50%; animation: spin 24s linear infinite;
+  background: repeating-conic-gradient(from 0deg, transparent 0 9deg, color-mix(in srgb, var(--hc) 22%, transparent) 9deg 18deg);
+  -webkit-mask: radial-gradient(closest-side, #000 25%, transparent 100%); mask: radial-gradient(closest-side, #000 25%, transparent 100%); }
+.armory.arm2::before { display: none; }
+.arm2-power { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 16px 6px 12px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(40,28,10,.9), rgba(20,12,4,.9)); box-shadow: inset 0 0 0 2px rgba(255,216,74,.7), 0 0 18px rgba(255,216,74,.35), 0 3px 0 rgba(0,0,0,.4); }
+.arm2-power .ico { width: 20px; height: 20px; filter: drop-shadow(0 0 6px rgba(255,216,74,.8)); }
+.arm2-power b { font-family: var(--pixel); font-weight: 400; font-size: 24px; line-height: 1; color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 12px rgba(255,216,74,.6); }
+.arm2-power small { font-size: 9px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #e8c97a; }
+.arm2-pedestal { position: absolute; left: 50%; bottom: 20px; width: 150px; height: 34px; margin-left: -75px; border-radius: 50%; z-index: 0;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--hc) 70%, #fff 10%), color-mix(in srgb, var(--hc) 30%, transparent) 55%, transparent 72%);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--hc) 50%, transparent); animation: arm2-pulse 2.6s ease-in-out infinite; }
+@keyframes arm2-pulse { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+.arm2 .doll-stage canvas { z-index: 1; }
+.arm2 .doll-name { z-index: 2; color: #e9e3ff; text-shadow: 0 2px 0 #000; }
+.arm2-chips { position: relative; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.arm2-chips span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 10px; font-family: var(--pixel); font-size: 11.5px; color: #e9e3ff;
+  background: rgba(10,7,30,.75); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.arm2-chips span .ico { width: 14px; height: 14px; }
+.arm2-chips span.ok { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(255,216,74,.5); }
+.arm2-chips span.set { color: #7bf09a; box-shadow: inset 0 0 0 1px rgba(76,217,100,.5); }
+.rar-strip small { font-size: 7px; letter-spacing: -.35px; }
+/* bulle du podium : à la taille du texte, centrée au-dessus du héros, qui grandit vers le haut et flotte doucement */
+.pod-bubble, .pstage .pod-bubble { top: auto; bottom: calc(100% + 2px); left: 50%; transform: none; translate: -50% 0; width: max-content; max-width: 118px;
+  padding: 5px 9px; font-size: 10.5px; line-height: 1.2; animation: pod-float 5s ease-in-out infinite; }
+.pstage .pod.p1 .pod-bubble { top: auto; bottom: calc(100% + 30px); }
+@keyframes pod-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
