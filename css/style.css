@@ -231,7 +231,15 @@ input { font: inherit; }
 .loot-card .ln { font-weight: 800; font-size: 13px; line-height: 1.2; }
 @keyframes pop { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
 .rays { position: relative; isolation: isolate; padding: 20px; }
-.rays::before { content: ''; position: absolute; inset: -60px; background: conic-gradient(from 0deg, transparent 0 10deg, rgba(255,216,74,.18) 10deg 20deg, transparent 20deg 40deg, rgba(255,216,74,.18) 40deg 50deg, transparent 50deg 70deg, rgba(255,216,74,.18) 70deg 80deg, transparent 80deg 100deg, rgba(255,216,74,.18) 100deg 110deg, transparent 110deg 130deg, rgba(255,216,74,.18) 130deg 140deg, transparent 140deg 160deg, rgba(255,216,74,.18) 160deg 170deg, transparent 170deg 190deg, rgba(255,216,74,.18) 190deg 200deg, transparent 200deg 220deg, rgba(255,216,74,.18) 220deg 230deg, transparent 230deg 250deg, rgba(255,216,74,.18) 250deg 260deg, transparent 260deg 280deg, rgba(255,216,74,.18) 280deg 290deg, transparent 290deg 310deg, rgba(255,216,74,.18) 310deg 320deg, transparent 320deg 340deg, rgba(255,216,74,.18) 340deg 350deg, transparent 350deg); border-radius: 50%; animation: spin 8s linear infinite; z-index: -1; }
+.rays::before, .rays::after { content: ''; position: absolute; inset: -44px; border-radius: 50%; z-index: -1; animation: spin 8s linear infinite;
+  background: repeating-conic-gradient(from 0deg, transparent 0 10deg, var(--ray-c) 10deg 20deg, transparent 20deg 30deg);
+  -webkit-mask: radial-gradient(closest-side, #000 40%, transparent 100%); mask: radial-gradient(closest-side, #000 40%, transparent 100%); }
+.rays::before { --ray-c: rgba(255,255,255,.13); }
+/* couleur du meilleur objet du coffre (vert, bleu, violet, jaune…) qui arrive à l'ouverture */
+.rays::after { --ray-c: color-mix(in srgb, var(--ray, #ffd84a) 50%, transparent); opacity: 0; transition: opacity .7s ease-out;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--ray, #ffd84a) 38%, transparent), transparent 75%),
+    repeating-conic-gradient(from 0deg, transparent 0 10deg, var(--ray-c) 10deg 20deg, transparent 20deg 30deg); }
+.rays.lit::after { opacity: 1; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Combat plein écran : la scène remplit tout le téléphone */

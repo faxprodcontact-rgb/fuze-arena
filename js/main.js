@@ -3329,6 +3329,8 @@ function announce(lv) {
 }
 
 // ------------------------------ Ouverture de coffre ------------------------------
+/** Couleur de la lumière du coffre selon la rareté (Légendaire en jaune) */
+const CHEST_RAY = { 4: '#ffd23a' };
 function openChestFlow(kind, all = false) {
   const res = all ? E.openAllChests(acc, hero) : E.openChest(acc, hero, kind);
   if (!res) return;
@@ -3347,7 +3349,11 @@ function openChestFlow(kind, all = false) {
     paint(cv, chestCanvas(kind, true), { scale: 6 });
     cv.classList.remove('shake');
     cv.classList.add('burst');
-    SFX.loot(Math.max(...res.items.map(it => it.rarity)));
+    const best = Math.max(...res.items.map(it => it.rarity));
+    // la lumière derrière le coffre prend la couleur du meilleur objet (rien de spécial pour du Commun)
+    const wrap = document.getElementById('chest-wrap');
+    if (best > 0) { wrap.style.setProperty('--ray', CHEST_RAY[best] || RARITIES[best].color); wrap.classList.add('lit'); }
+    SFX.loot(best);
     document.getElementById('loot').innerHTML = `
       <div class="loot ${res.items.length > 4 ? 'many' : ''}">
         ${res.items.map((it, i) => `
