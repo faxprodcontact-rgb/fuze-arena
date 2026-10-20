@@ -186,11 +186,11 @@ function trainingStatsHtml() {
   const box = (ico, label, val, sub) => `<div class="ts"><span><i class="ts-ico">${ico}</i>${label}</span><b>${val}</b><small>${sub}</small></div>`;
   const speedRatio = T.foeActs ? (T.acts / T.foeActs).toFixed(1) : '—';
   return [
-    box(ico('swords'), 'Dégâts moyens', T.hits ? Math.round(T.dmg / T.hits) : '—', `record ${T.maxHit}`),
+    box(ico('swords'), 'Dégâts', T.hits ? Math.round(T.dmg / T.hits) : '—', `moyen · max ${T.maxHit}`),
     box(ico('boom'), 'Critiques', `${pct(T.crits, T.hits)} %`, `chance ${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %`),
     box(ico('wind'), 'Esquives', `${pct(T.dodges, T.foeHits + T.dodges)} %`, `chance ${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %`),
     box(ico('shield'), 'Défense', `−${Math.round((1 - 100 / (100 + st.def)) * 100)} %`, `dégâts reçus ${T.foeHits ? Math.round(T.taken / T.foeHits) : '—'}`),
-    box(ico('bolt'), 'Vitesse', `×${speedRatio}`, 'actions par coup reçu'),
+    box(ico('bolt'), 'Vitesse', `×${speedRatio}`, 'par tour adverse'),
     box(ico('heart'), 'Soins', T.heal, `PV max ${E.maxHp(st, hero.level)}`),
   ].join('');
 }
