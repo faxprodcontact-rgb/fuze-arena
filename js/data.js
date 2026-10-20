@@ -306,18 +306,18 @@ export const SETS = {
   loic: { name: 'Panoplie de Loïc', spec: ['atk', 'vit'], voie: 'atk' },
   tchomb: { name: 'Panoplie de Tchomb', spec: ['mag', 'def'], voie: 'mag' },
   tom: { name: 'Panoplie de Tom', spec: ['lck', 'atk'], voie: 'atk' },
-  guillaume: { name: 'Panoplie de Guillaume', spec: ['def', 'vit'], voie: 'atk' },
+  guillaume: { name: 'Panoplie de Guillaume', spec: ['def', 'vit'], voie: 'mag' },
   simon: { name: 'Panoplie de Simon', spec: ['vit', 'spd'], voie: 'atk' },
   alexis: { name: 'Panoplie d’Alexis', spec: ['atk', 'def'], voie: 'atk' },
   appart33: { name: 'Panoplie Appartement 33', spec: ['vit', 'lck'], voie: 'mag' },
   fax: { name: 'Panoplie Fax', spec: ['mag', 'spd'], voie: 'mag' },
   deuxb: { name: 'Panoplie 2B', spec: ['def', 'spd'], voie: 'atk' },
-  romain: { name: 'Panoplie de Romain', spec: ['def', 'lck'], voie: 'atk' },
+  romain: { name: 'Panoplie de Romain', spec: ['def', 'lck'], voie: 'mag' },
   mcdo: { name: 'Panoplie McDo', spec: ['mag', 'atk'], voie: 'mag' },
   foot: { name: 'Panoplie du Footballeur', spec: ['mag', 'lck'], voie: 'mag' },
   // Panoplies élémentaires (assorties aux skins feu, glace, lumière, ténèbres)
   brasier: { name: 'Panoplie du Brasier', spec: ['atk', 'spd'], voie: 'atk', el: 'feu' },
-  givre: { name: 'Panoplie du Givre', spec: ['def', 'mag'], voie: 'atk', el: 'glace' },
+  givre: { name: 'Panoplie du Givre', spec: ['def', 'mag'], voie: 'mag', el: 'glace' },
   aube: { name: 'Panoplie de l’Aube', spec: ['mag', 'vit'], voie: 'mag', el: 'lumiere' },
   neant: { name: 'Panoplie du Néant', spec: ['spd', 'lck'], voie: 'mag', el: 'tenebres' },
 };
@@ -331,6 +331,8 @@ export const SETS = {
 //  icon : forme dessinée, colors : [couleur principale, couleur secondaire]
 // ---------------------------------------------------------------------
 const BASE_PART = 2.25, SPEC_PART = 1.75;
+// Réglage fin : la Magie des objets un peu plus forte, l'Attaque un peu plus faible (Magie +6 à +10 % par rapport à l'ancien équipement)
+export const ITEM_STAT_K = { mag: 1.3, atk: 0.92 };
 // Critique et esquive : seulement à partir de Légendaire, sur chaque pièce d'équipement (pas les familiers), en % selon la rareté.
 // Plafonds : jamais plus de 40 % de critique ni de 25 % d'esquive au total.
 export const ITEM_CRIT = [0, 0, 0, 0, 0.01, 0.015, 0.02];
@@ -341,6 +343,7 @@ const itemStatsOf = (base, spec) => {
   const stats = Object.fromEntries(STAT_KEYS.map(k => [k, 0]));
   stats[base] += BASE_PART;
   for (const k of spec) stats[k] += SPEC_PART;
+  for (const k in ITEM_STAT_K) stats[k] *= ITEM_STAT_K[k];
   for (const k of STAT_KEYS) if (!stats[k]) delete stats[k];
   return stats;
 };
@@ -480,17 +483,17 @@ export const ITEM_LIST = [
   pet('woody', 'Woody', 'catFat', ['#9b8f80', '#c9bfb2'], 'atk', ['vit', 'def']),
   pet('kuzco', 'Kuzco', 'catTiger', ['#e58e2b', '#ffd59a'], 'atk', ['atk', 'spd']),
   pet('shiva', 'Shiva', 'catThin', ['#c9b79c', '#efe2c4'], 'atk', ['spd', 'lck']),
-  pet('malo', 'Malo', 'catBig', ['#6b6b78', '#9aa3ad'], 'atk', ['def', 'vit']),
+  pet('malo', 'Malo', 'catBig', ['#6b6b78', '#9aa3ad'], 'mag', ['def', 'vit']),
   pet('fidji', 'Fidji', 'cat', ['#f4f4f8', '#ffffff'], 'mag', ['mag', 'lck'], { eye: '#3d9bff' }),
   pet('nala', 'Nala', 'cat', ['#2d2a33', '#4a4652'], 'mag', ['lck', 'spd'], { eye: '#ffd84a' }),
   pet('gaia', 'Gaia', 'cat', ['#8d8f99', '#b8bac4'], 'mag', ['def', 'spd'], { eye: '#7bed6f' }),
   pet('wiz', 'Wiz', 'catFat', ['#6e707a', '#9a9ca6'], 'mag', ['vit', 'def'], { eye: '#ffd84a' }),
   // Familiers — chiens
   pet('isco', 'Isco', 'greyhound', ['#c9b79c', '#efe2c4'], 'atk', ['spd', 'atk']),
-  pet('buck', 'Buck', 'dog', ['#e3c58f', '#f5e2b8'], 'atk', ['vit', 'lck']),
+  pet('buck', 'Buck', 'dog', ['#e3c58f', '#f5e2b8'], 'mag', ['vit', 'lck']),
   pet('ivory', 'Ivory', 'canecorso', ['#4a4652', '#6b6b78'], 'atk', ['atk', 'def'], { eye: '#c49a6c' }),
-  pet('salto', 'Salto', 'dog', ['#2d2a33', '#4a4652'], 'atk', ['vit', 'atk'], { eye: '#c49a6c' }),
-  pet('uby', 'Uby', 'shepherd', ['#2d2a33', '#4a4652'], 'atk', ['def', 'spd'], { eye: '#c49a6c' }),
+  pet('salto', 'Salto', 'dog', ['#2d2a33', '#4a4652'], 'mag', ['vit', 'atk'], { eye: '#c49a6c' }),
+  pet('uby', 'Uby', 'shepherd', ['#2d2a33', '#4a4652'], 'mag', ['def', 'spd'], { eye: '#c49a6c' }),
   // Familiers — serpents
   pet('idan', 'Idan', 'snake', ['#d63031', '#ff7675'], 'atk', ['atk', 'lck']),
   pet('mitsuki', 'Mitsuki', 'snake', ['#ff8fc7', '#ffc2e2'], 'mag', ['mag', 'spd']),
@@ -712,8 +715,8 @@ export const AUTO = {
   // Puissance d'équipe (les 4 persos additionnés) qu'il faut pour passer un palier, entre ces repères (palier global 1 à 1000) :
   // la difficulté suit la progression d'un joueur qui joue à fond (refonte/simulations/courbe-auto.mjs) :
   // D1 = le 1er jour (1 perso), D2 ≈ jour 2, D3 ≈ jour 4, D4 ≈ jour 7, D5 ≈ jour 10, D6 ≈ jour 14, D7 ≈ jour 21, D8 ≈ jour 28, D9 ≈ jour 34,
-  // D10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~6 980)
-  need: [[1, 75], [50, 160], [100, 380], [200, 930], [300, 1660], [400, 2540], [500, 3550], [600, 4640], [700, 5320], [800, 5700], [900, 6450], [1000, 6700]],
+  // D10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~7 225 depuis la refonte de l'équipement)
+  need: [[1, 75], [50, 160], [100, 380], [200, 930], [300, 1660], [400, 2540], [500, 3550], [600, 4640], [700, 5320], [800, 5700], [900, 6200], [1000, 6450]],
   monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
   boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
   // XP : chaque victoire met 0,2 % d'un niveau en réserve (pour le perso actif quand on récupère),
@@ -748,8 +751,8 @@ export const STORY = {
   // strength = force des monstres (× un monstre de niveau 50) ; need = puissance conseillée ; levels = niveau affiché des monstres.
   // Chaque combat est fait pour le héros attendu d'un joueur à fond à ce moment-là ; le dernier boss du Chaotique
   // demande un héros niveau 100 tout Chaotique avec sa panoplie pour les 3 étoiles.
-  strength: [0.164, 0.322, 0.342, 0.459, 0.472, 0.5, 0.564, 0.574, 0.746, 0.716, 0.826, 0.787, 0.805, 0.884, 0.737, 0.851, 0.921, 0.859, 0.897, 0.781, 1.129, 1.066, 1.107, 1.173, 1.098, 1.14, 1.221, 1.297, 1.359, 1.156, 1.394, 1.342, 1.357, 1.414, 1.34, 1.388, 1.499, 1.42, 1.431, 1.475, 1.774, 1.691, 1.73, 1.811, 1.728, 1.815, 1.842, 1.782, 1.832, 1.513, 2.166, 2.104, 2.131, 2.163, 2.19, 2.093, 2.13, 2.044, 2.163, 2.018, 2.092, 2.083, 2.145, 2.171, 2.041, 2.186, 2.176, 2.227, 2.234, 1.894, 2.499, 2.499, 2.586, 2.484, 2.445, 2.609, 2.499, 2.576, 2.629, 2.283, 2.672, 2.66, 2.747, 2.664, 2.519, 2.758, 2.71, 2.77, 2.846, 2.095, 2.229, 2.284, 2.33, 2.268, 2.381, 2.392, 2.314, 2.346, 2.438, 2.023, 3.063, 3.108, 3.166, 3.113, 3.098, 3.272, 3.183, 3.218, 3.284, 2.957, 3.191, 3.13, 3.24, 3.251, 2.807, 3.246, 3.286, 3.206, 3.295, 2.319, 3.259, 3.205, 3.515, 3.68, 3.343, 3.515, 3.663, 3.626, 3.54, 3.056, 3.578, 3.546, 3.603, 3.609, 3.37, 3.645, 3.578, 3.617, 3.722, 2.732, 3.417, 2.952, 3.029, 3.39, 3.216, 3.084, 3.375, 2.988, 3.061, 2.336],
-  need: [84, 161, 171, 225, 234, 242, 262, 271, 366, 376, 386, 396, 396, 406, 414, 424, 433, 433, 442, 562, 570, 579, 591, 599, 610, 610, 619, 630, 638, 647, 658, 667, 676, 687, 687, 696, 706, 715, 715, 895, 903, 912, 912, 923, 931, 940, 940, 949, 949, 959, 968, 968, 977, 977, 987, 997, 997, 1005, 1005, 1015, 1026, 1026, 1036, 1036, 1046, 1056, 1056, 1066, 1066, 1218, 1228, 1228, 1239, 1239, 1247, 1258, 1258, 1268, 1268, 1277, 1288, 1288, 1296, 1296, 1304, 1314, 1314, 1323, 1323, 1334, 1334, 1342, 1342, 1352, 1361, 1370, 1380, 1380, 1389, 1389, 1389, 1398, 1398, 1408, 1418, 1418, 1427, 1427, 1437, 1437, 1437, 1447, 1447, 1455, 1455, 1466, 1475, 1475, 1483, 1483, 1483, 1494, 1689, 1698, 1698, 1698, 1698, 1698, 1709, 1709, 1717, 1717, 1726, 1726, 1736, 1736, 1745, 1745, 1755, 1755, 1766, 1766, 1766, 1774, 1784, 1784, 1793, 1793, 1793, 1803],
+  strength: [0.164, 0.302, 0.326, 0.415, 0.433, 0.457, 0.521, 0.531, 0.687, 0.659, 0.766, 0.733, 0.746, 0.808, 0.675, 0.801, 0.851, 0.806, 0.842, 0.63, 0.92, 0.867, 0.908, 1.063, 0.986, 1.034, 1.095, 1.055, 1.112, 0.965, 1.147, 1.335, 1.1, 1.413, 1.314, 1.371, 1.453, 1.394, 1.417, 1.141, 1.39, 1.328, 1.377, 1.429, 1.355, 1.7, 1.732, 1.392, 1.476, 1.405, 1.688, 1.613, 2.131, 2.166, 2.12, 2.093, 2.13, 2.033, 2.13, 1.999, 2.096, 2.081, 2.173, 2.145, 1.953, 2.173, 2.133, 2.205, 2.225, 1.446, 2.1, 2.065, 2.107, 2.13, 1.965, 2.14, 2.194, 2.14, 2.14, 1.812, 2.055, 2.104, 2.129, 2.057, 2.046, 2.149, 2.129, 2.164, 2.206, 1.827, 2.069, 2.102, 2.1, 2.084, 2.067, 2.173, 2.145, 2.145, 2.227, 1.839, 2.433, 2.474, 2.458, 2.514, 2.595, 2.54, 3.076, 3.116, 3.225, 2.841, 3.143, 3.1, 3.173, 3.181, 2.633, 3.225, 3.214, 3.163, 3.269, 2.171, 3.147, 3.095, 2.907, 2.859, 2.678, 2.899, 2.879, 2.859, 2.978, 2.454, 3.01, 2.858, 2.853, 3.034, 2.78, 2.923, 3.047, 2.943, 2.971, 2.402, 2.896, 2.705, 2.792, 2.941, 2.733, 2.8, 3.006, 2.733, 2.829, 1.89],
+  need: [84, 162, 172, 226, 235, 243, 263, 272, 368, 378, 387, 398, 398, 407, 415, 426, 434, 434, 443, 566, 574, 584, 594, 602, 613, 613, 622, 632, 640, 650, 661, 669, 678, 688, 688, 697, 707, 716, 716, 898, 907, 916, 916, 926, 934, 943, 943, 952, 952, 962, 972, 972, 980, 980, 990, 1000, 1000, 1008, 1008, 1018, 1028, 1028, 1038, 1038, 1049, 1059, 1059, 1069, 1069, 1223, 1234, 1234, 1244, 1244, 1253, 1263, 1263, 1272, 1272, 1281, 1292, 1292, 1300, 1300, 1309, 1317, 1317, 1327, 1327, 1337, 1337, 1346, 1346, 1355, 1364, 1374, 1383, 1383, 1392, 1392, 1392, 1402, 1402, 1411, 1421, 1421, 1430, 1430, 1439, 1439, 1439, 1450, 1450, 1458, 1458, 1469, 1478, 1478, 1486, 1486, 1486, 1497, 1696, 1704, 1704, 1704, 1704, 1704, 1716, 1716, 1724, 1724, 1733, 1733, 1743, 1743, 1751, 1751, 1761, 1761, 1771, 1771, 1771, 1779, 1789, 1789, 1799, 1799, 1799, 1809],
   levels: [2, 4, 5, 7, 8, 9, 11, 12, 14, 15, 16, 17, 17, 18, 19, 20, 21, 21, 22, 23, 24, 25, 26, 27, 28, 28, 29, 30, 31, 32, 33, 34, 35, 36, 36, 37, 38, 39, 39, 40, 41, 42, 42, 43, 44, 45, 45, 46, 46, 47, 48, 48, 49, 49, 50, 51, 51, 52, 52, 53, 54, 54, 55, 55, 56, 57, 57, 58, 58, 59, 60, 60, 61, 61, 62, 63, 63, 64, 64, 65, 66, 66, 67, 67, 68, 69, 69, 70, 70, 71, 71, 72, 72, 73, 74, 75, 76, 76, 77, 77, 77, 78, 78, 79, 80, 80, 81, 81, 82, 82, 82, 83, 83, 84, 84, 85, 86, 86, 87, 87, 87, 88, 88, 89, 89, 89, 89, 89, 90, 90, 91, 91, 92, 92, 93, 93, 94, 94, 95, 95, 96, 96, 96, 97, 98, 98, 99, 99, 99, 100],
   // [force, PV] de chaque monstre selon le combat : PV par monstre quand ils sont 2, 3 ou 4 ; sbires puis petit boss ; sbires puis boss
   foes: { mobHp: { 2: 0.85, 3: 0.75, 4: 0.6 }, miniAdd: [0.85, 0.7], mini: [1.05, 1.4], bossAdd: [0.85, 0.55], boss: [1.1, 1.6] },
