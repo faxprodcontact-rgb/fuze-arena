@@ -765,7 +765,6 @@ export const STORY = {
 
 export const CHAMP = { size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3, roundNames: ['Quarts de finale', 'Demi-finales', 'Finale'] };
 
-// Le marchand : 3 objets tirés au hasard chaque jour parmi tous les équipements, de Commun à Épique.
 // odds = chances de chaque rareté (en %), prices = prix en Flouze selon la rareté.
 // Le marchand : 3 objets au hasard, renouvelés toutes les 4 h (0 h, 4 h, 8 h, 12 h, 16 h, 20 h)
 export const SHOP_DAILY = { count: 3, odds: [50, 30, 15, 5], prices: [10, 50, 150, 300], everyH: 4 };
