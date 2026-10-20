@@ -1948,8 +1948,9 @@ export function raidBoss(level, totalHp, remaining, tag = RAID.tag) {
 }
 
 /** Dégâts moyens d'un assaut de 40 actions selon le niveau (barème mesuré par simulation ; relevé le 2026-10-20 après la refonte
- *  de l'équipement : les héros font +13 à +50 % de dégâts au gros boss, ses PV suivent pour qu'il ne tombe pas plus vite) */
-const RAID_DMG = [[1, 279], [5, 443], [10, 804], [20, 888], [30, 936], [50, 955], [70, 1302], [100, 3200]];
+ *  de l'équipement : les héros font +13 à +50 % de dégâts au gros boss, ses PV suivent pour qu'il ne tombe pas plus vite ;
+ *  points 75 à 97 ajoutés après la règle 3 Légendaires → 1 Mythique : vers le niveau 90, les héros sont encore en Mythique) */
+const RAID_DMG = [[1, 279], [5, 443], [10, 804], [20, 888], [30, 936], [50, 955], [70, 1302], [75, 1392], [80, 1646], [85, 1861], [90, 2098], [95, 2156], [97, 2648], [100, 3200]];
 export function raidExpectedDamage(lvl) {
   for (let i = 1; i < RAID_DMG.length; i++) {
     const [l1, d1] = RAID_DMG[i - 1], [l2, d2] = RAID_DMG[i];

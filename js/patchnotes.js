@@ -34,6 +34,7 @@ export const PATCH_NOTES = [
         'Le gros boss ne donne plus d’XP : c’est l’Histoire qui la remplace.',
         'Arène : tu peux retenter un pote tant que tu ne l’as pas battu (une défaite ne coûte rien).',
         'Revanches : 5 Flouze (au lieu de 1) pour la 1ʳᵉ revanche gagnée contre chaque pote, chaque jour.',
+        'Missions : 5 Flouze chacune, 10 pour les plus dures, et toujours +5 de bonus si tu fais les 3.',
         'Récompenses : le PVP rapporte du Flouze, le PVM des clefs, la COOP les deux.',
         'Trône : une manche tous les 3 jours. 100 Flouze au roi, 50 au 2ᵉ, 25 à tous les autres.',
         'Championnat : 100 Flouze au champion, 50 au finaliste, 25 à tous les autres.',

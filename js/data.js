@@ -654,40 +654,41 @@ export const RAID_BOSSES = [
 //  MISSIONS — 3 missions toutes les 12 h (minuit et midi), tirées au hasard, les mêmes pour tout le monde
 //  ev = l'action qui fait avancer la mission
 // =====================================================================
+// reward = Flouze : 5 pour une mission simple, 10 pour une mission compliquée (+5 de bonus si les 3 sont faites)
 const M = (id, ev, text, n, reward) => ({ id, ev, text, n, reward });
 export const MISSION_POOL = [
-  M('arena_win', 'arena_win', 'Gagne {n} combats d’Arène', [2, 3], 3),
-  M('arena_fight', 'arena_fight', 'Fais {n} combats d’Arène', [3, 5], 2),
-  M('rematch', 'rematch', 'Fais {n} revanches', [2, 4], 2),
-  M('rematch_win', 'rematch_win', 'Gagne {n} revanche(s)', [1, 2], 2),
-  M('chest', 'chest', 'Ouvre {n} coffres', [2, 5], 2),
-  M('key_use', 'key_use', 'Ouvre {n} coffre(s) avec une clef', [1, 3], 2),
-  M('dungeon_win', 'dungeon_win', 'Bats {n} boss de donjon', [2, 4], 3),
-  M('dungeon', 'dungeon', 'Lance {n} combats de donjon', [3, 6], 2),
-  M('dungeon_diff', 'dungeon_kinds', 'Bats {n} donjons différents', [2, 3], 3),
-  M('tower', 'tower', 'Monte {n} étage(s) de la Tour', [1, 3], 3),
-  M('tower_try', 'tower_try', 'Tente {n} fois la Tour infinie', [2, 4], 2),
-  M('raid', 'raid', 'Attaque le boss du raid {n} fois', [1, 3], 3),
-  M('raid_dmg', 'raid_dmg', 'Inflige {n} dégâts au boss du raid', [300, 900], 3),
-  M('war', 'war', 'Fais {n} attaques de guerre', [1, 3], 3),
-  M('war_win', 'war_win', 'Gagne {n} attaque(s) de guerre', [1, 2], 3),
-  M('fuse', 'fuse', 'Fusionne {n} objet(s)', [1, 2], 3),
-  M('sell', 'sell', 'Vends {n} objets', [2, 6], 2),
-  M('equip', 'equip', 'Équipe {n} objet(s)', [1, 3], 1),
-  M('stat', 'stat', 'Place {n} points de caractéristique', [3, 6], 1),
-  M('level', 'level', 'Gagne {n} niveau(x)', [1, 2], 3),
-  M('fight', 'fight', 'Fais {n} combats (tous modes)', [5, 10], 2),
-  M('win', 'win', 'Gagne {n} combats (tous modes)', [4, 8], 3),
-  M('spell', 'spell', 'Lance {n} sorts en combat', [8, 16], 2),
-  M('crit', 'crit', 'Place {n} coups critiques', [5, 12], 2),
-  M('dodge', 'dodge', 'Esquive {n} attaques', [3, 8], 2),
-  M('pet', 'pet', 'Ton familier attaque {n} fois', [5, 12], 2),
-  M('manual_win', 'manual_win', 'Gagne {n} combat(s) en mode manuel', [1, 2], 3),
-  M('chat', 'chat', 'Envoie {n} message(s) dans le tchat', [1, 3], 1),
-  M('share', 'share', 'Partage {n} combat dans le tchat', [1, 1], 2),
-  M('bet', 'bet', 'Mise sur {n} duel(s)', [1, 1], 2),
-  M('revenge', 'revenge', 'Venge-toi {n} fois', [1, 1], 2),
-  M('train', 'train_rec', 'Bats ton record d’entraînement', [1, 1], 2),
+  M('arena_win', 'arena_win', 'Gagne {n} combats d’Arène', [2, 3], 10),
+  M('arena_fight', 'arena_fight', 'Fais {n} combats d’Arène', [3, 5], 5),
+  M('rematch', 'rematch', 'Fais {n} revanches', [2, 4], 5),
+  M('rematch_win', 'rematch_win', 'Gagne {n} revanche(s)', [1, 2], 5),
+  M('chest', 'chest', 'Ouvre {n} coffres', [2, 5], 5),
+  M('key_use', 'key_use', 'Ouvre {n} coffre(s) avec une clef', [1, 3], 5),
+  M('dungeon_win', 'dungeon_win', 'Bats {n} boss de donjon', [2, 4], 10),
+  M('dungeon', 'dungeon', 'Lance {n} combats de donjon', [3, 6], 5),
+  M('dungeon_diff', 'dungeon_kinds', 'Bats {n} donjons différents', [2, 3], 10),
+  M('tower', 'tower', 'Monte {n} étage(s) de la Tour', [1, 3], 10),
+  M('tower_try', 'tower_try', 'Tente {n} fois la Tour infinie', [2, 4], 5),
+  M('raid', 'raid', 'Attaque le boss du raid {n} fois', [1, 3], 10),
+  M('raid_dmg', 'raid_dmg', 'Inflige {n} dégâts au boss du raid', [300, 900], 10),
+  M('war', 'war', 'Fais {n} attaques de guerre', [1, 3], 10),
+  M('war_win', 'war_win', 'Gagne {n} attaque(s) de guerre', [1, 2], 10),
+  M('fuse', 'fuse', 'Fusionne {n} objet(s)', [1, 2], 10),
+  M('sell', 'sell', 'Vends {n} objets', [2, 6], 5),
+  M('equip', 'equip', 'Équipe {n} objet(s)', [1, 3], 5),
+  M('stat', 'stat', 'Place {n} points de caractéristique', [3, 6], 5),
+  M('level', 'level', 'Gagne {n} niveau(x)', [1, 2], 10),
+  M('fight', 'fight', 'Fais {n} combats (tous modes)', [5, 10], 5),
+  M('win', 'win', 'Gagne {n} combats (tous modes)', [4, 8], 10),
+  M('spell', 'spell', 'Lance {n} sorts en combat', [8, 16], 5),
+  M('crit', 'crit', 'Place {n} coups critiques', [5, 12], 5),
+  M('dodge', 'dodge', 'Esquive {n} attaques', [3, 8], 5),
+  M('pet', 'pet', 'Ton familier attaque {n} fois', [5, 12], 5),
+  M('manual_win', 'manual_win', 'Gagne {n} combat(s) en mode manuel', [1, 2], 10),
+  M('chat', 'chat', 'Envoie {n} message(s) dans le tchat', [1, 3], 5),
+  M('share', 'share', 'Partage {n} combat dans le tchat', [1, 1], 5),
+  M('bet', 'bet', 'Mise sur {n} duel(s)', [1, 1], 5),
+  M('revenge', 'revenge', 'Venge-toi {n} fois', [1, 1], 5),
+  M('train', 'train_rec', 'Bats ton record d’entraînement', [1, 1], 5),
 ];
 export const MISSIONS_PER_DAY = 3;
 export const MISSIONS_BONUS = 5;   // Flouze en plus si les 3 sont faites
@@ -723,7 +724,8 @@ export const AUTO = {
   // la difficulté suit la progression d'un joueur qui joue à fond (refonte/simulations/courbe-auto.mjs) :
   // D1 = le 1er jour (1 perso), D2 ≈ jour 2, D3 ≈ jour 4, D4 ≈ jour 7, D5 ≈ jour 10, D6 ≈ jour 14, D7 ≈ jour 21, D8 ≈ jour 28, D9 ≈ jour 34,
   // D10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~7 225 depuis la refonte de l'équipement)
-  need: [[1, 75], [50, 160], [100, 380], [200, 930], [300, 1660], [400, 2540], [500, 3550], [600, 4640], [700, 5320], [800, 5700], [900, 6200], [1000, 6450]],
+  // (repères 850 / 900 redescendus après la règle 3 Légendaires → 1 Mythique : l'équipe des jours 30 à 40 est plus faible)
+  need: [[1, 75], [50, 160], [100, 380], [200, 930], [300, 1660], [400, 2540], [500, 3550], [600, 4640], [700, 5320], [800, 5700], [850, 5880], [900, 6000], [1000, 6450]],
   monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
   boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
   // XP : chaque victoire met 0,2 % d'un niveau en réserve (pour le perso actif quand on récupère),
@@ -758,8 +760,8 @@ export const STORY = {
   // strength = force des monstres (× un monstre de niveau 50) ; need = puissance conseillée ; levels = niveau affiché des monstres.
   // Chaque combat est fait pour le héros attendu d'un joueur à fond à ce moment-là ; le dernier boss du Chaotique
   // demande un héros niveau 100 tout Chaotique avec sa panoplie pour les 3 étoiles.
-  strength: [0.164, 0.302, 0.326, 0.415, 0.433, 0.457, 0.521, 0.531, 0.687, 0.659, 0.766, 0.733, 0.746, 0.808, 0.675, 0.801, 0.851, 0.806, 0.842, 0.63, 0.92, 0.867, 0.908, 1.063, 0.986, 1.034, 1.095, 1.055, 1.112, 0.965, 1.147, 1.335, 1.1, 1.413, 1.314, 1.371, 1.453, 1.394, 1.417, 1.141, 1.39, 1.328, 1.377, 1.429, 1.355, 1.7, 1.732, 1.392, 1.476, 1.405, 1.688, 1.613, 2.131, 2.166, 2.12, 2.093, 2.13, 2.033, 2.13, 1.999, 2.096, 2.081, 2.173, 2.145, 1.953, 2.173, 2.133, 2.205, 2.225, 1.446, 2.1, 2.065, 2.107, 2.13, 1.965, 2.14, 2.194, 2.14, 2.14, 1.812, 2.055, 2.104, 2.129, 2.057, 2.046, 2.149, 2.129, 2.164, 2.206, 1.827, 2.069, 2.102, 2.1, 2.084, 2.067, 2.173, 2.145, 2.145, 2.227, 1.839, 2.433, 2.474, 2.458, 2.514, 2.595, 2.54, 3.076, 3.116, 3.225, 2.841, 3.143, 3.1, 3.173, 3.181, 2.633, 3.225, 3.214, 3.163, 3.269, 2.171, 3.147, 3.095, 2.907, 2.859, 2.678, 2.899, 2.879, 2.859, 2.978, 2.454, 3.01, 2.858, 2.853, 3.034, 2.78, 2.923, 3.047, 2.943, 2.971, 2.402, 2.896, 2.705, 2.792, 2.941, 2.733, 2.8, 3.006, 2.733, 2.829, 1.89],
-  need: [84, 162, 172, 226, 235, 243, 263, 272, 368, 378, 387, 398, 398, 407, 415, 426, 434, 434, 443, 566, 574, 584, 594, 602, 613, 613, 622, 632, 640, 650, 661, 669, 678, 688, 688, 697, 707, 716, 716, 898, 907, 916, 916, 926, 934, 943, 943, 952, 952, 962, 972, 972, 980, 980, 990, 1000, 1000, 1008, 1008, 1018, 1028, 1028, 1038, 1038, 1049, 1059, 1059, 1069, 1069, 1223, 1234, 1234, 1244, 1244, 1253, 1263, 1263, 1272, 1272, 1281, 1292, 1292, 1300, 1300, 1309, 1317, 1317, 1327, 1327, 1337, 1337, 1346, 1346, 1355, 1364, 1374, 1383, 1383, 1392, 1392, 1392, 1402, 1402, 1411, 1421, 1421, 1430, 1430, 1439, 1439, 1439, 1450, 1450, 1458, 1458, 1469, 1478, 1478, 1486, 1486, 1486, 1497, 1696, 1704, 1704, 1704, 1704, 1704, 1716, 1716, 1724, 1724, 1733, 1733, 1743, 1743, 1751, 1751, 1761, 1761, 1771, 1771, 1771, 1779, 1789, 1789, 1799, 1799, 1799, 1809],
+  strength: [0.164, 0.302, 0.326, 0.415, 0.433, 0.457, 0.521, 0.531, 0.687, 0.659, 0.766, 0.733, 0.746, 0.808, 0.675, 0.801, 0.851, 0.806, 0.842, 0.63, 0.92, 0.867, 0.908, 1.063, 0.986, 1.034, 1.095, 1.055, 1.112, 0.965, 1.147, 1.335, 1.1, 1.413, 1.314, 1.371, 1.453, 1.394, 1.417, 1.141, 1.39, 1.328, 1.377, 1.429, 1.355, 1.7, 1.732, 1.392, 1.476, 1.405, 1.688, 1.613, 2.131, 2.166, 2.12, 2.093, 2.13, 2.033, 2.13, 1.999, 2.096, 2.081, 2.173, 2.145, 1.953, 2.173, 2.133, 2.205, 2.225, 1.6, 2.1, 2.115, 2.206, 2.1, 2.055, 2.223, 2.157, 2.192, 2.24, 1.949, 2.311, 2.278, 2.384, 2.057, 2.046, 2.149, 2.129, 2.164, 2.206, 1.827, 2.069, 2.102, 2.1, 2.084, 2.067, 2.173, 2.145, 2.145, 2.227, 1.839, 2.433, 2.474, 2.458, 2.514, 2.595, 2.54, 3.076, 3.116, 3.225, 2.841, 3.143, 3.1, 3.173, 3.181, 2.633, 3.225, 3.214, 3.163, 3.269, 2.171, 3.147, 3.095, 3.016, 3.162, 2.805, 3.007, 3.133, 3.109, 3.007, 2.635, 3.071, 3.053, 3.141, 3.109, 2.905, 3.139, 3.129, 3.1, 3.202, 2.334, 2.883, 2.561, 2.576, 2.907, 2.733, 2.8, 3.006, 2.733, 2.829, 1.89],
+  need: [84, 162, 172, 226, 235, 243, 263, 272, 368, 378, 387, 398, 398, 407, 415, 426, 434, 434, 443, 566, 574, 584, 594, 602, 613, 613, 622, 632, 640, 650, 661, 669, 678, 688, 688, 697, 707, 716, 716, 898, 907, 916, 916, 926, 934, 943, 943, 952, 952, 962, 972, 972, 980, 980, 990, 1000, 1000, 1008, 1008, 1018, 1028, 1028, 1038, 1038, 1049, 1059, 1059, 1069, 1069, 1078, 1089, 1089, 1098, 1098, 1107, 1116, 1116, 1126, 1126, 1136, 1147, 1147, 1155, 1300, 1309, 1317, 1317, 1327, 1327, 1337, 1337, 1346, 1346, 1355, 1364, 1374, 1383, 1383, 1392, 1392, 1392, 1402, 1402, 1411, 1421, 1421, 1430, 1430, 1439, 1439, 1439, 1450, 1450, 1458, 1458, 1469, 1478, 1478, 1486, 1486, 1486, 1497, 1497, 1506, 1506, 1506, 1506, 1506, 1516, 1516, 1525, 1525, 1534, 1534, 1544, 1544, 1553, 1553, 1563, 1563, 1572, 1572, 1572, 1582, 1789, 1789, 1799, 1799, 1799, 1809],
   levels: [2, 4, 5, 7, 8, 9, 11, 12, 14, 15, 16, 17, 17, 18, 19, 20, 21, 21, 22, 23, 24, 25, 26, 27, 28, 28, 29, 30, 31, 32, 33, 34, 35, 36, 36, 37, 38, 39, 39, 40, 41, 42, 42, 43, 44, 45, 45, 46, 46, 47, 48, 48, 49, 49, 50, 51, 51, 52, 52, 53, 54, 54, 55, 55, 56, 57, 57, 58, 58, 59, 60, 60, 61, 61, 62, 63, 63, 64, 64, 65, 66, 66, 67, 67, 68, 69, 69, 70, 70, 71, 71, 72, 72, 73, 74, 75, 76, 76, 77, 77, 77, 78, 78, 79, 80, 80, 81, 81, 82, 82, 82, 83, 83, 84, 84, 85, 86, 86, 87, 87, 87, 88, 88, 89, 89, 89, 89, 89, 90, 90, 91, 91, 92, 92, 93, 93, 94, 94, 95, 95, 96, 96, 96, 97, 98, 98, 99, 99, 99, 100],
   // [force, PV] de chaque monstre selon le combat : PV par monstre quand ils sont 2, 3 ou 4 ; sbires puis petit boss ; sbires puis boss
   foes: { mobHp: { 2: 0.85, 3: 0.75, 4: 0.6 }, miniAdd: [0.85, 0.7], mini: [1.05, 1.4], bossAdd: [0.85, 0.55], boss: [1.1, 1.6] },

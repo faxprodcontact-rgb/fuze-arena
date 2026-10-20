@@ -1,7 +1,8 @@
 // Équipement d'un joueur qui joue à fond (règles de la refonte) : rareté de son meilleur objet par emplacement, jour par jour.
 // node refonte/simulations/equipement.mjs
 // Hypothèses (même joueur que progression.mjs) :
-// - 37 coffres normaux par jour + toutes ses clefs (5 clefs de donjon par 12 h, clefs de montée de niveau, ~2 clefs de trône par semaine).
+// - 37 coffres normaux par jour + toutes ses clefs (clefs de donjon, clefs de montée de niveau, clefs de la Horde et de la Tour : clefs-pvm.json,
+//   jour par jour, tiré des vrais combats de bilan / progression). Le trône et le championnat donnent du Flouze, plus de clefs.
 // - 2 coffres de combat par jour (arène) ; ~1,5 coffre de guerre par semaine (raid, guerre, championnat).
 // - Bonus de chance des coffres (compteurs d'ouvertures) ; il fusionne tout chaque soir (« Tout fusionner »).
 // - Niveau jour par jour : la courbe de progression.mjs (niveau 100 vers le 45ᵉ jour). La boutique n'est pas comptée.
@@ -18,7 +19,8 @@ if (process.env.LUCK) CHEST_LUCK.gain = +process.env.LUCK;
 import { makeRng } from '../../js/rng.js';
 
 const LEVELS = [15, 23, 29, 35, 40, 44, 47, 50, 53, 56, 59, 61, 63, 65, 67, 69, 71, 72, 74, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 88, 89, 89, 90, 91, 92, 93, 94, 95, 96, 96, 97, 98, 99, 99, 100];
-const DAYS = 150, RUNS = 8;
+const DAYS = 150, RUNS = +(process.env.RUNS || 8);
+const PVM = JSON.parse(fs.readFileSync(new URL('./clefs-pvm.json', import.meta.url), 'utf8'));   // clefs de la Horde (6 essais) et de la Tour, par jour
 // essais : FUSE=« 2,2,2,2,3,3 » = objets identiques qu'il faut pour monter de Commun→Peu commun, … Mythique→Chaotique
 const NEED = process.env.FUSE ? process.env.FUSE.split(',').map(Number) : FUSE_NEED;   // par défaut : la règle du jeu
 function fuseAllN(hero) {
@@ -50,10 +52,10 @@ function run(seed) {
   for (let day = 1; day <= DAYS; day++) {
     const lvl = lvlAt(day);
     hero.level = lvl;
-    let keys = 10;                                                   // clefs de donjon
+    let keys = 10 + (PVM[day - 1] ?? PVM[PVM.length - 1]);            // clefs de donjon + clefs de la Horde et de la Tour
     for (let l = prevLvl + 1; l <= lvl; l++) keys += E.levelKeys(l);  // clefs de montée de niveau
     prevLvl = lvl;
-    throneCredit += 2 / 7; const tk = Math.floor(throneCredit); throneCredit -= tk;
+    const tk = 0;   // le trône donne du Flouze
     warCredit += 1.5 / 7; const wc = Math.floor(warCredit); warCredit -= wc;
     open('normal', 37 + keys + tk);
     open('combat', 2);

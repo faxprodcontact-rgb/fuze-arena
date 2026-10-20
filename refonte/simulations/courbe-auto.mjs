@@ -5,7 +5,8 @@
 import { setup } from './teams.mjs';
 const { E, hero, CL } = await setup();
 const LV = [15,23,29,35,40,44,47,50,53,56,59,61,63,65,67,69,71,72,74,76,77,78,80,81,82,83,84,86,87,88,89,89,90,91,92,93,94,95,96,96,97,98,99,99,100];
-const RA = [1.94,2.54,2.85,3.08,3.54,3.81,3.94,4.04,4.17,4.37,4.52,4.75,4.9,4.94,5,5,5,5,5,5,5,5.04,5.06,5.06,5.1,5.13,5.19,5.31,5.38,5.52,5.67,5.75,5.85,5.92,5.96,5.98,5.98];
+// rareté moyenne par jour (equipement.mjs, règles du 20/10 : 3 Légendaires → 1 Mythique, clefs de la Horde et de la Tour)
+const RA = [1.91,2.63,2.94,3.26,3.58,3.81,3.92,3.99,4.01,4.02,4.06,4.15,4.31,4.48,4.62,4.84,4.92,4.98,4.99,4.99,5,5,5,5,5,5,5,5,5,5,5,5.01,5.01,5.05,5.13,5.17,5.22,5.3,5.39,5.46,5.59,5.66,5.74,5.78,5.83,5.9,5.94,5.98,5.98];
 const lvAt = (d) => d <= 0 ? 1 : d >= 1 ? LV[Math.min(LV.length, Math.floor(d)) - 1] + (d % 1 && d < LV.length ? (LV[Math.floor(d)] - LV[Math.floor(d) - 1]) * (d % 1) : 0) : 1 + 14 * d;
 const raAt = (d) => d <= 0 ? -1 : d < 1 ? 2 * d - 0.5 : RA[Math.min(RA.length, Math.floor(d)) - 1] ?? 6;
 const unlockDay = (L) => { for (let d = 0; d <= 60; d += 0.05) if (lvAt(d) >= L) return d; return 99; };
