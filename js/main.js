@@ -1051,11 +1051,6 @@ function viewDungeons() {
       Bats le boss : de l’XP et <b>1 clef</b> (1 clef = 1 coffre), jusqu’à <b>${DUNGEON_KEYS_MAX} clefs par jour</b> (remise à minuit). Ensuite, tu gagnes seulement l’XP. Chaque monstre battu rapporte un peu d’XP en plus, et même en cas de défaite tu gagnes un peu d’XP.<br><br>
       <b>${ico('skip')} Passer</b> : tes ${DUNGEON_SKIP_KEEP} donjons débloqués les plus durs se font en vrai. Les autres peuvent être passés d’un coup : tu reçois les récompenses de tes vagues restantes, mais avec <b>la moitié de l’XP</b>.`,
   }) + `
-    <div class="pv-steps" style="--hc:#4cd964">
-      <div><b>1</b><span>2 monstres<br>puis le boss</span></div>
-      <div><b>2</b><span>Boss battu :<br>XP + <canvas class="px ico" data-key></canvas> 1 clef</span></div>
-      <div><b>3</b><span>Jusqu’à ${DUNGEON_KEYS_MAX} clefs<br>par jour</span></div>
-    </div>
     <section class="card hx" style="--hc:#4cd964">
       ${secHead(ico('skull'), 'Choisis ton donjon', `${open.length} / ${DUNGEONS.length} débloqués`)}
       <div class="dg2-list">
