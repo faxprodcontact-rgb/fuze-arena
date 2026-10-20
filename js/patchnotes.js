@@ -7,7 +7,7 @@
 // =====================================================================
 export const PATCH_NOTES = [
   {
-    id: '2026-10-20-0121-v2', date: '20/10/2026', time: '01h21', title: 'Bienvenue dans Fuze Arena 2.0 !',
+    id: '2026-10-20-1900-v2', date: '20/10/2026', time: '19h00', title: 'Bienvenue dans Fuze Arena 2.0 !',
     gift: { id: 'fuze-2-0-bienvenue', amount: 100, chests: 10, text: 'Pour bien démarrer cette nouvelle aventure : 10 coffres et 100 Flouze ! Les coffres vont à ton perso actif quand tu les récupères.' },
     sections: [
       { title: 'Un tout nouveau Fuze Arena', items: [
@@ -28,7 +28,7 @@ export const PATCH_NOTES = [
         'Nouveaux skins élémentaires dans la boutique : Feu et Glace (200 Flouze), Lumière et Ténèbres (280 Flouze), pour chaque classe. Un tout nouveau look, une arme assortie et une aura en combat.',
         'Entraînement : ton héros ne fait que des attaques simples ; touche un de tes sorts pour qu’il le lance et voir ses dégâts.',
         'Combat auto : en grand en haut de l’onglet Combats, et il donne un peu d’XP.',
-        'Nouveau : le Championnat, un tournoi à 8 chaque semaine, combats à 19 h 30, avec son tableau dessiné.',
+        'Nouveau : le Championnat, un tournoi à 8 chaque semaine, combats à 19 h 30, avec son tableau dessiné. Le premier commence lundi 26/10.',
         'Les modes de combat sont rangés en 3 parties : PVP, COOP et PVM.',
         'Nouveau : le mode Histoire (dans PVM). 5 zones de 10 combats avec petit boss et boss, puis l’Enfer et le Chaotique. Gagne des étoiles pour des coffres, et de l’XP à chaque première victoire.',
         'Le gros boss ne donne plus d’XP : c’est l’Histoire qui la remplace.',

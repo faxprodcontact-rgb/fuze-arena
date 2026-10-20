@@ -23,6 +23,9 @@ export const REMATCH_CLAT = 5;     // 1ʳᵉ revanche gagnée contre chaque pote
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
 export const RESET_ID = '2026-10-18-maj';
+// Fuze Arena 2.0 : chaque compte en ligne repart de zéro une seule fois (il choisit un nouveau héros).
+// Ce qui a été joué en ligne avant « start » (trône, championnat, raid, journal) ne compte plus.
+export const ERA = { id: '2.0', start: [2026, 9, 20, 19, 0] };   // 20/10/2026 à 19 h
 
 export const STAT_KEYS = ['vit', 'atk', 'mag', 'def', 'spd', 'lck'];
 

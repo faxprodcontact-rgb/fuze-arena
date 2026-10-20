@@ -42,6 +42,7 @@ let tab = 'hero';
 let lastTab = null;
 let rankMode = 'level';
 let pickedClass = 'guerrier';
+let rebirth = null;    // Fuze Arena 2.0 : compte de l'ancien jeu qui doit choisir son nouveau héros ({ pseudo })
 let authMode = 'signup';
 let stopPreviews = [];
 let chatMsgs = [];     // messages du tchat
@@ -82,7 +83,7 @@ function opponents() {
 
 async function refreshPlayers() {
   if (!NET.online || !acc) return;
-  try { players = await NET.fetchOthers(); } catch (e) { toast(e.message); }
+  try { players = (await NET.fetchOthers()).filter(p => E.isEra(p.data)); } catch (e) { toast(e.message); }
   warmSkins();
 }
 /** Prépare en arrière-plan les skins élémentaires portés (les miens et ceux des autres) pour qu'ils soient prêts en combat */
@@ -116,7 +117,7 @@ function hydrate(root = document) {
 function render() {
   stopPreviews.forEach(f => f());
   stopPreviews = [];
-  if (!acc) { if (NET.online) renderAuth(); else renderCreate(); return; }
+  if (!acc) { if (rebirth) renderRebirth(); else if (NET.online) renderAuth(); else renderCreate(); return; }
   hero = E.activeHero(acc);
   if (E.applySpecialReset(acc)) { save(); setTimeout(() => toast('Remise à zéro spéciale de 20 h : tout est rechargé !'), 400); }
   if (E.applyLevelFixes(acc).length) { save(); hero = E.activeHero(acc); setTimeout(() => toast('Correction : un perso monté trop vite pendant les changements d’XP a été remis à son niveau.'), 600); }
@@ -338,6 +339,25 @@ function renderCreate() {
   hydrate(app);
 }
 
+/** Fuze Arena 2.0 : un ancien compte repart de zéro et choisit la classe de son premier héros */
+function renderRebirth() {
+  app.innerHTML = `
+    <div class="create">
+      <img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1>
+      <p class="lead"><b>Bienvenue dans Fuze Arena 2.0, ${esc(rebirth.pseudo)} !</b><br>Tout le monde repart de zéro. Choisis la classe de ton premier héros.</p>
+      ${classGrid()}
+      <button class="btn primary block" data-act="rebirth">Commencer l’aventure</button>
+    </div>`;
+  hydrate(app);
+}
+
+/** En ligne, une fois le compte chargé : les autres joueurs, le tchat, le direct et la présence */
+async function goOnline() {
+  await refreshPlayers();
+  await Promise.all([initChat(), initLive()]);
+  NET.joinPresence(acc.pseudo, onPresence).catch(() => {});
+}
+
 function renderAuth(msg = '') {
   const signup = authMode === 'signup';
   app.innerHTML = `
@@ -374,6 +394,7 @@ async function doAuth() {
       row = await NET.signIn(pseudo, pass);
       if (!row.data) { row.data = E.newAccount(row.pseudo || pseudo, pickedClass); await NET.createRow(row.pseudo || pseudo, row.data); }
     }
+    if (!E.isEra(row.data)) { rebirth = { pseudo: row.pseudo || pseudo }; render(); return; }
     acc = E.migrate(row.data);
     acc.pseudo = row.pseudo || acc.pseudo;
     await refreshPlayers();
@@ -382,7 +403,7 @@ async function doAuth() {
     NET.joinPresence(acc.pseudo, onPresence).catch(() => {});
     tab = authMode === 'signup' ? 'chests' : 'hero';
     render();
-    toast(authMode === 'signup' ? 'Bienvenue ! Tu as 2 coffres à ouvrir.' : `Salut ${acc.pseudo} !`);
+    toast(authMode === 'signup' ? 'Bienvenue ! Tu as 5 coffres à ouvrir.' : `Salut ${acc.pseudo} !`);
   } catch (e) {
     renderAuth(e.message);
   }
@@ -1851,7 +1872,7 @@ const KIND_NAME = { arena: 'Arène', war: 'Guerre', rematch: 'Revanche', revenge
 async function loadJournal() {
   if (!NET.online) return;
   try {
-    journal = await NET.fetchMyFights();
+    journal = (await NET.fetchMyFights()).filter(f => new Date(f.created_at).getTime() >= E.eraStart());   // rien de l'ancien jeu
     let seen = '';
     try { seen = localStorage.getItem(JOURNAL_SEEN) || ''; } catch (e) { /* stockage indisponible */ }
     journalUnseen = journal.filter(f => f.defender_id === NET.myId() && f.created_at > seen).length;
@@ -2372,7 +2393,7 @@ function loadThrone() {
         throneInfo = { week, order: E.throneRanking(L.order, L.fights, ids), prevWeek, prevOrder: P ? P.order : [] };
         return;
       }
-      const since = new Date(E.throneRoundStart(new Date(E.throneRoundStart() - 86400000)) - 3600000).toISOString();
+      const since = new Date(Math.max(E.throneRoundStart(new Date(E.throneRoundStart() - 86400000)) - 3600000, E.eraStart())).toISOString();
       let rows = await NET.fetchThrone(since);
       const startOf = (w) => rows.find(r => r.kind === 'throne_start' && r.a_snap && r.a_snap.week === w);
       const fightsOf = (w) => rows.filter(r => r.kind === 'throne' && r.a_snap && r.a_snap.week === w);
@@ -2763,7 +2784,9 @@ function loadChamp() {
         champInfo = { week, slots: L.slots, matches: L.matches, prev: P };
         return;
       }
-      const since = new Date(E.throneWeekStart() - 7 * 86400000).toISOString();
+      // Fuze Arena 2.0 : le premier championnat commence la semaine qui suit la mise en ligne
+      if (E.throneWeekStart() < E.eraStart()) { champInfo = { week, slots: [], matches: {}, prev: null, soon: E.champRoundAt(E.throneWeekStart(), 0) + 7 * 86400000 + 3 * 3600000 }; return; }   // lundi prochain (marge pour le changement d'heure)
+      const since = new Date(Math.max(E.throneWeekStart() - 7 * 86400000, E.eraStart())).toISOString();
       let rows = await NET.fetchChamp(since);
       const startOf = (w) => rows.find(r => r.kind === 'champ_start' && r.a_snap && r.a_snap.week === w);
       const matchesOf = (w) => {
@@ -2798,6 +2821,7 @@ function loadChamp() {
 }
 /** Petit texte de la tuile du championnat */
 function champSub() {
+  if (champInfo.soon && champInfo.week === E.throneWeek()) return 'Premier tournoi lundi';
   if (champInfo.week !== E.throneWeek()) return 'Tableau de la semaine';
   const nx = champNext();
   if (!nx) { const t = E.champTree(champInfo.slots, champRes(champInfo.matches)); const w = t[2][0].winner; const c = w && throneContenders().find(x => x.id === w); return c ? `Champion : ${c.name}` : 'Finale jouée'; }
@@ -2811,6 +2835,8 @@ function champNext() {
 }
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 function viewChamp() {
+  if (champInfo.soon && champInfo.week === E.throneWeek()) return `<section class="card"><h2>Championnat</h2>
+    <p class="lead">Le premier championnat commence le ${new Date(champInfo.soon).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à 19 h 30.</p></section>`;
   if (champInfo.week !== E.throneWeek() || !champInfo.slots.length) {
     if (champError) return `<section class="card"><h2>Championnat</h2><p class="auth-msg">Impossible de charger le championnat : ${esc(champError)}</p>
       <button class="btn primary block" style="margin-top:12px" data-act="retryChamp">Réessayer</button></section>`;
@@ -2993,7 +3019,7 @@ function loadRaid() {
   raidError = '';
   raidLoading = (async () => {
     try {
-      const list = (await NET.fetchLatestRaids()).map(fixRaid);
+      const list = (await NET.fetchLatestRaids()).filter(r => new Date(r.created_at).getTime() >= E.eraStart()).map(fixRaid);   // rien de l'ancien jeu
       const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
       let raid = list.find(r => E.isRaidTag(r.boss) && Date.now() < endOf(r)) || null;
       // boss déjà battu : pas besoin d'attendre la fin des 7 jours, le suivant arrive tout de suite
@@ -3003,7 +3029,7 @@ function loadRaid() {
         // raid fini : on ouvre le boss suivant de la rotation (le même pour tout le monde, donc le même nom de semaine)
         const tag = E.nextRaidTag(list[0] && list[0].boss);
         const lv = groupLevels();
-        const week = (tag === RAID.tag ? 'v3' : tag.replace(':', '-')) + '-' + E.dayKey();
+        const week = 'f2-' + (tag === RAID.tag ? 'v3' : tag.replace(':', '-')) + '-' + E.dayKey();   // « f2- » : jamais le nom d'un raid de l'ancien jeu
         raid = fixRaid(await NET.openRaid(week, tag, E.raidHp(lv, tag), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
@@ -4001,6 +4027,16 @@ const ACTIONS = {
     pickedClass = d.id;
     document.querySelectorAll('.class-card').forEach(c => c.classList.toggle('sel', c.dataset.id === d.id));
   },
+  rebirth: async (d, el) => {
+    el.disabled = true;
+    acc = E.newAccount(rebirth.pseudo, pickedClass);
+    rebirth = null;
+    save();
+    if (NET.online) { await NET.flush(); await goOnline(); }
+    tab = 'chests';
+    render();
+    toast('C’est parti ! Tu as 5 coffres à ouvrir.');
+  },
   create: () => {
     const name = (document.getElementById('hero-name').value || '').trim();
     if (!name) { document.getElementById('hero-name').focus(); toast('Choisis un pseudo !'); return; }
@@ -4500,12 +4536,11 @@ async function boot() {
     app.innerHTML = '<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
     try {
       const row = await NET.restore();
-      if (row && row.data) {
+      if (row && row.data && !E.isEra(row.data)) rebirth = { pseudo: row.pseudo };   // compte de l'ancien jeu : nouveau héros
+      else if (row && row.data) {
         acc = E.migrate(row.data);
         acc.pseudo = row.pseudo;
-        await refreshPlayers();
-        await Promise.all([initChat(), initLive()]);
-        NET.joinPresence(acc.pseudo, onPresence).catch(() => {});
+        await goOnline();
       }
     } catch (e) {
       app.innerHTML = `<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="auth-msg">${esc(e.message)}</p><button class="btn primary block" onclick="location.reload()">Réessayer</button></div>`;

@@ -3,7 +3,7 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, ERA, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
   CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID, REMATCH_CLAT,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP, AUCTION,
@@ -1287,9 +1287,14 @@ export function newHero(name, classId, id = 'h1') {
   };
 }
 
+// Fuze Arena 2.0 : un compte sans cette marque date de l'ancien jeu
+export const isEra = (data) => !!data && data.era === ERA.id;
+export const eraStart = () => new Date(...ERA.start).getTime();
+
 export function newAccount(pseudo, classId) {
   return {
     v: 2,
+    era: ERA.id,
     pseudo,
     active: 0,
     nextHeroId: 2,
