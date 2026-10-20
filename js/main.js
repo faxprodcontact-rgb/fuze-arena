@@ -126,7 +126,7 @@ function render() {
 
   app.innerHTML = `
     <header class="topbar cls-${hero.classId}">
-      <button class="tb-portrait" data-act="tab" data-id="hero" aria-label="Héros"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas><span class="tb-lvl">${hero.level}</span></button>
+      <button class="tb-portrait" data-act="tab" data-id="hero" aria-label="Héros"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas><span class="tb-lvl t${lvlTier(hero.level)}">${hero.level}</span></button>
       <div class="tb-info">
         <div class="tb-name">${nameHtml(acc.pseudo, acc)}</div>
         <div class="tb-sub"><span class="tb-cls">${CLASSES[hero.classId].name}</span><span class="tb-flouze"><canvas class="px" data-clat></canvas>${fmtNum(acc.clat)}</span></div>
@@ -274,7 +274,7 @@ function startTraining() {
 }
 
 function tabBtn(id, label, badge) {
-  return `<button class="tab ${tab === id || PARENT[tab] === id ? 'on' : ''}" data-act="tab" data-id="${id}">
+  return `<button class="tab ${rootTab(tab) === id ? 'on' : ''}" data-act="tab" data-id="${id}">
     <canvas class="px" data-tabicon="${id}"></canvas>${label}
     <span class="badge" id="badge-${id}" ${badge > 0 ? '' : 'hidden'}>${badge}</span></button>`;
 }
@@ -422,7 +422,7 @@ function viewHero() {
           <div class="hb-title">${title ? `« ${esc(title)} »` : 'Sans titre'}</div>
           <div class="hb-class">${CLASSES[hero.classId].name}${defender ? ' · <b>défenseur</b>' : ''}${acc.war.section ? ` · <span style="color:${WAR.sections[acc.war.section].color}">${WAR.sections[acc.war.section].name}</span>` : ''}</div>
         </div>
-        <div class="hb-lvl"><small>NIV.</small><b>${hero.level}</b></div>
+        ${lvlBadge(hero.level)}
       </div>
       <div class="hb-xp"><div style="width:${xpPct}%"></div><span>${hero.level >= MAX_LEVEL ? 'Niveau max !' : `XP ${hero.xp} / ${need}`}</span></div>
       <div class="hb-stats">
@@ -533,6 +533,7 @@ function openSpell(id) {
         <div style="color:var(--muted);font-size:13px;margin-top:6px">Recharge : ${sp.cd} tours${sp.lvl > 1 ? ` · sort du niveau ${sp.lvl}` : ''}</div>
       </div>
     </div>
+    <div class="spell-demo"><canvas id="spell-demo-cv"></canvas><div class="sd-out" id="sd-out">${esc(sp.name)}</div></div>
     <p style="margin:0 0 6px;line-height:1.45">${esc(sp.desc)}</p>
     ${locked ? '<p class="hint" style="margin-top:10px">Monte de niveau pour le débloquer.</p>' : pos >= 0 ? '' : full ? `
       <div class="sub">REMPLACER UN SORT ÉQUIPÉ</div>
@@ -543,6 +544,73 @@ function openSpell(id) {
       ${locked ? '' : pos >= 0 ? `<button class="btn danger" data-act="spellRemove" data-id="${id}">Retirer</button>` : full ? '' : `<button class="btn primary" data-act="spellEquip" data-id="${id}">Équiper</button>`}
       <button class="btn" data-act="closeModal">Fermer</button>
     </div>`);
+  startSpellDemo(id);
+}
+/** Aperçu d'un sort : ton héros le lance en boucle sur l'épouvantail, avec ce qu'il fait à chaque fois */
+let spellDemoStop = null;
+function startSpellDemo(id) {
+  const cv = document.getElementById('spell-demo-cv');
+  if (!cv) return;
+  spellDemoStop = playTraining(cv, () => {
+    const me = { ...mySnap(), spells: [id] }, foe = dummySnap(hero.level);
+    return { me, foe, result: E.createFight(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 24, timeoutWinner: false, demo: id }) };
+  }, { speed: 1.2, onEntry: (e) => {
+    if (e.type !== 'action' || e.actor !== 0 || e.pet) return;
+    const out = document.getElementById('sd-out');
+    if (!out) return;
+    const dmg = e.results.filter(r => r.type === 'hit' && r.target === 1).reduce((a, r) => a + r.dmg, 0);
+    const crit = e.results.some(r => r.type === 'hit' && r.target === 1 && r.crit);
+    const heal = e.results.filter(r => r.type === 'heal' && r.target === 0).reduce((a, r) => a + r.amount, 0);
+    const parts = [dmg ? `<b>${fmtNum(dmg)}</b> dégâts${crit ? ' <em>critique !</em>' : ''}` : '', heal ? `<b class="g">+${fmtNum(heal)}</b> PV` : ''].filter(Boolean);
+    out.innerHTML = parts.join(' · ') || esc(SPELLS[id].name);
+    out.classList.remove('pop'); void out.offsetWidth; out.classList.add('pop');
+  } });
+}
+
+// ------------------------------ Blason de niveau ------------------------------
+// Il change toutes les 10 niveaux : de plus en plus précieux, avec des rivets, des gemmes, des ailes, des pointes,
+// des flammes… et au niveau 100, le blason Légende avec sa couronne.
+const LVL_TIERS = [
+  { n: 'Bois', a: '#d9a36b', b: '#7a4a26', rim: '#3e220e', txt: '#2a1406' },
+  { n: 'Bronze', a: '#ffc58f', b: '#a8612c', rim: '#4e280e', txt: '#3a1c08' },
+  { n: 'Fer', a: '#e6ebf2', b: '#7c8799', rim: '#2e3442', txt: '#1c2230' },
+  { n: 'Argent', a: '#ffffff', b: '#a9b8d0', rim: '#46526b', txt: '#25304a' },
+  { n: 'Or', a: '#fff07a', b: '#e8901c', rim: '#6b3d07', txt: '#3a2208' },
+  { n: 'Émeraude', a: '#a6ffc2', b: '#159a52', rim: '#063d20', txt: '#04260f' },
+  { n: 'Saphir', a: '#b4dcff', b: '#2a62e0', rim: '#0c2a6b', txt: '#fff' },
+  { n: 'Améthyste', a: '#ecc4ff', b: '#8a3ee0', rim: '#331066', txt: '#fff' },
+  { n: 'Rubis', a: '#ffb0b0', b: '#d01e3a', rim: '#4a0612', txt: '#fff' },
+  { n: 'Diamant', a: '#ffffff', b: '#6fdcff', rim: '#135a80', txt: '#062a40' },
+  { n: 'Légende', a: '#7a3ad0', b: '#1a0633', rim: '#ffcf4a', txt: '#ffe36b' },
+];
+const lvlTier = (lv) => Math.min(LVL_TIERS.length - 1, Math.floor(lv / 10));
+function lvlBadge(lv) {
+  const t = lvlTier(lv), T = LVL_TIERS[t], id = `lb${t}`;
+  const gold = t === 10 ? '#ffcf4a' : T.rim;
+  const wing = (big) => `<path d="M8,30 C-6,18 -20,8 -${big ? 38 : 26},2 C-${big ? 32 : 22},14 -${big ? 30 : 20},20 -${big ? 24 : 16},26 C-${big ? 34 : 24},26 -${big ? 38 : 27},32 -${big ? 42 : 29},38 C-${big ? 30 : 20},40 -${big ? 24 : 16},42 -${big ? 18 : 12},44 C-${big ? 26 : 18},48 -${big ? 28 : 20},54 -${big ? 30 : 21},60 C-12,58 -2,54 8,56 Z"
+    fill="url(#${id}w)" stroke="${gold}" stroke-width="3" stroke-linejoin="round"/>`;
+  const deco = [];
+  if (t >= 8) deco.push(`<g class="lb-fire"><path d="M50,-26 C62,-8 80,-4 84,16 C92,10 96,2 94,-8 C108,10 110,36 98,56 L2,56 C-10,36 -8,10 6,-8 C4,2 8,10 16,16 C20,-4 38,-8 50,-26 Z" fill="url(#${id}f)"/></g>`);
+  if (t >= 6) deco.push(`<g class="lb-wings">${wing(t >= 9)}<g transform="translate(100,0) scale(-1,1)">${wing(t >= 9)}</g></g>`);
+  if (t >= 7) deco.push([28, 50, 72].map((x, i) => `<path d="M${x - 7},14 L${x},${i === 1 ? -10 : -2} L${x + 7},14 Z" fill="url(#${id}g)" stroke="${gold}" stroke-width="3" stroke-linejoin="round"/>`).join(''));
+  const body = `
+    <polygon points="50,2 98,16 98,78 50,108 2,78 2,16" fill="${gold}"/>
+    <polygon points="50,9 91,21 91,74 50,100 9,74 9,21" fill="url(#${id}g)"/>
+    <polygon points="50,9 91,21 91,46 9,46 9,21" fill="#fff" opacity=".22"/>
+    <polygon points="50,9 91,21 91,74 50,100 9,74 9,21" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>`;
+  if (t >= 3) deco.push(`<g class="lb-front">${[[50, 15], [85, 25], [85, 70], [50, 93], [15, 70], [15, 25]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${gold}" stroke="#fff" stroke-opacity=".5"/>`).join('')}</g>`);
+  if (t >= 5) deco.push(`<g class="lb-front">${[[2, 47], [98, 47]].map(([x, y]) => `<path d="M${x},${y - 9} L${x + 7},${y} L${x},${y + 9} L${x - 7},${y} Z" fill="${t === 10 ? '#ff4a6e' : T.b}" stroke="${gold}" stroke-width="2.5"/>`).join('')}</g>`);
+  if (t === 10) deco.push(`<path class="lb-front" d="M26,6 L30,-18 L40,-6 L50,-26 L60,-6 L70,-18 L74,6 Z" fill="url(#lb10c)" stroke="#6b3d07" stroke-width="3" stroke-linejoin="round"/>
+    <circle class="lb-front" cx="50" cy="-8" r="4" fill="#ff4a6e" stroke="#6b3d07" stroke-width="2"/>`);
+  const back = deco.filter(d => !d.includes('lb-front')), front = deco.filter(d => d.includes('lb-front'));
+  return `<div class="hb-lvl t${t}" title="Blason ${T.n}" style="--lb:${T.b};--lbt:${T.txt}">
+    <svg viewBox="-46 -30 192 142" aria-hidden="true"><defs>
+      <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.a}"/><stop offset="1" stop-color="${T.b}"/></linearGradient>
+      <linearGradient id="${id}w" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.a}"/><stop offset="1" stop-color="${t === 10 ? '#ffcf4a' : T.b}"/></linearGradient>
+      <linearGradient id="${id}f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffde3a"/><stop offset=".5" stop-color="#ff7a1a"/><stop offset="1" stop-color="#ff2a4a" stop-opacity=".2"/></linearGradient>
+      <linearGradient id="lb10c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3a0"/><stop offset="1" stop-color="#f2a91e"/></linearGradient>
+    </defs>${back.join('')}${body}${front.join('')}</svg>
+    <small>NIV.</small><b>${lv}</b><em>${T.n}</em></div>`;
 }
 
 // ------------------------------ Vue Coffres ------------------------------
@@ -551,13 +619,14 @@ function viewChests() {
   const keys = hero.keys || 0;
   const all = n + keys;
   const wait = E.nextChestIn(hero);
-  const total = all + acc.combatChests + acc.warChests;
+  const total = all + acc.combatChests + acc.warChests + (acc.epicChests || 0) + (acc.legendaryChests || 0);
   // barre des chances de rareté
   const oddsBar = (odds) => `
     <div class="odds-bar">${odds.map((p, r) => p > 0 ? `<i style="flex:${p};background:${RARITIES[r].color}"></i>` : '').join('')}</div>
     <div class="odds-legend">${odds.map((p, r) => p > 0 ? `<span><b style="background:${RARITIES[r].color}"></b>${RARITIES[r].name} ${p} %</span>` : '').join('')}</div>`;
   // compteur d'ouvertures depuis le début et bonus de chance
   const luckLine = (kind) => {
+    if (kind === 'epic' || kind === 'legendary') return '';   // coffres offerts : pas de bonus de chance
     const L = E.chestLuck(acc, kind);
     return `<div class="v-luck"><span><b>${L.count}</b> ouvert${L.count > 1 ? 's' : ''}</span>${L.bonus ? `<span class="lk">Bonus +${L.bonus} %</span>` : ''}<span>${L.next ? `Bonus +2 % dans <b>${L.next}</b>` : 'Bonus au maximum'}</span></div>`;
   };
@@ -593,7 +662,17 @@ function viewChests() {
       kind: 'war', title: 'Coffre de guerre', count: acc.warChests, cls: 'v-war', odds: E.chestOdds(acc, 'war'),
       sub: `Gagné à la guerre des sections et au raid. <b>${WAR.warChestItems} objets</b>, jamais de Commun !`,
       buttons: `<button class="btn" style="background:linear-gradient(#d9a8ff,#8c3fe0)" data-act="openChest" data-kind="war" ${acc.warChests > 0 ? '' : 'disabled'}>Ouvrir</button>`,
-    })}`;
+    })}
+    ${acc.epicChests > 0 ? card({
+      kind: 'epic', title: 'Coffre Épique', count: acc.epicChests, cls: 'v-epic', odds: E.chestOdds(acc, 'epic'),
+      sub: 'Un cadeau rare : <b>99 % Épique</b>, 1 % Légendaire !',
+      buttons: `<button class="btn" style="--b0:#f0d0ff;--b1:#c98bff;--b2:#a64dff;--b3:#8c3fe0;--bi:#6a2bb0;--bo:#3d1666" data-act="openChest" data-kind="epic">Ouvrir</button>`,
+    }) : ''}
+    ${acc.legendaryChests > 0 ? card({
+      kind: 'legendary', title: 'Coffre Légendaire', count: acc.legendaryChests, cls: 'v-legendary', odds: E.chestOdds(acc, 'legendary'),
+      sub: 'Le plus beau des cadeaux : <b>99 % Légendaire</b>, 1 % Mythique !',
+      buttons: `<button class="btn primary" data-act="openChest" data-kind="legendary">Ouvrir</button>`,
+    }) : ''}`;
 }
 
 // ------------------------------ Vue Sac ------------------------------
@@ -881,13 +960,13 @@ function viewFights() {
   const clatGot = acc.fights.clat || {};
   return modeHead({
     id: 'arena', c: '#ff5d6c', art: '<canvas class="px" data-emblem="arena"></canvas>',
-    title: 'Arène', sub: 'Affronte chacun de tes potes une fois par jour',
+    title: 'Arène', sub: 'Bats chacun de tes potes pour gagner ton point de combat',
     chips: [
       mchip(ico('swords'), 'Combats classés', `${todo.length} / ${list.length}`, todo.length ? 'hot' : ''),
       mchip('<canvas class="px" data-chest="combat"></canvas>', 'Coffre de combat', `${acc.winProgress} / ${WINS_PER_COMBAT_CHEST}`),
       mchip(ico('clock'), 'Remise à zéro', `<span data-timer="day3">${fmt(msToMidnight())}</span>`),
     ],
-    info: `<b>${ico('swords')} Combat classé</b> : un par pote et par jour. Chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit. L’Arène ne rapporte pas d’XP.<br><br>
+    info: `<b>${ico('swords')} Combat classé</b> : bats chacun de tes potes une fois par jour. Tant que tu ne l’as pas battu, tu peux le réattaquer autant que tu veux (une défaite ne rapporte rien). Chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit. L’Arène ne rapporte pas d’XP.<br><br>
       <b>↻ Revanche</b> : une fois le combat classé fait, rejoue autant que tu veux, pour le fun. La 1ʳᵉ revanche gagnée contre chaque pote rapporte <b>1 Flouze</b> par jour.<br><br>
       <b>Costaud · Serré · Facile</b> : sa puissance comparée à la tienne.`,
   }) + `
@@ -904,9 +983,8 @@ function viewFights() {
     <section class="card hx" style="--hc:#9d93d6">
       ${secHead('↻', 'Déjà affrontés', 'Revanches illimitées, pour le fun')}
       ${done.map(o => {
-        const won = o.done === 'win';
         return `
-        <div class="foe ${won ? 'win' : 'loss'}">${foeAv(o)}<span class="foe-res">${won ? 'GAGNÉ' : 'PERDU'}</span>${foeInfo(o)}
+        <div class="foe win">${foeAv(o)}<span class="foe-res">GAGNÉ</span>${foeInfo(o)}
           <button class="foe-btn re" data-act="friendly" data-id="${o.id}"><i>↻</i>Revanche<small>${clatGot[o.id] ? 'pour le fun' : '+1 Flouze'}</small></button>
         </div>`;
       }).join('')}
@@ -1043,7 +1121,7 @@ const secTag = (sec) => `<b style="color:${WAR.sections[sec].color}">${WAR.secti
 const WAR_RULES = () => `<details class="rules"><summary>Règles de la guerre</summary>${WAR_RULES_UL()}</details>`;
 const WAR_RULES_UL = () => `
     <ul class="rules-ul">
-      <li>2 sections de ${WAR.maxPerSection} joueurs maximum. Chacun choisit la sienne. Un changement possible par mois.</li>
+      <li>2 camps de ${WAR.maxPerSection} joueurs maximum : les <b style="color:${WAR.sections.rouge.color}">Assassins</b> et les <b style="color:${WAR.sections.bleue.color}">Templiers</b>. Chacun choisit le sien. Un changement possible par mois.</li>
       <li>Une guerre dure 7 jours complets, puis la suivante commence aussitôt.</li>
       <li>Chaque jour, tu peux attaquer <b>une fois chaque combattant</b> de l’autre section. Tout repart à zéro à minuit.</li>
       <li>Victoire contre plus fort que toi : <b>+3 pts</b>. Contre un niveau égal : <b>+2</b>. Contre plus faible : <b>+1</b>.</li>
@@ -1122,14 +1200,14 @@ function viewWar() {
       }).join('')}
     </section>
     <section class="card hx" style="--hc:${WAR.sections[mine].color}">
-      ${secHead(ico('shield'), 'Ta section', WAR.sections[mine].name)}
+      ${secHead(ico('shield'), 'Ton camp', WAR.sections[mine].name)}
       <div class="opp rank me"><div class="o-body"><div class="o-name">${esc(acc.pseudo)} <span class="pill gold">toi</span></div></div><div class="score">${wk.points} pts</div></div>
       ${allies.map(m => `
         <div class="opp rank"><div class="av"><canvas class="px" data-portrait="${m.classId}"></canvas></div>
           <div class="o-body"><div class="o-name">${nameHtml(m.name, m.data)}</div><div class="o-sub">${CLASSES[m.classId].name}</div></div>
           <div class="score">${m.points} pts</div></div>`).join('')}
       ${war.log.length ? `<div class="sub">TES ATTAQUES</div>${war.log.map(l => `<div class="log-line">${l.won ? ico('check') : ico('cross')} ${esc(l.name)} ${l.won ? `<b>+${l.pts}</b>` : '(+1 pour eux)'}</div>`).join('')}` : ''}
-      <button class="btn small" style="margin-top:12px" data-act="changeSection">Changer de section</button>
+      <button class="btn small" style="margin-top:12px" data-act="changeSection">Changer de camp</button>
     </section>`;
 }
 
@@ -1296,11 +1374,22 @@ const myVictory = () => { const v = acc.cosmetics.victory; return v && COSMETIC[
 const myId = () => (NET.online ? NET.myId() : 'me');
 const fmtNum = (n) => Math.round(n).toLocaleString('fr-FR');
 const offlineCard = (title, text) => `<section class="card"><h2>${title}</h2><p class="hint">${text}</p></section>`;
+/** Remonte tout en haut de la page, sans animation */
+const scrollTop = () => { const h = document.documentElement, b = h.style.scrollBehavior; h.style.scrollBehavior = 'auto'; window.scrollTo(0, 0); h.style.scrollBehavior = b; };
 const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('.battle') && tab !== 'chat') render(); };
 
 // ------------------------------ Navigation (hubs) ------------------------------
-const PARENT = { throne: 'combat', pvp: 'combat', fights: 'combat', dungeons: 'combat', horde: 'combat', tower: 'combat', raid: 'combat', war: 'combat', bets: 'combat', champ: 'combat', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
-const PARENT_NAME = { combat: 'Combats', social: 'Social' };
+// Les modes de combat sont rangés en 3 grandes parties (PVP, COOP, PVM), chacune avec sa page.
+const HUBS = {
+  hub_pvp: { name: 'PVP', tag: 'Joueur contre joueur', desc: 'Affronte tes potes : arène, direct, trône et tournoi.', c: '#ff5d6c', c2: '#ff9a3d', ids: ['fights', 'pvp', 'throne', 'champ'] },
+  hub_coop: { name: 'COOP', tag: 'Tous ensemble', desc: 'Faites équipe contre le gros boss et pour ton camp.', c: '#3d9bff', c2: '#4ce0ff', ids: ['raid', 'war'] },
+  hub_pvm: { name: 'PVM', tag: 'Joueur contre monstres', desc: 'Donjons, tour infinie et Horde : chasse aux monstres.', c: '#4cd964', c2: '#c8ff4c', ids: ['dungeons', 'tower', 'horde'] },
+};
+const PARENT = { hub_pvp: 'combat', hub_coop: 'combat', hub_pvm: 'combat', bets: 'hub_pvp', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
+for (const [h, x] of Object.entries(HUBS)) for (const id of x.ids) PARENT[id] = h;
+const PARENT_NAME = { combat: 'Combats', social: 'Social', hub_pvp: 'PVP', hub_coop: 'COOP', hub_pvm: 'PVM' };
+/** L'onglet du bas auquel appartient une page (Combats pour l'arène, en passant par PVP) */
+const rootTab = (id) => { while (PARENT[id]) id = PARENT[id]; return id; };
 
 function setBadge(id, n) {
   const b = document.getElementById('badge-' + id);
@@ -1393,32 +1482,56 @@ function charsCard() {
 }
 
 // ------------------------------ Hub Combats ------------------------------
-function viewCombat() {
+function combatTiles() {
   const fightsLeft = opponents().filter(o => !o.done).length;
   const raidLeft = RAID.attemptsPerHalf - E.raidState(acc).used;
   const warLeft = acc.war.section ? opponents().filter(o => o.section === E.otherSide(acc.war.section) && !acc.war.done[o.id]).length : 0;
   const runs = E.totalRunsLeft(hero);
-  const duels = bets.challenges.filter(c => c.status === 'pending' && c.to_id === myId()).length;
-  const tiles = [
-    { id: 'fights', name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, tag: 'Affronte tes potes', emblem: 'arena', badge: fightsLeft, wide: true, c: '#ff5d6c' },
-    { id: 'pvp', name: 'PvP en direct', sub: NET.online ? `${players.filter(p => isOnline(p.id)).length} pote${players.filter(p => isOnline(p.id)).length > 1 ? 's' : ''} en ligne` : 'En ligne seulement', tag: 'Ton équipe contre celle d’un pote connecté', emblem: 'pvp', badge: pvpIncoming().length, wide: true, c: '#b05cff' },
-    { id: 'dungeons', name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, emblem: 'dungeons', badge: runs, c: '#4cd964' },
-    { id: 'tower', name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, emblem: 'tower', badge: 0, c: '#a77bff' },
-    { id: 'raid', name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
-    { id: 'war', name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', emblem: 'war', badge: warLeft, c: '#3d9bff' },
-    { id: 'throne', name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, wide: true, c: '#ffd45a' },
-    { id: 'horde', name: 'La Horde', sub: `${E.hordeRunsLeft(acc)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(acc), wide: true, c: '#ff3d6e' },
-    { id: 'champ', name: 'Championnat', sub: champSub(), tag: 'Tournoi à 8 chaque semaine, combats à 19 h 30', emblem: 'champ', badge: 0, wide: true, c: '#ffd45a' },
-  ];
+  const on = players.filter(p => isOnline(p.id)).length;
+  return {
+    fights: { name: 'Arène', sub: `${fightsLeft} combat${fightsLeft > 1 ? 's' : ''} restant${fightsLeft > 1 ? 's' : ''}`, tag: 'Bats chacun de tes potes une fois par jour', emblem: 'arena', badge: fightsLeft, c: '#ff5d6c' },
+    pvp: { name: 'PvP en direct', sub: NET.online ? `${on} pote${on > 1 ? 's' : ''} en ligne` : 'En ligne seulement', tag: 'Ton équipe contre celle d’un pote connecté', emblem: 'pvp', badge: pvpIncoming().length, c: '#b05cff' },
+    throne: { name: 'Le trône', sub: throneInfo.order.length ? `Ta place : ${throneRank() + 1} / ${throneInfo.order.length}` : 'Deviens le roi', tag: 'Défie ceux au-dessus de toi et prends leur place', emblem: 'throne', badge: 0, c: '#ffd45a' },
+    champ: { name: 'Championnat', sub: champSub(), tag: 'Tournoi à 8 chaque semaine, combats à 19 h 30', emblem: 'champ', badge: 0, c: '#ffd45a' },
+    raid: { name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, tag: 'Tout le groupe tape le même boss', monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
+    war: { name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', tag: 'Assassins contre Templiers, chaque semaine', emblem: 'war', badge: warLeft, c: '#3d9bff' },
+    dungeons: { name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, tag: 'Des vagues de monstres et des clefs à gagner', emblem: 'dungeons', badge: runs, c: '#4cd964' },
+    tower: { name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, tag: 'Monte le plus haut possible, étage par étage', emblem: 'tower', badge: 0, c: '#a77bff' },
+    horde: { name: 'La Horde', sub: `${E.hordeRunsLeft(hero)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(hero), c: '#ff3d6e' },
+  };
+}
+const tileArt = (t) => `<canvas class="px" ${t.monster ? `data-monster="${t.monster}"` : `data-emblem="${t.emblem}"`}></canvas>`;
+
+function viewCombat() {
+  const T = combatTiles();
   return autoCard() + charsCard() + missionsCard() + `
+    <section class="hubs">
+      ${Object.entries(HUBS).map(([id, h]) => {
+        const badge = h.ids.reduce((s, k) => s + (T[k].badge || 0), 0);
+        return `
+        <button class="hub" data-act="tab" data-id="${id}" style="--tc:${h.c};--tc2:${h.c2}">
+          <span class="hub-art">${h.ids.map((k, i) => `<span style="--i:${i};--n:${h.ids.length}">${tileArt(T[k])}</span>`).join('')}</span>
+          <span class="hub-txt"><em>${h.tag}</em><b>${h.name}</b><small>${h.ids.map(k => T[k].name).join(' · ')}</small></span>
+          <span class="m-go">›</span>
+          ${badge > 0 ? `<span class="badge">${badge}</span>` : ''}
+        </button>`;
+      }).join('')}
+    </section>`;
+}
+
+/** La page d'une partie (PVP, COOP ou PVM) : ses modes, en grand */
+function viewHub(id) {
+  const h = HUBS[id], T = combatTiles();
+  return `
+    <section class="hub-head" style="--tc:${h.c};--tc2:${h.c2}"><b>${h.name}</b><small>${h.desc}</small></section>
     <section class="modes">
-      ${tiles.map(t => `
-        <button class="mode ${t.wide ? 'wide' : ''}" data-act="tab" data-id="${t.id}" style="--tc:${t.c}">
-          <span class="m-art"><canvas class="px" ${t.monster ? `data-monster="${t.monster}"` : `data-emblem="${t.emblem}"`}></canvas></span>
-          <span class="m-txt"><b>${t.name}</b><small>${t.sub}</small>${t.wide ? `<em>${t.tag}</em>` : ''}</span>
-          ${t.wide ? '<span class="m-go">›</span>' : ''}
-          ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
-        </button>`).join('')}
+      ${h.ids.map(k => { const x = T[k]; return `
+        <button class="mode wide" data-act="tab" data-id="${k}" style="--tc:${x.c}">
+          <span class="m-art">${tileArt(x)}</span>
+          <span class="m-txt"><b>${x.name}</b><small>${x.sub}</small><em>${x.tag}</em></span>
+          <span class="m-go">›</span>
+          ${x.badge > 0 ? `<span class="badge">${x.badge}</span>` : ''}
+        </button>`; }).join('')}
     </section>`;
 }
 
@@ -1588,7 +1701,8 @@ function maybeShowGift() {
   setTimeout(() => { if (!modalRoot.innerHTML && !document.querySelector('.battle')) openPatchNotes(); }, 700);
 }
 /** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
-const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : ''].filter(Boolean).join(' + ');
+const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : '',
+  g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : ''].filter(Boolean).join(' + ');
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }
   const b = document.getElementById('patch-badge');
@@ -1860,51 +1974,57 @@ function autoTick() {
   } else if (rewards) {
     toast(`Combat auto : palier ${E.autoPalier(res.find(r => r.reward).g)} franchi ! +1 coffre en réserve`);
   }
-  const box = document.querySelector('[data-auto-info]');
-  if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
+  autoRefresh();
 }
 
+/** Met à jour le panneau et le titre dans le ciel après un combat */
+function autoRefresh() {
+  const box = document.querySelector('[data-auto-info]');
+  if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
+  const sky = document.querySelector('[data-auto-sky]');
+  if (sky) sky.innerHTML = autoSkyHtml();
+}
+/** Le titre dans le ciel du combat : « Difficulté 2 » et, en dessous, « Palier 50 » */
+function autoSkyHtml() {
+  const st = E.autoState(acc), g = Math.min(st.g, E.AUTO_LAST);
+  return `<b>Difficulté ${E.autoDiff(g)}</b><span>Palier ${E.autoPalier(g)}<small> / ${AUTO.paliers}</small></span>`;
+}
 function autoInfoHtml() {
   const st = E.autoState(acc);
   if (st.g > E.AUTO_LAST) return `<p class="auto-done">${ico('crown')} Les ${AUTO.diffs} difficultés sont terminées : bravo !</p>${autoBankHtml(st)}`;
   const p = E.autoPalier(st.g), next = Math.ceil(p / 10) * 10;
   const inTen = ((p - 1) % 10) + 1;
   return `
-    <div class="auto-head"><b>${autoLabel(st.g)}</b><small>Record : ${autoLabel(st.best)}</small></div>
-    <div class="auto-bar"><i style="width:${(inTen - 1) * 10}%"></i><span>Palier ${next} : 1 coffre</span></div>
-    <div class="auto-next">Les combats s’enchaînent sans pause</div>
+    <div class="auto-bar" title="Palier ${next} : 1 coffre">${Array.from({ length: 10 }, (_, i) => `<i class="${i < inTen - 1 ? 'on' : i === inTen - 1 ? 'now' : ''}"></i>`).join('')}
+      <canvas class="px" data-chest="normal"></canvas></div>
+    <div class="auto-sub"><span>${st.g - p + next <= (st.paid || 0) ? `Palier ${next} : coffre déjà gagné` : `Prochain coffre : palier ${next}`}</span><span>${ico('crown')}Record ${autoLabel(st.best).replace('Difficulté ', 'D').replace(' · Palier ', ' · P')}</span></div>
     ${autoBankHtml(st)}`;
 }
 function autoBankHtml(st) {
   const n = st.bank.chests;
   const xp = hero.level < MAX_LEVEL ? Math.round(E.xpForLevel(hero.level) * E.autoXpFrac(acc)) : 0;
   const what = [n ? `${n} coffre${n > 1 ? 's' : ''}` : '', xp ? `${xp} XP` : ''].filter(Boolean).join(' + ');
-  return what ? `
-    <button class="btn primary block auto-claim" data-act="claimAuto">Récupérer ${what} ${n ? '<canvas class="px" data-chest="normal"></canvas>' : ''}</button>`
-    : '<p class="auto-empty">Réserve vide : 1 coffre tous les 10 paliers, et un peu d’XP à chaque victoire.</p>';
+  return what
+    ? `<button class="btn primary block auto-claim" data-act="claimAuto">Récolter ${what}${n ? ' <canvas class="px" data-chest="normal"></canvas>' : ''}</button>`
+    : '<button class="btn block auto-claim" disabled>Rien à récolter pour l’instant</button>';
 }
 
 function autoCard() {
   const st = E.autoState(acc);
   const done = st.g > E.AUTO_LAST;
-  const txt = `${AUTO.diffs} difficultés de ${AUTO.paliers} paliers, à la suite. Tes ${THRONE.team} persos enchaînent les combats sans pause. Jeu fermé ou sur un autre écran, ça continue (un palier toutes les ${AUTO.palierMs / 1000} s, jusqu’à 8 h de rattrapage). Tous les 10 paliers : <b>1 coffre</b> mis en réserve (pas de clef). Quand tu récupères la réserve, les coffres vont à ton perso actif. Une défaite te renvoie au début de la dizaine (perdu au 37 → retour au 31). Chaque victoire met aussi un peu d’XP en réserve (${String(AUTO.xpPerWin * 100).replace('.', ',')} % d’un niveau, au plus ${String(AUTO.xpDayCap * 100).replace('.', ',')} % d’un niveau par jour), pour ton perso actif.`;
-  // en haut de l'onglet Combats : le combat sur toute la largeur, du bandeau jusqu'à « Ton combattant »
+  // en haut de l'onglet Combats : le combat sur toute la largeur, le titre dans le ciel, le panneau en dessous
   if (!done) return `
-    <section class="auto-hero ${infoCls('auto')}" data-info="auto">
-      <div class="auto-stage"><canvas data-auto></canvas></div>
+    <section class="auto-hero">
+      <div class="auto-stage"><canvas data-auto></canvas><div class="auto-sky" data-auto-sky>${autoSkyHtml()}</div></div>
       <div class="auto-panel">
-        <div class="auto-top">${ico('swords')}<b>Combat auto</b><small>même jeu fermé</small></div>
+        <div class="auto-top">${ico('swords')}<b>Combat auto</b></div>
         <div data-auto-info>${autoInfoHtml()}</div>
-        <div class="more-txt">${txt}</div>
-        ${moreBtn('auto')}
       </div>
     </section>`;
   return `
-    <section class="card hx auto-card ${infoCls('auto')}" data-info="auto" style="--hc:#4cd964">
-      ${secHead(ico('swords'), 'Combat auto', 'Tes persos se battent tout seuls, même jeu fermé')}
+    <section class="card hx auto-card" style="--hc:#4cd964">
+      ${secHead(ico('swords'), 'Combat auto', 'Toutes les difficultés sont terminées')}
       <div data-auto-info>${autoInfoHtml()}</div>
-      <div class="more-txt">${txt}</div>
-      ${moreBtn('auto')}
     </section>`;
 }
 
@@ -1936,8 +2056,7 @@ function startAutoVisual(canvas) {
         st2.last = Date.now();
         save();
         if (r.reward) toast(`Combat auto : palier ${E.autoPalier(r.g)} franchi ! +1 coffre en réserve`);
-        const box = document.querySelector('[data-auto-info]');
-        if (box) { box.innerHTML = autoInfoHtml(); hydrate(box); }
+        autoRefresh();
       }
       ctl.destroy();
       play();
@@ -2300,7 +2419,7 @@ function onPvpLive(row) {
     SFX.message();
     if (free) openPvpVs(pvpRows.find(c => c.id === row.id)); else toast(`${row.to_name} a accepté ton défi PvP !`);
   } else if (row.status === 'declined' && row.from_id === me) toast(`${row.to_name} a refusé ton défi.`);
-  if (tab === 'pvp' || tab === 'combat') softRender();
+  if (tab === 'pvp' || tab === 'combat' || tab === 'hub_pvp') softRender();
 }
 
 /** Regarder un match (en direct ou en rediffusion). Le gagnant touche son Flouze. */
@@ -2434,7 +2553,6 @@ function viewChamp() {
     if (!champLoading) loadChamp().then(() => { if (tab === 'champ') softRender(); });
     return offlineCard('Championnat', 'Chargement du tableau…');
   }
-  const nx = champNext();
   const all = throneContenders();
   const byId = Object.fromEntries(all.map(c => [c.id, c]));
   const me = myId();
@@ -2450,24 +2568,62 @@ function viewChamp() {
       <span class="ch-av">${h ? `<canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>` : ''}</span>
       <span class="ch-n">${c ? nameHtml(c.name, c.data) : '?'}</span></div>`;
   };
-  const round = (r) => {
-    const at = E.champRoundAt(start, r), d = new Date(at);
-    const when = `${DAY_NAMES[d.getDay()]} ${CHAMP.hour} h ${String(CHAMP.minute).padStart(2, '0')}`;
+  const roundOne = ['Quart de finale', 'Demi-finale', 'Finale'];
+  const whenOf = (r) => { const at = E.champRoundAt(start, r), d = new Date(at); return { at, txt: `${DAY_NAMES[d.getDay()]} ${CHAMP.hour} h ${String(CHAMP.minute).padStart(2, '0')}` }; };
+  // tout en haut : MON match (le dernier tour où j'apparais), à jouer ou déjà joué
+  const myMatch = () => {
+    if (!champInfo.slots.includes(me)) return `
+      <section class="card ch-mine none"><div class="ch-stage">Cette semaine</div><p class="hint">Tu n’es pas dans le tableau de cette semaine. Le prochain tirage a lieu lundi.</p></section>`;
+    let r = 2, m = -1;
+    for (; r >= 0; r--) { m = tree[r].findIndex(x => x.a === me || x.b === me); if (m >= 0) break; }
+    const x = tree[r][m], M = champInfo.matches[`${r}-${m}`], w = whenOf(r);
+    const done = x.winner !== undefined && x.winner !== null;
+    const won = done && x.winner === me, foe = x.a === me ? x.b : x.a;
+    const mine = M ? (M.ids ? M.ids.indexOf(me) : x.a === me ? 0 : 1) : 0;
+    const score = M ? `<b class="ch-sc">${M.wins[mine]} - ${M.wins[1 - mine]}</b>` : '<b class="ch-sc">VS</b>';
+    const status = done
+      ? (won ? (r === 2 ? `<div class="ch-verdict win">${ico('trophy')} Champion de la semaine !</div>` : x.bye ? `<div class="ch-verdict win">Qualifié d’office : ton adversaire n’était pas là</div>` : `<div class="ch-verdict win">Gagné ! Rendez-vous au tour suivant</div>`)
+        : `<div class="ch-verdict lost">Perdu : éliminé en ${roundOne[r].toLowerCase()}</div>`)
+      : Date.now() < w.at ? `<div class="ch-when">${ico('hourglass')} ${w.txt} · <span data-endlong="${w.at}">${fmtLong(w.at - Date.now())}</span></div>`
+        : '<div class="ch-when">Le combat se joue…</div>';
     return `
-      <section class="card hx ch-round" style="--hc:${['#3d9bff', '#b05cff', '#ffd45a'][r]}">
-        ${secHead(ico(r === 2 ? 'trophy' : 'swords'), CHAMP.roundNames[r], Date.now() < at ? `Le ${when}` : 'Joué', Date.now() < at ? `<span class="pill" data-endlong="${at}">${fmtLong(at - Date.now())}</span>` : '')}
-        ${tree[r].map((x, m) => {
-          const M = champInfo.matches[`${r}-${m}`];
-          const done = x.winner !== undefined && x.winner !== null;
-          const score = M ? `<b class="ch-sc">${M.wins[0]} - ${M.wins[1]}</b>` : x.bye && done ? '<b class="ch-sc bye">Qualifié</b>' : '<b class="ch-sc">VS</b>';
-          return `
-            <div class="ch-match ${M ? 'played' : ''}">
-              ${who(x.a, done && x.winner === x.a, done && x.a !== null && x.winner !== x.a)}
-              ${score}
-              ${who(x.b, done && x.winner === x.b, done && x.b !== null && x.winner !== x.b)}
-              ${M ? `<button class="btn small blue ch-watch" data-act="champMatch" data-k="${r}-${m}">${ico('play')} Revoir</button>` : ''}
-            </div>`;
-        }).join('')}
+      <section class="card ch-mine ${done ? (won ? 'won' : 'lost') : ''}">
+        <div class="ch-stage">${roundOne[r]}</div>
+        <div class="ch-match big">${who(me, done && won, done && !won)}${score}${who(foe, done && !won, done && won)}</div>
+        ${status}
+        ${M ? `<button class="btn small blue ch-watch" data-act="champMatch" data-k="${r}-${m}">${ico('play')} Revoir le match</button>` : ''}
+      </section>`;
+  };
+  // en dessous : le tableau du tournoi dessiné (quarts → demies → finale → champion)
+  const bkP = (id, x, side) => {
+    const M = champInfo.matches[`${x.r}-${x.m}`];
+    const done = x.winner !== undefined && x.winner !== null;
+    if (id === undefined) return '<div class="bk-p tbd"><i></i><span>?</span></div>';
+    if (id === null) return '<div class="bk-p empty"><i></i><span>—</span></div>';
+    const c = byId[id], h = heroOf(c);
+    const sc = M ? M.wins[M.ids ? M.ids.indexOf(id) : side] : '';
+    return `<div class="bk-p ${done && x.winner === id ? 'won' : done ? 'lost' : ''} ${id === me ? 'me' : ''}">
+      <i>${h ? `<canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>` : ''}</i><span>${c ? esc(c.name) : '?'}</span>${sc !== '' && sc !== undefined ? `<b>${sc}</b>` : ''}</div>`;
+  };
+  const bkM = (x, r, m) => {
+    const y = { ...x, r, m }, M = champInfo.matches[`${r}-${m}`];
+    const path = x.a === me || x.b === me;
+    return `<${M ? 'button' : 'div'} class="bk-m ${path ? 'mine' : ''}" ${M ? `data-act="champMatch" data-k="${r}-${m}"` : ''}>${bkP(x.a, y, 0)}${bkP(x.b, y, 1)}</${M ? 'button' : 'div'}>`;
+  };
+  const bracket = () => {
+    const col = (r) => {
+      const ms = tree[r].map((x, m) => bkM(x, r, m));
+      const groups = r < 2 ? Array.from({ length: ms.length / 2 }, (_, i) => `<div class="bk-pair">${ms[2 * i]}${ms[2 * i + 1]}</div>`) : [`<div class="bk-pair one">${ms[0]}</div>`];
+      return `<div class="bk-col"><div class="bk-h">${['Quarts', 'Demies', 'Finale'][r]}<small>${whenOf(r).txt.split(' ')[0]}</small></div><div class="bk-body">${groups.join('')}</div></div>`;
+    };
+    const ch = fin.winner ? byId[fin.winner] : null, hc = heroOf(ch);
+    return `
+      <section class="card hx ch-tree" style="--hc:#ffd45a">
+        ${secHead(ico('trophy'), 'Le tableau', 'Touche un match joué pour le revoir')}
+        <div class="bk">${[0, 1, 2].map(col).join('')}
+          <div class="bk-col champ"><div class="bk-h">Champion<small>&nbsp;</small></div><div class="bk-body"><div class="bk-win ${ch ? 'on' : ''} ${fin.winner === me ? 'me' : ''}">
+            <canvas class="px" data-emblem="champ"></canvas>${ch ? `<i>${hc ? `<canvas class="px" data-portrait="${hc.classId}" data-dye="${hc.dye || ''}"></canvas>` : ''}</i><span>${esc(ch.name)}</span>` : '<span>?</span>'}</div></div></div>
+        </div>
       </section>`;
   };
   // récompenses (cette semaine ou la semaine dernière), à récupérer une fois
@@ -2483,19 +2639,12 @@ function viewChamp() {
   // l'heure d'un tour est passée et un match n'a pas encore de résultat : on le fait jouer
   const due = tree.some((rd, r) => Date.now() >= E.champRoundAt(start, r) && rd.some((x, m) => !x.bye && x.a != null && x.b != null && !champInfo.matches[`${r}-${m}`]));
   if (due && !champLoading) setTimeout(() => loadChamp().then(() => { if (tab === 'champ') softRender(); }), 0);
-  const myPlace = E.champPlace(tree, me);
-  const inIt = champInfo.slots.includes(me);
-  const champion = fin.winner ? byId[fin.winner] : null;
-  return claimCard(champInfo.prev) + claimCard(champInfo) + modeHead({
-    id: 'champ', c: '#ffd45a', art: '<canvas class="px" data-emblem="champ"></canvas>',
-    title: 'Championnat', sub: 'Tournoi à 8, les combats se lancent tout seuls à 19 h 30',
-    chips: [
-      mchip(ico('trophy'), champion ? 'Champion' : 'Prochain tour', champion ? esc(champion.name) : nx ? CHAMP.roundNames[nx.r] : '—', champion ? 'hot' : ''),
-      mchip(ico('flag'), 'Toi', !inIt ? 'Pas inscrit' : myPlace === 'win' ? 'Champion' : myPlace === 'second' ? 'Finaliste' : tree.some((rd, r) => rd.some(x => x.winner !== undefined && x.winner !== null && x.winner !== me && (x.a === me || x.b === me))) ? 'Éliminé' : 'En course'),
-      mchip(ico('hourglass'), nx ? 'Prochain combat' : 'Nouveau tableau', `<span data-endlong="${nx ? nx.at : Date.now() + E.msToNextThroneWeek()}">${fmtLong(nx ? nx.at - Date.now() : E.msToNextThroneWeek())}</span>`),
-    ],
-    info: `Chaque lundi, un tableau de <b>8 joueurs</b> est tiré au hasard (s’il manque quelqu’un, son adversaire passe directement). Les combats se lancent tout seuls à <b>19 h 30</b> : quarts de finale le lundi, demi-finales le mardi, finale le mercredi. Chaque match se joue en <b>3 manches</b> (2 manches gagnées suffisent), tes 4 persos contre les 4 siens en relais, sans soin entre deux duels. Tu peux revoir chaque manche.<br><br>Récompenses : <b>coffre de guerre</b> pour le champion, <b>coffre de combat</b> pour le finaliste, <b>1 coffre</b> pour tous les autres. Puis tout recommence le lundi suivant.`,
-  }) + [0, 1, 2].map(round).join('');
+  return claimCard(champInfo.prev) + claimCard(champInfo) + myMatch() + bracket() + `
+    <section class="card ch-rules ${infoCls('champ')}" data-info="champ">
+      <div class="ch-rules-top">${ico('flag')}<b>Comment ça marche</b><small>Nouveau tableau dans <span data-endlong="${Date.now() + E.msToNextThroneWeek()}">${fmtLong(E.msToNextThroneWeek())}</span></small></div>
+      <div class="more-txt">Chaque lundi, un tableau de <b>8 joueurs</b> est tiré au hasard (s’il manque quelqu’un, son adversaire passe directement). Les combats se lancent tout seuls à <b>19 h 30</b> : quarts de finale le lundi, demi-finales le mardi, finale le mercredi. Chaque match se joue en <b>3 manches</b> (2 manches gagnées suffisent), tes 4 persos contre les 4 siens en relais, sans soin entre deux duels. Tu peux revoir chaque manche.<br><br>Récompenses : <b>coffre de guerre</b> pour le champion, <b>coffre de combat</b> pour le finaliste, <b>1 coffre</b> pour tous les autres. Puis tout recommence le lundi suivant.</div>
+      ${moreBtn('champ')}
+    </section>`;
 }
 /** Fiche d'un match : les manches, chacune à revoir */
 function openChampMatch(key) {
@@ -2518,7 +2667,7 @@ function watchChampGame(key, gi) {
   const pips = (n, tot) => `<span class="pips-vs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(tot - n)}</span>`;
   const head = (sc) => `${esc(M.names[0])} ${pips(sc[0], A.length)} <span style="color:var(--gold)">VS</span> ${pips(sc[1], B.length)} ${esc(M.names[1])}`;
   runBattle({
-    me: A[0], foe: B[0], result, theme: 'castle', track: false, noBar: true, title: head([A.length, B.length]),
+    me: A[0], foe: B[0], result, theme: 'castle', track: false, noBar: true, skip: true, title: head([A.length, B.length]),
     onEvent: (e) => { if (e.score) { const t = document.querySelector('.battle-vs'); if (t) t.innerHTML = head(e.score); } },
     finish: (r) => ({ won: true, headline: `${M.names[r.winner]} GAGNE`, headClass: 'win', rewardsHtml: `<p style="color:var(--muted);margin:0">Manche ${gi + 1} sur ${M.games.length}</p>` }),
   });
@@ -2658,7 +2807,7 @@ function viewRaid() {
       mchip(ico('clock'), 'Nouveaux assauts', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
       mchip(ico('hourglass'), 'Fin du raid', `<span data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</span>`),
     ],
-    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br><b>XP</b> : chaque assaut rapporte de l’XP à ton perso actif.`,
+    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br>Le gros boss ne rapporte pas d’XP : on vient pour les coffres et le Flouze.`,
   }) + `
     <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
       <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
@@ -2701,13 +2850,13 @@ function attackRaid() {
       if (NET.online) NET.addRaidHit(week, acc.pseudo, dmg).catch(e => toast(e.message));
       else if (acc.raid.local[week]) acc.raid.local[week].hits.push(hit);
       E.missionEvent(acc, 'raid_dmg', dmg);
-      const lv = E.raidAssaultXp(h);
+      const lv = null;   // le gros boss ne donne plus d'XP
       save();
       const killed = dmg >= S.remaining;
       return {
         rewards: lv,
         headline: killed ? `${B.name.toUpperCase()} EST TOMBÉ${B.f ? 'E' : ''} !` : `${fmtNum(dmg)} DÉGÂTS`, headClass: 'win',
-        rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span>${xpPills(lv)}</div>`,
+        rewardsHtml: `<div class="rw"><span class="pill gold">${fmtNum(dmg)} dégâts infligés</span><span class="pill">Reste ${fmtNum(Math.max(0, S.remaining - dmg))} PV</span></div>`,
       };
     },
   });
@@ -2726,7 +2875,7 @@ function claimRaid(week) {
 // ------------------------------ La Horde ------------------------------
 function viewHorde() {
   const st = E.hordeState(acc);
-  const left = E.hordeRunsLeft(acc);
+  const left = E.hordeRunsLeft(hero);
   const ex = [3, 10, 20, 30].map(k => `<span><b>${k}</b> monstres <i>→</i> <b>${E.hordeFlouze(k)}</b><canvas class="px" data-clat></canvas></span>`).join('');
   return modeHead({
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
@@ -2737,7 +2886,7 @@ function viewHorde() {
       mchip(ico('clock'), 'Nouveaux essais', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
     ],
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
-      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi), pour tout le compte : c’est ton perso actif qui se bat.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
+      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi) <b>pour chaque perso</b> : change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
     <section class="card hx horde-stage" style="--hc:#ff3d6e">
       ${secHead(ico('flag'), 'Combien tu gagnes', 'Flouze selon les monstres battus')}
@@ -2764,8 +2913,8 @@ function hordeBoard() {
 }
 
 function startHorde() {
-  if (E.hordeRunsLeft(acc) <= 0) { toast('Plus d’essai : reviens à minuit ou à midi.'); return; }
-  E.hordeState(acc).used++;
+  if (E.hordeRunsLeft(hero) <= 0) { toast(`Plus d’essai pour ton ${CLASSES[hero.classId].name} : change de perso, ou reviens à minuit ou à midi.`); return; }
+  E.hordeRuns(hero).used++;
   save();
   const me = mySnap();
   const seed = (Math.random() * 2 ** 31) | 0;
@@ -2788,7 +2937,7 @@ function startHorde() {
         headline: `${result.kills} MONSTRE${result.kills > 1 ? 'S' : ''}`, headClass: result.kills ? 'win' : 'lose',
         rewardsHtml: `
           <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${xpPills(rw)}${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
-          <p style="color:var(--muted);margin:0">Encore ${E.hordeRunsLeft(acc)} essai${E.hordeRunsLeft(acc) > 1 ? 's' : ''} d’ici ${fmt(E.msToNextHalf())}.</p>`,
+          <p style="color:var(--muted);margin:0">Encore ${E.hordeRunsLeft(h)} essai${E.hordeRunsLeft(h) > 1 ? 's' : ''} pour ce perso d’ici ${fmt(E.msToNextHalf())}.</p>`,
       };
     },
   });
@@ -2939,7 +3088,7 @@ function onLive(kind, row) {
     if (tab === 'journal') { markJournalSeen(); softRender(); }
   } else if (kind === 'challenge') {
     if (row.to_id === NET.myId() && row.status === 'pending') { SFX.message(); toast(`${row.from_name} te défie en duel !`); }
-    refreshBets().then(() => { if (tab === 'bets' || tab === 'combat') softRender(); });
+    refreshBets().then(() => { if (tab === 'bets' || tab === 'combat' || tab === 'hub_pvp') softRender(); });
   } else if (kind === 'wager') {
     if (tab === 'bets') refreshBets().then(softRender);
   } else if (kind === 'raid') {
@@ -2960,15 +3109,16 @@ function updateXpBonus() {
   E.setXpBonus(catchup, E.altXpBonus(acc, hero));   // persos secondaires : ×2 en plus, jusqu'au niveau du perso le plus haut du compte
 }
 
-const VIEWS = { throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
+const VIEWS = { hub_pvp: () => viewHub('hub_pvp'), hub_coop: () => viewHub('hub_coop'), hub_pvm: () => viewHub('hub_pvm'), throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
   combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, champ: viewChamp, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
 function openModal(html, { center = false } = {}) {
+  if (spellDemoStop) { spellDemoStop(); spellDemoStop = null; }
   modalRoot.innerHTML = `<div class="modal-bg ${center ? 'mid' : ''}" data-act="bgClose"><div class="modal ${center ? 'center' : ''}">${html}</div></div>`;
   hydrate(modalRoot);
 }
-function closeModal() { modalRoot.innerHTML = ''; }
+function closeModal() { if (spellDemoStop) { spellDemoStop(); spellDemoStop = null; } modalRoot.innerHTML = ''; }
 
 function toast(text) {
   const root = document.getElementById('toast-root');
@@ -2996,7 +3146,7 @@ function openChestFlow(kind, all = false) {
   SFX.chest();
   openModal(`
     <div class="open-stage ${res.items.length > 4 ? 'many' : ''}">
-      <h3>${all ? `${res.count} coffres${res.keys ? ` (dont ${res.keys} avec une clef)` : ''}` : ({ combat: 'Coffre de combat', war: 'Coffre de guerre' }[kind] || (res.key ? 'Coffre (clef)' : 'Coffre'))}</h3>
+      <h3>${all ? `${res.count} coffres${res.keys ? ` (dont ${res.keys} avec une clef)` : ''}` : ({ combat: 'Coffre de combat', war: 'Coffre de guerre', epic: 'Coffre Épique', legendary: 'Coffre Légendaire' }[kind] || (res.key ? 'Coffre (clef)' : 'Coffre'))}</h3>
       <div class="rays" id="chest-wrap"><canvas class="px chest-big shake" id="chest-cv" data-chest="${kind}"></canvas></div>
       <div id="loot"></div>
     </div>`, { center: true });
@@ -3145,15 +3295,18 @@ function startFight(foeId) {
   const opp = opponents().find(o => o.id === foeId);
   if (!opp) return;
   const me = mySnap();
-  const seed = hashStr(acc.fights.day + foeId + acc.pseudo);
+  acc.fights.tries ||= {};
+  const tries = acc.fights.tries[foeId] = (acc.fights.tries[foeId] || 0) + 1;   // chaque essai est un combat différent
+  const seed = hashStr(acc.fights.day + foeId + acc.pseudo + ':' + tries);
+  save();
   runBattle({
     me, foe: opp.snap, seed, theme: 'arena', victory: myVictory(),
     title: `${esc(me.name)} <span style="color:var(--gold)">VS</span> ${esc(opp.snap.name)}`,
     finish: (result) => {
       const won = result.winner === 0;
-      // Le résultat est enregistré tout de suite : impossible de « rejouer » en quittant
-      acc.fights.done[foeId] = won ? 'win' : 'loss';
-      const rw = E.fightRewards(acc, hero, opp.level, won);
+      // gagné : le point de combat est acquis pour la journée ; perdu : rien, on peut retenter
+      if (won) acc.fights.done[foeId] = 'win';
+      const rw = won ? E.fightRewards(acc, hero, opp.level, true) : { chest: false };
       E.missionEvent(acc, 'arena_fight');
       if (won) E.missionEvent(acc, 'arena_win');
       logFight('arena', foeId, opp.name, me, opp.snap, seed, won);
@@ -3162,7 +3315,7 @@ function startFight(foeId) {
         rewards: rw,
         rewardsHtml: `
           <div class="rw">
-            ${won ? `<span class="pill green">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>` : ''}
+            ${won ? `<span class="pill green">Coffre de combat ${acc.winProgress}/${WINS_PER_COMBAT_CHEST}</span>` : '<span class="pill">Rien de perdu : retente-le quand tu veux !</span>'}
             ${rw.chest ? '<span class="pill red">Coffre de combat gagné !</span>' : ''}
           </div>`,
       };
@@ -3324,8 +3477,8 @@ const ACTIONS = {
   tab: (d) => {
     SFX.click();
     tab = d.id; render(); window.scrollTo(0, 0);
-    if (d.id === 'champ' || d.id === 'combat') (NET.online ? refreshPlayers() : Promise.resolve()).then(loadChamp).then(() => { if (tab === d.id) softRender(); });
-    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'pvp', 'combat', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
+    if (d.id === 'champ' || d.id === 'combat' || d.id === 'hub_pvp') (NET.online ? refreshPlayers() : Promise.resolve()).then(loadChamp).then(() => { if (tab === d.id) softRender(); });
+    if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'pvp', 'combat', 'hub_pvp', 'hub_coop', 'hub_pvm', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets' || d.id === 'pvp') refreshBets().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'raid') loadRaid().then(() => { if (tab === 'raid') softRender(); });
@@ -3430,9 +3583,9 @@ const ACTIONS = {
     if (!name) { document.getElementById('hero-name').focus(); toast('Choisis un pseudo !'); return; }
     acc = E.newAccount(name, pickedClass);
     save();
-    tab = 'chests';
+    tab = 'hero';
     render();
-    toast('Bienvenue ! Tu as 2 coffres à ouvrir.');
+    toast('Bienvenue ! Tu as 5 coffres à ouvrir.');
   },
   addStat: (d) => {
     if (E.freePoints(hero) <= 0) return;
@@ -3664,21 +3817,43 @@ const ACTIONS = {
   },
   dungeon: (d) => startDungeon(d.id),
   warAttack: (d) => startWarAttack(d.id),
-  joinSection: async (d) => {
+  joinSection: (d) => {
     const s = WAR.sections[d.sec];
-    if (!confirm(`Rejoindre la ${s.name} ? Tu ne pourras changer qu’une fois par mois.`)) return;
-    await refreshPlayers();
-    if (!E.joinSection(acc, d.sec, others())) { toast(`La ${s.name} est complète (${WAR.maxPerSection} max).`); render(); return; }
-    save(); render(); toast(`Bienvenue dans la ${s.name} !`);
+    openModal(`
+      <div class="sec-confirm" style="--sc:${s.color}">
+        <span class="sc-flag"><canvas class="px" data-emblem="war"></canvas></span>
+        <h3>Rejoindre ${s.the} ?</h3>
+        <p class="sc-motto">« ${s.motto} »</p>
+        <p class="hint">Tu te battras avec ${s.the} toute la guerre. Tu ne pourras changer de camp qu’une fois par mois.</p>
+      </div>
+      <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn ${d.sec === 'rouge' ? 'danger' : 'blue'}" data-act="joinSectionGo" data-sec="${d.sec}">Rejoindre ${s.the}</button></div>`, { center: true });
   },
-  changeSection: async () => {
+  joinSectionGo: async (d) => {
+    const s = WAR.sections[d.sec];
+    closeModal();
+    await refreshPlayers();
+    if (!E.joinSection(acc, d.sec, others())) { toast(`Plus de place chez ${s.the} (${WAR.maxPerSection} max).`); render(); return; }
+    save(); render(); toast(`Bienvenue chez ${s.the} !`);
+  },
+  changeSection: () => {
     const c = E.canChangeSection(acc);
     if (!c.ok) { toast(`Changement possible dans ${Math.ceil(c.wait / 86400000)} jour(s).`); return; }
-    const other = E.otherSide(acc.war.section);
-    if (!confirm(`Passer dans la ${WAR.sections[other].name} ? Tes points de la semaine resteront à ton ancienne section.`)) return;
+    const other = E.otherSide(acc.war.section), s = WAR.sections[other];
+    openModal(`
+      <div class="sec-confirm" style="--sc:${s.color}">
+        <span class="sc-flag"><canvas class="px" data-emblem="war"></canvas></span>
+        <h3>Passer chez ${s.the} ?</h3>
+        <p class="sc-motto">« ${s.motto} »</p>
+        <p class="hint">Tes points de la semaine restent à ton ancien camp. Ensuite, plus de changement avant un mois.</p>
+      </div>
+      <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn ${other === 'rouge' ? 'danger' : 'blue'}" data-act="changeSectionGo">Passer chez ${s.the}</button></div>`, { center: true });
+  },
+  changeSectionGo: async () => {
+    const other = E.otherSide(acc.war.section), s = WAR.sections[other];
+    closeModal();
     await refreshPlayers();
-    if (!E.joinSection(acc, other, others())) { toast(`La ${WAR.sections[other].name} est complète (${WAR.maxPerSection} max).`); return; }
-    save(); render();
+    if (!E.joinSection(acc, other, others())) { toast(`Plus de place chez ${s.the} (${WAR.maxPerSection} max).`); return; }
+    save(); render(); toast(`Bienvenue chez ${s.the} !`);
   },
   claimWar: () => {
     const p = E.claimWarReward(acc);
@@ -3700,13 +3875,14 @@ const ACTIONS = {
     if (battleCtl) battleCtl.destroy();
     battleCtl = null;
     document.querySelector('.battle')?.remove();
-    if (go) go(); else render();
+    if (go) go(); else { render(); scrollTop(); }
   },
   endFight: () => {
     if (battleCtl) battleCtl.destroy();
     battleCtl = null;
     document.querySelector('.battle')?.remove();
     render();
+    scrollTop();   // après un combat, on revient toujours en haut de la page
   },
   settings: openSettings,
   patchNotes: () => openPatchNotes(),

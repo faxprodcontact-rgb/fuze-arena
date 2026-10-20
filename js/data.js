@@ -53,6 +53,8 @@ export const CHEST_ODDS = {
   normal: [72, 22, 5, 1, 0],
   combat: [40, 38, 16, 5, 1],
   war: [0, 50, 32, 14, 4],     // coffre de guerre : jamais de Commun
+  epic: [0, 0, 0, 99, 1],       // coffre Épique (offert en cadeau) : 99 % Épique, 1 % Légendaire
+  legendary: [0, 0, 0, 0, 99, 1],   // coffre Légendaire (offert en cadeau) : 99 % Légendaire, 1 % Mythique
 };
 
 // ---------------------------------------------------------------------
@@ -60,8 +62,8 @@ export const CHEST_ODDS = {
 // ---------------------------------------------------------------------
 export const WAR = {
   sections: {
-    rouge: { name: 'Section Rouge', color: '#ff5d6c' },
-    bleue: { name: 'Section Bleue', color: '#3d9bff' },
+    rouge: { name: 'Assassins', the: 'les Assassins', color: '#ff5d6c', motto: 'Frapper vite, frapper fort, disparaître.' },
+    bleue: { name: 'Templiers', the: 'les Templiers', color: '#3d9bff', motto: 'L’honneur, le bouclier, et pas un pas en arrière.' },
   },
   start: [2026, 9, 17],    // début de la 1re guerre (année, mois - 1, jour) : ensuite une toutes les 7 jours
   minAttacks: 5,           // attaques minimum dans la semaine pour toucher la récompense
@@ -663,8 +665,10 @@ export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
 export const AUTO = {
   palierMs: 10000, offlineMaxMs: 8 * 3600 * 1000, diffs: 10, paliers: 100,
   // Puissance d'équipe (les 4 persos additionnés) qu'il faut pour passer un palier, entre ces repères (palier global 1 à 1000) :
-  // départ ~200, difficulté 3 palier 50 = 2 000, difficulté 10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~6 980)
-  need: [[1, 200], [250, 2100], [1000, 6700]],
+  // la difficulté suit la progression d'un joueur qui joue à fond (refonte/simulations/courbe-auto.mjs) :
+  // D1 = le 1er jour (1 perso), D2 ≈ jour 2, D3 ≈ jour 4, D4 ≈ jour 7, D5 ≈ jour 10, D6 ≈ jour 14, D7 ≈ jour 21, D8 ≈ jour 28, D9 ≈ jour 34,
+  // D10 palier 100 = l'équipe parfaite (4 persos niv 100, tout Chaotique, panoplie : ~6 980)
+  need: [[1, 75], [50, 160], [100, 380], [200, 930], [300, 1660], [400, 2540], [500, 3550], [600, 4640], [700, 5320], [800, 5700], [900, 6450], [1000, 6700]],
   monsterK: 5.4e-4,         // force des monstres (base niveau 50) = puissance demandée × ce nombre (mesuré : équipe gagne ~4 fois sur 5)
   boss: { power: 1.15, hp: 2.2 },   // tous les 10 paliers : un boss et 2 sbires
   // XP : chaque victoire met 0,2 % d'un niveau en réserve (pour le perso actif quand on récupère),

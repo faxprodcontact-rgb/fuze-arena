@@ -1963,13 +1963,6 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.globalAlpha = 0.35; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(LW / 2, feet, 10, 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    // familier
-    if (pet) {
-      const pw = lw(pet) * 0.9, ph = lh(pet) * 0.9;
-      ctx.imageSmoothingEnabled = !!pet.smooth;
-      ctx.drawImage(pet, ox + 2 - pw * 0.3, feet - ph + Math.sin(t * 3.2) * 0.8, pw, ph);
-      ctx.imageSmoothingEnabled = !!idle.smooth;
-    }
     // héros + arme
     const oy = feet - H + bob;
     ctx.drawImage(pose === 'atk' ? atk : idle, ox, oy, W, H);
@@ -1981,6 +1974,13 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.rotate((ang * Math.PI) / 180);
     ctx.drawImage(wS, -px * K, -py * K, lw(wS) * K, lh(wS) * K);
     ctx.restore();
+    // familier : devant, dans le coin bas gauche de la zone visible (le dessin est plus large que le cadre, entre les cases)
+    if (pet) {
+      const k = Math.min(0.9, 18 / lh(pet)), pw = lw(pet) * k, ph = lh(pet) * k;
+      ctx.imageSmoothingEnabled = !!pet.smooth;
+      ctx.drawImage(pet, LW * 0.3, feet - ph + 1 + Math.sin(t * 3.2) * 0.6, pw, ph);
+      ctx.imageSmoothingEnabled = !!idle.smooth;
+    }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

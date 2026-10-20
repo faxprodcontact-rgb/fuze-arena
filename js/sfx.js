@@ -47,14 +47,14 @@ function tone(freq, { type = 'square', dur = 0.12, vol = 0.15, slide = 0, delay 
   o.start(t); o.stop(t + dur + 0.03);
 }
 
-function noise({ dur = 0.15, vol = 0.2, freq = 1200, q = 1, type = 'bandpass', delay = 0, slide = 0 } = {}) {
+function noise({ dur = 0.15, vol = 0.2, freq = 1200, q = 1, type = 'bandpass', delay = 0, slide = 0, at = null, out = sfxOut } = {}) {
   if (!ac) return;
   if (!noiseBuf) {
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
-  const t = ac.currentTime + delay;
+  const t = at ?? ac.currentTime + delay;
   const s = ac.createBufferSource();
   s.buffer = noiseBuf;
   const f = ac.createBiquadFilter();
@@ -65,7 +65,7 @@ function noise({ dur = 0.15, vol = 0.2, freq = 1200, q = 1, type = 'bandpass', d
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  s.connect(f); f.connect(g); g.connect(sfxOut);
+  s.connect(f); f.connect(g); g.connect(out);
   s.start(t); s.stop(t + dur + 0.03);
 }
 
@@ -104,26 +104,60 @@ export const SFX = {
   message: () => can() && arp([880, 1175], { type: 'sine', step: 0.08, dur: 0.12, vol: 0.06 }),
 };
 
-// ------------------------------ Musique de combat ------------------------------
+// ------------------------------ Musiques de combat ------------------------------
 const N = (m) => 440 * Math.pow(2, (m - 69) / 12);   // numéro de note MIDI -> fréquence
-// La mineur : Am - F - C - G, 8 croches par accord
-const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
-const LEAD = [76, 74, 72, 74, 76, 76, 76, null, 74, 74, 74, null, 76, 79, 79, null, 76, 74, 72, 74, 76, 76, 76, 76, 74, 74, 76, 74, 72, null, null, null];
-let musicTimer = null;
+const _ = null;
+// Chaque musique : tempo, 4 accords (8 croches chacun), mélodie (une note par croche, _ = silence),
+// basse (x = note grave, o = octave au-dessus) et batterie (k = grosse caisse, s = caisse claire, h = charleston), en boucle.
+const TRACKS = [
+  { name: 'Arène', bpm: 150, arp: 'square', bass: 'x.x.x.x.', drums: '....h...h.......',
+    chords: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]],
+    lead: [76, 74, 72, 74, 76, 76, 76, _, 74, 74, 74, _, 76, 79, 79, _, 76, 74, 72, 74, 76, 76, 76, 76, 74, 74, 76, 74, 72, _, _, _] },
+  { name: 'Charge héroïque', bpm: 140, arp: 'triangle', bass: 'x.x.x.xo', drums: 'k.h.s.hkk.h.s.hs',
+    chords: [[50, 54, 57], [57, 61, 64], [59, 62, 66], [55, 59, 62]],
+    lead: [78, _, 78, 79, 81, _, 78, _, 76, _, 76, 78, 73, _, _, _, 74, _, 74, 76, 78, _, 83, _, 81, _, 79, _, 78, _, _, _,
+      78, _, 78, 79, 81, _, 86, _, 85, _, 83, _, 81, _, 76, _, 79, _, 78, _, 76, _, 74, _, 74, _, _, _, _, _, _, _] },
+  { name: 'Donjon', bpm: 112, arp: 'sine', bass: 'x...x.x.', drums: 'k...s...k.k.s..h',
+    chords: [[52, 55, 59], [48, 52, 55], [45, 48, 52], [47, 51, 54]],
+    lead: [76, _, _, 79, 78, _, 76, _, 72, _, _, _, 71, _, _, _, 69, _, 72, _, 76, _, 74, 72, 71, _, _, _, 75, _, _, _,
+      76, _, 79, _, 83, _, 81, 79, 79, _, 76, _, 72, _, _, _, 72, _, 69, _, 72, _, 76, 74, 75, _, _, _, 71, _, _, _] },
+  { name: 'Boss', bpm: 172, arp: 'square', bass: 'xoxoxoxo', drums: 'k.hsk.hsk.hsk.ss',
+    chords: [[48, 51, 55], [44, 48, 51], [46, 50, 53], [43, 47, 50]],
+    lead: [72, 75, 79, 75, 72, 75, 79, 84, 80, 79, 77, 75, 77, _, _, _, 70, 74, 77, 74, 70, 74, 77, 82, 79, _, 78, _, 79, _, _, _] },
+  { name: 'Course', bpm: 160, arp: 'square', bass: 'x.xox.xo', drums: 'k.h.skh.k.h.s.hh',
+    chords: [[55, 58, 62], [51, 55, 58], [53, 57, 60], [50, 54, 57]],
+    lead: [79, _, 77, _, 74, _, 77, 79, 82, _, 79, _, 75, _, _, _, 77, _, 74, _, 72, _, 74, 77, 81, _, 78, _, 74, _, _, _] },
+];
+export const MUSIC_COUNT = TRACKS.length;
+let musicTimer = null, lastTrack = -1;
 
-export function startMusic() {
+function drum(c, at) {
+  if (c === 'k') tone(150, { type: 'sine', dur: 0.14, vol: 0.55, slide: 0.3, at, out: musicOut });
+  else if (c === 's') noise({ dur: 0.11, vol: 0.3, freq: 1800, q: 0.7, at, out: musicOut });
+  else if (c === 'h') noise({ dur: 0.035, vol: 0.12, freq: 7500, type: 'highpass', at, out: musicOut });
+}
+
+/** Lance une musique de combat (au hasard, jamais deux fois de suite la même, sauf si on en choisit une) */
+export function startMusic(which = null) {
   if (!ac || !prefs.music || musicTimer) return;
-  const spb = 60 / 150 / 2;            // une croche à 150 bpm
+  let i = which;
+  if (i === null) { i = Math.floor(Math.random() * (TRACKS.length - 1)); if (i >= lastTrack && lastTrack >= 0) i++; }
+  lastTrack = i;
+  const T = TRACKS[i % TRACKS.length];
+  const spb = 60 / T.bpm / 2;          // une croche
   let next = ac.currentTime + 0.05, step = 0;
   musicTimer = setInterval(() => {
     while (next < ac.currentTime + 0.25) {
-      const chord = CHORDS[Math.floor(step / 8) % 4];
-      if (step % 2 === 0) tone(N(chord[0] - 12), { type: 'triangle', dur: spb * 1.8, vol: 0.35, at: next, out: musicOut });
-      tone(N(chord[step % 3] + 12), { type: 'square', dur: spb * 0.6, vol: 0.06, at: next, out: musicOut });
-      const lead = LEAD[step % 32];
+      const chord = T.chords[Math.floor(step / 8) % T.chords.length];
+      const b = T.bass[step % T.bass.length];
+      if (b === 'x') tone(N(chord[0] - 12), { type: 'triangle', dur: spb * 1.8, vol: 0.35, at: next, out: musicOut });
+      else if (b === 'o') tone(N(chord[0]), { type: 'triangle', dur: spb * 0.9, vol: 0.28, at: next, out: musicOut });
+      tone(N(chord[step % 3] + 12), { type: T.arp, dur: spb * 0.6, vol: T.arp === 'square' ? 0.06 : 0.1, at: next, out: musicOut });
+      const lead = T.lead[step % T.lead.length];
       if (lead) tone(N(lead), { type: 'square', dur: spb * 0.9, vol: 0.1, at: next, out: musicOut });
+      drum(T.drums[step % T.drums.length], next);
       next += spb;
-      step = (step + 1) % 32;
+      step = (step + 1) % (T.lead.length * T.chords.length * 8);
     }
   }, 60);
 }

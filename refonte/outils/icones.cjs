@@ -274,6 +274,13 @@ function openChest(name, map) {
 const PURPLE = { '#c98f55': '#b57cf2', '#9a6234': '#7d47cc', '#6b3d1f': '#532b96', '#45230f': '#351868' };
 ICONS['coffre-war'] = () => { const s = fs.readFileSync(path.join(SRC, 'coffre.svg'), 'utf8').replace(/#[0-9a-fA-F]{6}\b/g, h => PURPLE[h.toLowerCase()] || h).replace(/id="coffre-/g, 'id="coffrew-').replace(/url\(#coffre-/g, 'url(#coffrew-'); fs.writeFileSync(path.join(OUT, 'coffre-war.svg'), s); return s.length; };
 openChest('coffre-war-ouvert', PURPLE);
+// coffres offerts : Épique (violet vif, cerclé d'or) et Légendaire (orange et or)
+const EPIC = { '#c98f55': '#e0a8ff', '#9a6234': '#b05cff', '#6b3d1f': '#7a2ed0', '#45230f': '#4e1a8f' };
+const LEGEND = { '#c98f55': '#ffd08a', '#9a6234': '#ff9f1a', '#6b3d1f': '#d06a0a', '#45230f': '#8a3e04', '#f7bc2a': '#fff3a0', '#cd7e15': '#ffd45a' };
+for (const [name, map, pre] of [['coffre-epic', EPIC, 'coffree'], ['coffre-legendary', LEGEND, 'coffrel']]) {
+  ICONS[name] = () => { const s = fs.readFileSync(path.join(SRC, 'coffre.svg'), 'utf8').replace(/#[0-9a-fA-F]{6}\b/g, h => map[h.toLowerCase()] || h).replace(/id="coffre-/g, `id="${pre}-`).replace(/url\(#coffre-/g, `url(#${pre}-`); fs.writeFileSync(path.join(OUT, name + '.svg'), s); return s.length; };
+  openChest(name + '-ouvert', map);
+}
 openChest('coffre-normal-ouvert');
 openChest('coffre-combat-ouvert', { ...STEEL, ...REDWOOD });
 

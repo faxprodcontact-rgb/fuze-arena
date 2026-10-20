@@ -1,7 +1,7 @@
 // Équipes de test : persos niveau L, tous les emplacements en rareté R, meilleure panoplie à 5 pièces + meilleur familier
 export async function setup() {
-  const E = await import('/home/user/fuze-arena/js/engine.js');
-  const D = await import('/home/user/fuze-arena/js/' + (await import('fs')).readFileSync('/home/user/fuze-arena/js/engine.js', 'utf8').match(/data\.js\?v=\d+/)[0]);
+  const E = await import('../../js/engine.js');
+  const D = await import('../../js/' + (await import('fs')).readFileSync(new URL('../../js/engine.js', import.meta.url), 'utf8').match(/data\.js\?v=\d+/)[0]);
   const CL = ['guerrier', 'mage', 'archer', 'paladin'];
   const sets = Object.keys(D.SETS).filter(s => D.ITEM_LIST.filter(i => i.set === s).length >= 5);
   const pets = D.ITEM_LIST.filter(i => i.slot === 'pet');

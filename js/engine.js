@@ -209,7 +209,8 @@ function isSelfOnly(sp) { return !sp.mult; }
  * En mode manuel, le joueur (côté 0) ne lance ses sorts que quand on les demande avec fight.queue(id) ;
  * sinon il fait son attaque de base. En automatique, c'est exactement le même calcul que simulate().
  */
-export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true, manual = false } = {}) {
+export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinner = true, manual = false, demo = null } = {}) {
+  // demo = un sort que le héros (côté 0) lance à chaque action, sans recharge (aperçu d'un sort)
   const rng = makeRng(seed);
   const F = [A, B].map((s, i) => ({
     i, s, hp: s.hp ?? s.maxHp, max: s.maxHp, shield: s.shieldLeft || 0, gauge: rng() * 200,
@@ -252,6 +253,7 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
   };
 
   const choose = (f, foe) => {
+    if (demo && f.i === 0) return SPELLS[demo];
     if (manualMode && f.i === 0) {
       const sp = queued && SPELLS[queued];
       queued = null;
@@ -334,7 +336,7 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
         R.push({ step: last, type: 'shield', target: f.i, amount, shield: Math.round(f.shield) });
       }
     }
-    if (sp.id) f.cds[sp.id] = sp.cd;
+    if (sp.id && !demo) f.cds[sp.id] = sp.cd;
     push(act);
   };
 
@@ -728,7 +730,7 @@ export function claimThrone(acc, week, rank) {
 }
 
 /** XP d'un assaut de raid (à chaque assaut, selon le niveau du perso) */
-export function raidAssaultXp(hero) { return gainXp(hero, 25 + 5 * hero.level); }
+// le raid (gros boss) ne donne plus d'XP : il rapporte des coffres et du Flouze quand le boss tombe
 
 // ------------------------------ PvP en relais ------------------------------
 export { PVP };
@@ -910,13 +912,18 @@ export function createHorde(A, seed, { manual = false } = {}) {
   };
   return api;
 }
-/** Essais de la horde (par compte, remis à zéro à minuit et à midi) */
+/** Record de la horde (par compte) */
 export function hordeState(acc) {
-  const k = halfKey();
-  if (!acc.horde || acc.horde.half !== k) acc.horde = { half: k, used: 0, best: (acc.horde && acc.horde.best) || 0 };
+  acc.horde ||= { best: 0 };
   return acc.horde;
 }
-export const hordeRunsLeft = (acc) => Math.max(0, HORDE.runsPerHalf - hordeState(acc).used);
+/** Essais de la horde : par personnage, remis à zéro à minuit et à midi */
+export function hordeRuns(hero) {
+  const k = halfKey();
+  if (!hero.horde || hero.horde.half !== k) hero.horde = { half: k, used: 0 };
+  return hero.horde;
+}
+export const hordeRunsLeft = (hero) => Math.max(0, HORDE.runsPerHalf - hordeRuns(hero).used);
 /** Fin d'un essai : Flouze selon les monstres battus, et record du compte */
 export function hordeResult(acc, kills, hero = null) {
   const st = hordeState(acc);
@@ -982,6 +989,7 @@ export function addItem(hero, itemId, rarity) {
 /** Chances de rareté d'un coffre pour ce compte, avec le bonus des coffres déjà ouverts */
 export function chestOdds(acc, kind) {
   const odds = CHEST_ODDS[kind].slice();
+  if (!CHEST_LUCK.step[kind]) return odds;   // coffres Épique et Légendaire : pas de bonus de chance
   const steps = Math.floor(((acc.chestCount || {})[kind] || 0) / CHEST_LUCK.step[kind]);
   const src = odds[0] > 0 ? 0 : 1, g = CHEST_LUCK.gain;
   for (let s = 0; s < steps; s++) {
@@ -1014,6 +1022,10 @@ export function openChest(acc, hero, kind, rng = Math.random) {
       hero.keys--;          // plus de coffre en stock : on utilise une clef
       key = true;
     } else return null;
+  } else if (kind === 'epic' || kind === 'legendary') {
+    const k = kind + 'Chests';
+    if (!(acc[k] > 0)) return null;
+    acc[k]--;
   } else if (kind === 'war') {
     if (acc.warChests <= 0) return null;
     acc.warChests--;
@@ -1030,7 +1042,7 @@ export function openChest(acc, hero, kind, rng = Math.random) {
     const r = rollItem(rng, odds);
     items.push(addItem(hero, r.itemId, r.rarity));
   }
-  const xp = kind === 'war' ? 120 : kind === 'combat' ? 60 : 20;
+  const xp = { war: 120, combat: 60, epic: 150, legendary: 250 }[kind] || 20;
   const lv = gainXp(hero, xp);
   return { items, xp, key, ...lv };
 }
@@ -1183,7 +1195,7 @@ export function newHero(name, classId, id = 'h1') {
     spells: [classSpells(classId)[0].id],
     stats: { wins: 0, losses: 0, dungeons: 0 },
     dungeonClears: {},
-    chest: { stored: 2, last: Date.now() },
+    chest: { stored: 5, last: Date.now() },   // un nouveau perso démarre avec 5 coffres
     runs: { half: '', used: {} },   // combats de donjon faits sur la demi-journée
     keys: 0,                        // clefs : 1 clef = 1 coffre (propres à ce perso)
     tower: { best: 0 },
@@ -1201,6 +1213,7 @@ export function newAccount(pseudo, classId) {
     combatChests: 0,
     chestCount: { normal: 0, combat: 0, war: 0 },
     warChests: 0,
+    epicChests: 0, legendaryChests: 0,   // coffres offerts en cadeau
     winProgress: 0,
     fights: { day: '', done: {}, lvl: 1 },
     war: newWarState(),
@@ -1255,7 +1268,7 @@ export function migrate(save) {
       inventory: h.inventory || [], equipped: h.equipped || {}, nextUid: h.nextUid || 1, spells: h.spells || [],
       stats: { wins: 0, losses: 0, dungeons: 0, ...(h.stats || {}) }, dungeonClears: h.dungeonClears || {},
     }];
-    for (const k of ['combatChests', 'warChests', 'winProgress', 'fights', 'titles']) if (h[k] !== undefined) acc[k] = h[k];
+    for (const k of ['combatChests', 'warChests', 'epicChests', 'legendaryChests', 'winProgress', 'fights', 'titles']) if (h[k] !== undefined) acc[k] = h[k];
     if (h.chest) acc.heroes[0].chest = h.chest;
     if (h.dungeon) acc.heroes[0].dungeon = h.dungeon;
     if (h.war) {
@@ -1284,6 +1297,7 @@ export function migrate(save) {
   if (!acc.raid) acc.raid = { day: '', used: 0, claimed: {}, local: {} };
   if (!acc.paidWagers) acc.paidWagers = [];
   if (!acc.chestCount) acc.chestCount = { normal: 0, combat: 0, war: 0 };
+  acc.epicChests ||= 0; acc.legendaryChests ||= 0;
   if (!acc.war.weeks) acc.war.weeks = {};
   if (!acc.titles) acc.titles = { warHero: 0 };
   if (acc.clat === undefined) acc.clat = 0;
@@ -1864,9 +1878,11 @@ export function claimGift(acc, gift, hero = null) {
   acc.gifts[gift.id] = true;
   acc.clat += gift.amount || 0;
   acc.combatChests += gift.combatChests || 0;   // cadeau en coffres de combat
+  acc.epicChests = (acc.epicChests || 0) + (gift.epicChests || 0);           // coffres Épiques
+  acc.legendaryChests = (acc.legendaryChests || 0) + (gift.legendaryChests || 0);   // coffres Légendaires
   const h = hero || acc.heroes[0];
   if (gift.chests) { refreshChests(h); h.chest.stored += gift.chests; }   // coffres normaux : pour le perso actif
-  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.chests || 0);
+  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
 }
 
 // ------------------------------ Remise à zéro exceptionnelle ------------------------------
@@ -1879,7 +1895,6 @@ export function applySpecialReset(acc, now = Date.now()) {
   acc.war.done = {}; acc.war.day = '';
   acc.raid.day = ''; acc.raid.used = 0;
   acc.missions = { day: '', progress: {}, claimed: {}, bonus: false, seen: {} };
-  if (acc.horde) acc.horde.used = 0;
   acc.heroes.forEach(h => {
     h.chest = { stored: CHEST_MAX, last: now };
     h.runs = { half: '', used: {}, keys: 0 };
