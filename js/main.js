@@ -3345,14 +3345,19 @@ function openChestFlow(kind, all = false) {
       <div id="loot"></div>
     </div>`, { center: true });
   const cv = document.getElementById('chest-cv');
+  // la lumière derrière le coffre prend la couleur du meilleur objet (rien de spécial pour du Commun) :
+  // une impulsion pendant que le coffre tremble, puis elle reste allumée à l'ouverture
+  const best = Math.max(...res.items.map(it => it.rarity));
+  const wrap = document.getElementById('chest-wrap');
+  if (best > 0) {
+    wrap.style.setProperty('--ray', CHEST_RAY[best] || RARITIES[best].color);
+    setTimeout(() => wrap.classList.add('tease'), 380);
+  }
   setTimeout(() => {
     paint(cv, chestCanvas(kind, true), { scale: 6 });
     cv.classList.remove('shake');
     cv.classList.add('burst');
-    const best = Math.max(...res.items.map(it => it.rarity));
-    // la lumière derrière le coffre prend la couleur du meilleur objet (rien de spécial pour du Commun)
-    const wrap = document.getElementById('chest-wrap');
-    if (best > 0) { wrap.style.setProperty('--ray', CHEST_RAY[best] || RARITIES[best].color); wrap.classList.add('lit'); }
+    if (best > 0) { wrap.classList.remove('tease'); wrap.classList.add('lit'); }
     SFX.loot(best);
     document.getElementById('loot').innerHTML = `
       <div class="loot ${res.items.length > 4 ? 'many' : ''}">
