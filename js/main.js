@@ -394,12 +394,13 @@ function setBox(setId) {
   const set = SETS[setId];
   const active = E.activeSets(hero).find(a => a.setId === setId);
   const n = active ? active.count : 0;
+  const pct = (b) => Object.values(b)[0] * 100;
   return `
-    <div class="set-box">
-      <div class="row"><b>${set.name}</b><span class="spacer"></span><span class="pill ${n >= 3 ? 'gold' : ''}">${n} / 5 portées</span></div>
-      <div class="set-spec">Spécialités : <b style="color:${STATS[set.spec[0]].color}">${STATS[set.spec[0]].name}</b> et <b style="color:${STATS[set.spec[1]].color}">${STATS[set.spec[1]].name}</b> · arme et bottes en <b>${STATS[set.voie].name}</b></div>
-      <div class="set-line ${n >= 3 ? 'on' : ''}">3 pièces : ${bonusText(set.bonus3)}</div>
-      <div class="set-line ${n >= 5 ? 'on' : ''}">5 pièces : ${bonusText(set.bonus5)}</div>
+    <div class="setcard">
+      <div class="sc-top"><b>${set.name}</b><span class="sc-pips">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''} ${i === 3 || i === 5 ? 'step' : ''}"></i>`).join('')}</span></div>
+      <div class="sc-spec">${set.spec.map(k => `<span style="--sc:${STATS[k].color}">${ico(STAT_ICON[k])}${STATS[k].name}</span>`).join('')}<span class="voie" style="--sc:${STATS[set.voie].color}">arme et bottes : ${STATS[set.voie].name}</span></div>
+      <div class="sc-bonus ${n >= 3 ? 'on' : ''}"><em>3 pièces</em>+${pct(set.bonus3)} % ${set.spec.map(k => STATS[k].name).join(' et ')}${n >= 3 ? ` ${ico('check')}` : ''}</div>
+      <div class="sc-bonus ${n >= 5 ? 'on' : ''}"><em>5 pièces</em>+${pct(set.bonus5)} % ${set.spec.map(k => STATS[k].name).join(' et ')}${n >= 5 ? ` ${ico('check')}` : ''}</div>
     </div>`;
 }
 
@@ -719,13 +720,12 @@ function invGrid(list) {
 function openSlotPicker(slot) {
   const cur = E.equippedItems(hero)[slot];
   const list = stacks().filter(s => ITEMS[s.itemId].slot === slot);
-  const statsTxt = (itemId, r) => Object.entries(E.itemStats(itemId, r)).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
-    .map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ');
+  const statsTxt = (itemId, r) => statChips(itemId, r);
   const row = (s) => `
     <button class="pick-row ${s.equipped ? 'on' : ''}" style="--rc:${RARITIES[s.rarity].color}" data-act="${s.equipped ? 'item' : 'equip'}" data-id="${s.itemId}" data-r="${s.rarity}">
       <span class="it r${s.rarity} pick-ic" style="--rc:${RARITIES[s.rarity].color}"><canvas class="px" data-icon="${s.itemId}"></canvas>${s.items.length > 1 ? `<span class="n">x${s.items.length}</span>` : ''}</span>
       <span class="pick-txt"><b>${esc(ITEMS[s.itemId].name)}</b><small style="color:${RARITIES[s.rarity].color}">${RARITIES[s.rarity].name}${ITEMS[s.itemId].set ? ` · ${esc(SETS[ITEMS[s.itemId].set].name)}` : ''}</small><small class="pick-st">${statsTxt(s.itemId, s.rarity)}</small></span>
-      <span class="pick-go">${s.equipped ? 'Porté' : 'Équiper'}</span>
+      <span class="pick-go">${s.equipped ? 'Porté' : `${gainPill(powerGain(s.itemId, s.rarity))}Équiper`}</span>
     </button>`;
   openModal(`
     <h3>${SLOT_GLYPH[slot]} ${SLOTS[slot].name}</h3>
@@ -835,31 +835,56 @@ function fuseSummary(made) {
     </div>`).join('');
 }
 
-function statLines(stats, compare = null) {
-  const keys = STAT_KEYS.filter(k => (stats[k] || 0) || (compare && compare[k]));
-  return keys.map(k => {
-    const v = stats[k] || 0;
-    let diff = '';
-    if (compare) {
-      const d = v - (compare[k] || 0);
-      if (d) diff = ` <span class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d})</span>`;
-    }
-    return `<div class="st-line"><span style="color:${STATS[k].color}">${STATS[k].name}</span><span>+${v}${diff}</span></div>`;
-  }).join('');
+/** D'où vient chaque stat d'un objet : la stat de l'emplacement (toujours la même) et les 2 spécialités (panoplie ou familier) */
+function itemOrigin(itemId) {
+  const it = ITEMS[itemId];
+  if (it.slot === 'pet') return { base: it.voie, spec: it.spec || [], specFrom: 'familier' };
+  const S = SETS[it.set];
+  return { base: ['hat', 'armor', 'amulet'].includes(it.slot) ? 'vit' : S.voie, spec: S.spec, specFrom: 'panoplie' };
 }
+/** Puissance du héros s'il portait cet objet, comparée à maintenant (null si c'est déjà l'objet porté) */
+function powerGain(itemId, rarity) {
+  const st = E.stackOf(hero, itemId, rarity);
+  const slot = ITEMS[itemId].slot;
+  if (!st.length || st.some(s => s.uid === hero.equipped[slot])) return null;
+  const now = E.powerScore(E.snapshot(hero));
+  const then = E.powerScore(E.snapshot({ ...hero, equipped: { ...hero.equipped, [slot]: st[0].uid } }));
+  return then - now;
+}
+const gainPill = (g, big = false) => g === null ? '' : g > 0 ? `<span class="gain up ${big ? 'big' : ''}">▲ +${fmtNum(g)}</span>` : g < 0 ? `<span class="gain down ${big ? 'big' : ''}">▼ ${fmtNum(g)}</span>` : `<span class="gain eq ${big ? 'big' : ''}">= égal</span>`;
+/** Tuiles de stats d'un objet : icône, valeur, d'où ça vient, et l'écart avec l'objet porté */
+function statTiles(itemId, rarity, cur = null) {
+  const stats = E.itemStats(itemId, rarity), cmp = cur ? E.itemStats(cur.itemId, cur.rarity) : null;
+  const O = itemOrigin(itemId);
+  const keys = STAT_KEYS.filter(k => (stats[k] || 0) || (cmp && cmp[k]));
+  keys.sort((a, b) => (stats[b] || 0) - (stats[a] || 0));
+  const max = Math.max(1, ...keys.map(k => stats[k] || 0));
+  return `<div class="stiles">${keys.map(k => {
+    const v = stats[k] || 0, d = cmp ? v - (cmp[k] || 0) : 0;
+    const src = [k === O.base ? 'emplacement' : '', O.spec.includes(k) ? O.specFrom : ''].filter(Boolean).join(' + ');
+    return `<div class="stile ${v ? '' : 'lost'}" style="--sc:${STATS[k].color}">
+      <span class="sti-ic">${ico(STAT_ICON[k])}</span>
+      <span class="sti-txt"><b>${v ? '+' + fmtNum(v) : '0'}</b><small>${STATS[k].name}</small>${src ? `<em>${src}</em>` : ''}</span>
+      ${d ? `<span class="sti-d ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${fmtNum(d)}</span>` : ''}
+      <i class="sti-bar" style="width:${Math.round(100 * v / max)}%"></i>
+    </div>`;
+  }).join('')}</div>`;
+}
+/** Critique et esquive de l'objet (à partir de Légendaire), en pastilles */
+function extraChips(itemId, rarity, cur = null) {
+  if (ITEMS[itemId].slot === 'pet') return '';
+  const x = E.itemExtras(itemId, rarity), c = cur ? E.itemExtras(cur.itemId, cur.rarity) : { crit: 0, dodge: 0 };
+  if (!x.crit && !x.dodge) return `<div class="xchips"><span class="xchip locked">${ico('lock')} Critique et esquive à partir de <b style="color:${RARITIES[4].color}">Légendaire</b></span></div>`;
+  const chip = (cls, icon, name, v, old) => { const d = Math.round((v - old) * 1000) / 10;
+    return `<span class="xchip ${cls}">${ico(icon)}<b>+${pctTxt(v)}</b> ${name}${d ? ` <i class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${String(d).replace('.', ',')}</i>` : ''}</span>`; };
+  return `<div class="xchips">${chip('crit', 'boom', 'critique', x.crit, c.crit)}${chip('dodge', 'wind', 'esquive', x.dodge, c.dodge)}</div>`;
+}
+/** Petites pastilles de stats (listes d'objets) */
+const statChips = (itemId, r, n = 3) => Object.entries(E.itemStats(itemId, r)).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, n)
+  .map(([k, v]) => `<i class="schip" style="--sc:${STATS[k].color}">${STATS[k].short}<b>${fmtNum(v)}</b></i>`).join('');
+
 
 const pctTxt = (v) => `${Math.round(v * 1000) / 10} %`;
-/** Lignes « Critique » / « Esquive » d'un objet (toutes les pièces, à partir de Légendaire), comparées à l'objet porté */
-function extraLines(itemId, rarity, cur) {
-  const x = E.itemExtras(itemId, rarity);
-  const c = cur ? E.itemExtras(cur.itemId, cur.rarity) : null;
-  const line = (name, color, v, old) => {
-    const d = c ? Math.round((v - old) * 1000) / 10 : 0;
-    return `<div class="st-line"><span style="color:${color}">${name}</span><span>+${pctTxt(v)}${d ? ` <span class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d} %)</span>` : ''}</span></div>`;
-  };
-  if (!x.crit && !x.dodge) return ITEMS[itemId].slot !== 'pet' && rarity < 4 ? '<div class="st-line hint-line"><span>Critique et esquive à partir de Légendaire</span></div>' : '';
-  return (x.crit ? line('Coups critiques', '#ffd45a', x.crit, c ? c.crit : 0) : '') + (x.dodge ? line('Esquive', '#7fd6ff', x.dodge, c ? c.dodge : 0) : '');
-}
 
 function openItem(itemId, rarity) {
   const it = ITEMS[itemId];
@@ -870,26 +895,32 @@ function openItem(itemId, rarity) {
   const curUid = hero.equipped[slot];
   const isEq = stack.some(s => s.uid === curUid);
   const cur = !isEq && curUid ? hero.inventory.find(i => i.uid === curUid) : null;
-  const curStats = cur ? E.itemStats(cur.itemId, cur.rarity) : null;
   const need = E.fuseNeed(rarity);
   const canFuse = stack.length >= need && rarity < RARITIES.length - 1;
   const spare = stack.filter(s => s.uid !== curUid).length;
   const R = RARITIES[rarity];
   const next = RARITIES[rarity + 1];
+  const gain = powerGain(itemId, rarity);
+  const verdict = isEq ? `<div class="verdict on">${ico('check')} Tu le portes</div>`
+    : !curUid ? `<div class="verdict up">${gainPill(gain, true)} de puissance si tu le portes</div>`
+    : gain > 0 ? `<div class="verdict up">${gainPill(gain, true)} de puissance : mieux que ce que tu portes</div>`
+    : gain < 0 ? `<div class="verdict down">${gainPill(gain, true)} de puissance : moins bien que ce que tu portes</div>`
+    : `<div class="verdict eq">Aussi fort que ce que tu portes</div>`;
   openModal(`
-    <div class="item-head">
-      <div class="big-ic" style="--rc:${R.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
-      <div>
+    <div class="ihero" style="--rc:${R.color}">
+      <div class="ih-art"><canvas class="px" data-icon="${itemId}"></canvas>${stack.length > 1 ? `<span class="ih-n">×${stack.length}</span>` : ''}</div>
+      <div class="ih-txt">
+        <span class="ih-rar">${R.name}</span>
         <h3>${esc(it.name)}</h3>
-        <div class="rar" style="color:${R.color}">${R.name}</div>
-        <div style="color:var(--muted);font-size:13px;margin-top:6px">${SLOTS[slot].name} · ${stack.length} exemplaire${stack.length > 1 ? 's' : ''}</div>
+        <small>${SLOTS[slot].name}${it.set ? ` · ${esc(SETS[it.set].name)}` : ''}</small>
       </div>
     </div>
-    ${statLines(stats, curStats)}
-    ${extraLines(itemId, rarity, cur)}
+    ${verdict}
+    <div class="isub">Ce qu’il te donne${cur ? `<small>comparé à ${esc(ITEMS[cur.itemId].name)} (${RARITIES[cur.rarity].name})</small>` : ''}</div>
+    ${statTiles(itemId, rarity, cur)}
+    ${extraChips(itemId, rarity, cur)}
     ${it.set ? setBox(it.set) : ''}
     ${PETS[itemId] ? petBox(itemId, rarity) : ''}
-    ${cur ? `<p class="hint" style="margin-top:8px">Comparé à ton ${SLOTS[slot].name.toLowerCase()} actuel : ${esc(ITEMS[cur.itemId].name)} (${RARITIES[cur.rarity].name})</p>` : ''}
     ${canFuse ? `
       <div class="fuse-box">
         <div style="font-weight:800">Fusion disponible !</div>
@@ -898,7 +929,7 @@ function openItem(itemId, rarity) {
           <b>→</b>
           <div class="it" style="--rc:${next.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
         </div>
-        ${statLines(E.itemStats(itemId, rarity + 1), stats)}
+        <div class="fuse-st">${Object.entries(E.itemStats(itemId, rarity + 1)).map(([k, v]) => `<span style="--sc:${STATS[k].color}">${STATS[k].short} <s>${fmtNum(stats[k] || 0)}</s> → <b>${fmtNum(v)}</b></span>`).join('')}</div>
         <button class="btn block" style="margin-top:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuse" data-id="${itemId}" data-r="${rarity}">Fusionner en ${next.name}</button>
       </div>` : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Il faut ${need} exemplaires pour le fusionner en <b style="color:${next.color}">${next.name}</b> (tu en as ${stack.length}).</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
     ${spare ? `
@@ -3213,7 +3244,7 @@ function viewShop() {
           <div class="dl ${d.bought ? 'sold' : ''}">
             <div class="it r${d.rarity} dl-ico" style="--rc:${RARITIES[d.rarity].color}"><canvas class="px" data-icon="${d.itemId}"></canvas></div>
             <b>${esc(ITEMS[d.itemId].name)}</b><small>${SLOTS[ITEMS[d.itemId].slot].name} · <span style="color:${RARITIES[d.rarity].color}">${RARITIES[d.rarity].name}</span></small>
-            <small class="dl-st">${Object.entries(E.itemStats(d.itemId, d.rarity)).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, v]) => `<i style="color:${STATS[k].color}">+${v} ${STATS[k].short}</i>`).join(' ')}</small>
+            <small class="dl-st">${statChips(d.itemId, d.rarity, 2)}</small>
             ${d.bought ? '<span class="dl-sold">Acheté</span>'
               : `<button class="btn small green" data-act="buyDaily" data-i="${d.i}" ${acc.clat < d.price ? 'disabled' : ''}>${d.price}<canvas class="px" data-clat></canvas></button>`}
           </div>`).join('')}
