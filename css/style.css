@@ -2330,3 +2330,5 @@ canvas[data-hero] { translate: -10.4% 0; }
   padding: 5px 9px; font-size: 10.5px; line-height: 1.2; animation: pod-float 5s ease-in-out infinite; }
 .pstage .pod.p1 .pod-bubble { top: auto; bottom: calc(100% + 30px); }
 @keyframes pod-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.pstage .pod-crown { top: -14px; }
+.pstage .pod.p1 .pod-bubble { bottom: calc(100% + 26px); }
