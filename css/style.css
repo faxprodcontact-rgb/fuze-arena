@@ -2151,3 +2151,91 @@ canvas[data-hero] { translate: -10.4% 0; }
 .tw2-fl.far { opacity: .9; }
 .tw2-shaft { padding: 0 6px; background: linear-gradient(90deg, transparent 0 4px, #241b5a 4px calc(100% - 4px), transparent calc(100% - 4px)); border-radius: 4px; }
 .hd2-mobs canvas { left: calc(3% + var(--i) * 12.5%); }
+
+/* =====================================================================
+   PVP / COOP : Arène, Trône, Gros boss (refaits le 20/10)
+   ===================================================================== */
+/* ---------- Arène ---------- */
+.ar2-chest { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -2px 0 12px; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,.25); }
+.ar2-chest i { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: #1b1530; box-shadow: inset 0 0 0 2px rgba(255,255,255,.08); opacity: .45; }
+.ar2-chest i.on { opacity: 1; background: linear-gradient(180deg, #ff6b7a, #c42a43); box-shadow: 0 0 10px rgba(255,93,108,.6); }
+.ar2-chest i .ico { width: 16px; height: 16px; }
+.ar2-chest > b { width: 10px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.15); }
+.ar2-box canvas { width: 40px; height: auto; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); }
+.ar2-box.near canvas { animation: cbt-bob 1.6s ease-in-out infinite; filter: drop-shadow(0 0 8px rgba(255,93,108,.8)); }
+.ar2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ar2 { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: linear-gradient(180deg, #1a1350, #0e0a2b);
+  box-shadow: inset 0 0 0 2px rgba(255,93,108,.35), 0 4px 0 rgba(0,0,0,.4); }
+.ar2-stage { position: relative; isolation: isolate; height: 104px; display: grid; place-items: end center; overflow: hidden; }
+.ar2-stage .dg2-bg { object-position: center 78%; transform: scale(1.4); }
+.ar2-stage .dg2-shade { background: linear-gradient(0deg, rgba(14,10,43,1), rgba(14,10,43,.1) 55%); }
+.ar2-stage > canvas { position: relative; width: 74px; height: auto; margin-bottom: 4px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); }
+.ar2-lv { position: absolute; top: 7px; left: 7px; padding: 1px 7px; border-radius: 6px; font-family: var(--pixel); font-size: 10px; color: #fff; background: rgba(10,7,30,.75); }
+.ar2-stamp { position: absolute; top: 34px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 3px 12px; border-radius: 8px; border: 2px solid #4cd964;
+  font-family: var(--pixel); font-size: 14px; color: #7bf09a; text-transform: uppercase; background: rgba(10,7,30,.7); box-shadow: 0 0 12px rgba(76,217,100,.5); }
+.ar2-info { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 6px 8px; text-align: center; }
+.ar2-info > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--pixel); font-weight: 400; font-size: 14px; color: #fff; }
+.ar2-info > small { display: inline-flex; align-items: center; gap: 4px; font-family: var(--pixel); font-size: 11px; color: var(--gold); }
+.ar2-info small .ico { width: 11px; height: 11px; }
+.ar2-info .cmp { font-family: var(--font, inherit); }
+.ar2-btn { margin: 0 8px 8px; padding: 9px 4px; border: 0; border-radius: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer;
+  font-family: var(--pixel); font-size: 13px; color: #fff; background: linear-gradient(180deg, #ff6b7a, #d6304a); box-shadow: 0 3px 0 #8e1d31, inset 0 2px 0 rgba(255,255,255,.3); text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+.ar2-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #8e1d31; }
+.ar2-btn .ico { width: 15px; height: 15px; }
+.ar2-btn.re { font-size: 12px; background: linear-gradient(180deg, #7b5cff, #4f31c9); box-shadow: 0 3px 0 #2c1a7c, inset 0 2px 0 rgba(255,255,255,.25); }
+.ar2-btn em { display: inline-flex; align-items: center; gap: 2px; font-style: normal; color: #7bf09a; }
+.ar2-btn em canvas.ico { width: 13px; height: 13px; }
+.ar2.done { box-shadow: inset 0 0 0 2px rgba(76,217,100,.3), 0 4px 0 rgba(0,0,0,.4); }
+.ar2.done .ar2-stage > canvas { filter: grayscale(.5) brightness(.7) drop-shadow(0 3px 0 rgba(0,0,0,.5)); }
+
+/* ---------- Trône ---------- */
+.tr-king { overflow: hidden; isolation: isolate; margin: -4px -4px 12px; padding: 14px 0 14px; border-radius: 16px; box-shadow: inset 0 0 0 2px rgba(255,216,74,.45), 0 0 24px rgba(255,216,74,.15); }
+.tr-king .dg2-bg { object-position: center 60%; }
+.tr-king .dg2-shade { background: linear-gradient(0deg, rgba(14,10,43,.95), rgba(14,10,43,.35) 60%, rgba(14,10,43,.6)); }
+.tr-rays { position: absolute; left: 50%; top: 38%; width: 340px; height: 340px; margin: -170px 0 0 -170px; z-index: -1; border-radius: 50%; animation: spin 18s linear infinite;
+  background: repeating-conic-gradient(from 0deg, transparent 0 10deg, rgba(255,216,74,.16) 10deg 20deg);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 100%); mask: radial-gradient(closest-side, #000 30%, transparent 100%); }
+.tr-king-name { font-size: 20px; text-shadow: 0 2px 0 #000, 0 0 14px rgba(255,216,74,.6); }
+.tr-prize { position: absolute; top: 5px; right: 5px; display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 7px; font-family: var(--pixel); font-size: 10px;
+  color: #7bf09a; background: rgba(10,7,30,.75); box-shadow: inset 0 0 0 1px rgba(76,217,100,.4); z-index: 2; }
+.tr-prize canvas.ico { width: 11px; height: 11px; }
+.tr-prize.big { top: 10px; right: 10px; padding: 4px 10px; font-size: 15px; border-radius: 10px; box-shadow: inset 0 0 0 1.5px rgba(76,217,100,.6), 0 0 12px rgba(76,217,100,.3); }
+.tr-prize.big canvas.ico { width: 15px; height: 15px; }
+.tr-card { padding-top: 22px !important; background: linear-gradient(180deg, #1d1652, #0e0a2b) !important; }
+.tr-card.top2 { box-shadow: inset 0 0 0 2px #c9d1dc, 0 0 10px rgba(201,209,220,.25); }
+.tr-card.top3 { box-shadow: inset 0 0 0 2px #d48a4a, 0 0 10px rgba(212,138,74,.25); }
+.tr-card.me { box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(255,216,74,.35) !important; }
+.tr-rank .ico { width: 16px; height: 16px; }
+
+/* ---------- Gros boss ---------- */
+.rd2-stage { position: relative; isolation: isolate; overflow: hidden; height: 210px; margin: -2px 0 10px; border-radius: 16px; display: grid; place-items: end center;
+  box-shadow: inset 0 0 0 2px rgba(255,138,61,.5), 0 0 24px rgba(255,138,61,.15); }
+.rd2-stage .dg2-bg { object-position: center 70%; }
+.rd2-stage .dg2-shade { background: linear-gradient(0deg, rgba(14,10,43,.9), rgba(14,10,43,.1) 55%, rgba(14,10,43,.45)); }
+.rd2-glow { position: absolute; left: 50%; bottom: 0; width: 260px; height: 140px; margin-left: -130px; z-index: -1; background: radial-gradient(ellipse at 50% 100%, rgba(255,138,61,.45), transparent 70%); }
+.rd2-tag { position: absolute; top: 10px; left: 10px; padding: 3px 10px; border-radius: 9px; font-family: var(--pixel); font-size: 11.5px; color: #fff; background: #c4531f; box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.rd2-art canvas { width: auto; height: 180px; max-width: 220px; object-fit: contain; margin-bottom: 4px; filter: drop-shadow(0 4px 0 rgba(0,0,0,.5)); animation: cbt-bob 3s ease-in-out infinite; }
+.rd2-rw { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding: 6px 9px; border-radius: 11px; background: rgba(10,7,30,.78);
+  box-shadow: inset 0 0 0 1.5px rgba(255,216,74,.4); }
+.rd2-rw small { font-size: 9.5px; font-weight: 800; color: var(--muted); }
+.rd2-rw span { display: inline-flex; align-items: center; gap: 4px; font-family: var(--pixel); font-size: 13px; color: var(--gold); }
+.rd2-rw span canvas { width: 22px; height: auto; }
+.rd2-rw span canvas.ico { width: 15px; height: 15px; }
+.rd2-name { display: block; text-align: center; font-family: var(--pixel); font-weight: 400; font-size: 18px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255,138,61,.6); margin-bottom: 8px; }
+.rd2-hp { position: relative; height: 26px; border-radius: 13px; overflow: hidden; background: #2a0f1a; box-shadow: inset 0 0 0 2px rgba(0,0,0,.5), 0 0 0 2px rgba(255,93,108,.35); margin-bottom: 10px; }
+.rd2-hp i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, #ff7a7a, #d6304a); box-shadow: inset 0 2px 0 rgba(255,255,255,.3); }
+.rd2-hp span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--pixel); font-size: 12.5px; color: #fff; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
+.rd2-hp.dead span { color: #7bf09a; }
+.rd2-charges .dg2-pips i.on { background: #ff8a3d; box-shadow: 0 0 6px rgba(255,138,61,.7); }
+.rd2-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 6px; border-radius: 12px; background: linear-gradient(180deg, #1d1652, #140e3d); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.rd2-row.me { box-shadow: inset 0 0 0 2px var(--gold); }
+.rd2-pos { width: 22px; text-align: center; font-family: var(--pixel); font-size: 13px; color: var(--muted); }
+.rd2-pos .ico { width: 20px; height: 20px; }
+.rd2-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.rd2-who b { font-size: 13px; font-weight: 800; color: #fff; }
+.rd2-who i { display: block; height: 6px; border-radius: 4px; background: linear-gradient(90deg, #ff8a3d, #ffd84a); box-shadow: 0 0 6px rgba(255,138,61,.5); }
+.rd2-dmg { font-family: var(--pixel); font-size: 14px; color: var(--gold); }
+.tr-king-art { height: 150px; }
+.tr-king-art canvas { width: 124px; }
+.tr-crown { margin-bottom: -92px; }
+.ar2-stage > canvas { width: 82px; }

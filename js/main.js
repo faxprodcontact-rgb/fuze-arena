@@ -997,7 +997,7 @@ function viewFights() {
   const clatGot = acc.fights.clat || {};
   return modeHead({
     id: 'arena', c: '#ff5d6c', art: '<canvas class="px" data-emblem="arena"></canvas>',
-    title: 'Arène', sub: 'Bats chacun de tes potes pour gagner ton point de combat',
+    title: 'Arène', sub: 'Bats chacun de tes potes',
     chips: [
       mchip(ico('swords'), 'Combats classés', `${todo.length} / ${list.length}`, todo.length ? 'hot' : ''),
       mchip('<canvas class="px" data-chest="combat"></canvas>', 'Coffre de combat', `${acc.winProgress} / ${WINS_PER_COMBAT_CHEST}`),
@@ -1008,24 +1008,37 @@ function viewFights() {
       <b>Costaud · Serré · Facile</b> : sa puissance comparée à la tienne.`,
   }) + `
     <section class="card hx" style="--hc:#ff5d6c">
-      ${secHead(ico('swords'), 'À combattre', 'Combat classé : coffre de combat', `<span class="pill ${todo.length ? 'red' : 'green'}">${todo.length}</span>`)}
+      ${secHead(ico('swords'), 'À combattre', '', `<span class="pill ${todo.length ? 'red' : 'green'}">${todo.length}</span>`)}
+      <div class="ar2-chest">${Array.from({ length: WINS_PER_COMBAT_CHEST }, (_, i) => `<i class="${i < acc.winProgress ? 'on' : ''}">${ico('swords')}</i>`).join('<b></b>')}<b></b><span class="ar2-box ${acc.winProgress >= WINS_PER_COMBAT_CHEST - 1 ? 'near' : ''}"><canvas class="px" data-chest="combat"></canvas></span></div>
       ${!list.length ? `<p class="empty">${NET.online ? 'Personne d’autre n’est encore inscrit. Invite tes potes !' : 'Aucun adversaire.'}</p>`
-        : !todo.length ? '<div class="all-done">✓ Tous tes combats classés sont faits !<small>Nouveaux combats à minuit. En attendant, fais des revanches.</small></div>' : ''}
-      ${todo.map(o => `
-        <div class="foe todo">${foeAv(o)}${foeInfo(o)}
-          <button class="foe-btn fight" data-act="fight" data-id="${o.id}"><i>${ico('swords')}</i>Combattre</button>
-        </div>`).join('')}
+        : !todo.length ? '<div class="all-done">✓ Tous tes combats classés sont faits !<small>Nouveaux combats à minuit.</small></div>' : ''}
+      <div class="ar2-grid">${todo.map(o => fighterCard(o)).join('')}</div>
     </section>
     ${done.length ? `
     <section class="card hx" style="--hc:#9d93d6">
-      ${secHead('↻', 'Déjà affrontés', 'Revanches illimitées, pour le fun')}
-      ${done.map(o => {
-        return `
-        <div class="foe win">${foeAv(o)}<span class="foe-res">GAGNÉ</span>${foeInfo(o)}
-          <button class="foe-btn re" data-act="friendly" data-id="${o.id}"><i>↻</i>Revanche<small>${clatGot[o.id] ? 'pour le fun' : `+${REMATCH_CLAT} Flouze`}</small></button>
-        </div>`;
-      }).join('')}
+      ${secHead('↻', 'Revanches')}
+      <div class="ar2-grid">${done.map(o => fighterCard(o, true, clatGot[o.id])).join('')}</div>
     </section>` : ''}`;
+}
+
+/** Carte d'un adversaire de l'arène : son perso sur le sable de l'arène, sa force, et le bouton */
+function fighterCard(o, done = false, got = false) {
+  return `
+    <div class="ar2 ${done ? 'done' : ''}">
+      <div class="ar2-stage">
+        <img class="dg2-bg" src="art/decors/arena.svg" alt="" loading="lazy"><i class="dg2-shade"></i>
+        <canvas class="px" data-portrait="${o.classId}" data-dye="${o.dye || ''}"></canvas>
+        <span class="ar2-lv">Nv.${o.level}</span>
+        ${done ? '<span class="ar2-stamp">Gagné</span>' : ''}
+      </div>
+      <div class="ar2-info">
+        <b>${dotHtml(o.id)}${nameHtml(o.name, o.data)}</b>
+        <small>${ico('bolt')}${fmtNum(E.powerScore(o.snap))} ${powerCmp(o.snap)}</small>
+      </div>
+      ${done
+        ? `<button class="ar2-btn re" data-act="friendly" data-id="${o.id}">↻ Revanche${got ? '' : ` <em>+${REMATCH_CLAT}<canvas class="px ico" data-clat></canvas></em>`}</button>`
+        : `<button class="ar2-btn" data-act="fight" data-id="${o.id}">${ico('swords')} Combattre</button>`}
+    </div>`;
 }
 
 // Charges qui reviennent une par une : petit chrono « +1 dans 2:13:05 » (mis à jour chaque seconde)
@@ -2371,8 +2384,9 @@ function viewThrone() {
   const card = (c, i) => {
     const h = heroOf(c);
     return `
-      <div class="tr-card ${c.id === me ? 'me' : ''}">
-        <span class="tr-rank">${i + 1}</span>
+      <div class="tr-card ${c.id === me ? 'me' : ''} ${i < 3 ? `top${i + 1}` : ''}">
+        <span class="tr-rank">${i < 3 ? [ico('medal1'), ico('medal2'), ico('medal3')][i] : i + 1}</span>
+        <span class="tr-prize">+${E.throneFlouze(i)}<canvas class="px ico" data-clat></canvas></span>
         <canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas>
         <div class="tr-name">${nameHtml(c.name, c.data)}</div>
         <small class="tr-pow">${ico('bolt')} ${fmtNum(c.power)}</small>
@@ -2386,7 +2400,7 @@ function viewThrone() {
   const kpet = king.data ? petOf(kh) : '';
   return prevCard + modeHead({
     id: 'throne', c: '#ffd45a', art: '<canvas class="px" data-emblem="throne"></canvas>',
-    title: 'Le trône', sub: 'Défie ceux au-dessus de toi et prends leur place',
+    title: 'Le trône', sub: 'Défie ceux au-dessus de toi',
     chips: [
       mchip(ico('crown'), 'Ta place', `${myRank + 1} / ${list.length}`, myRank === 0 ? 'hot' : ''),
       mchip(ico('medal1'), 'Le roi', esc(king.name)),
@@ -2396,6 +2410,8 @@ function viewThrone() {
   }) + `
     <section class="card hx throne-hall" style="--hc:#ffd45a">
       <div class="tr-king ${king.id === me ? 'me' : ''}">
+        <img class="dg2-bg" src="art/decors/castle.svg" alt=""><i class="dg2-shade"></i><i class="tr-rays"></i>
+        <span class="tr-prize big">+${E.throneFlouze(0)}<canvas class="px ico" data-clat></canvas></span>
         <span class="tr-crown">${ico('crown')}</span>
         <div class="tr-king-art"><canvas class="px" data-hero="${kh.classId}" data-pet="${kpet}" data-dye="${kh.dye || ''}"></canvas></div>
         <div class="tr-king-name">${nameHtml(king.name, king.data)}</div>
@@ -3014,20 +3030,32 @@ function viewRaid() {
     ],
     info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} charges d’assaut</b> par compte : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br>Le gros boss ne rapporte pas d’XP : on vient pour les coffres et le Flouze.`,
   }) + `
-    <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
-      <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
-      <div class="bs-art"><canvas class="px" data-monster="${B.sprite}"></canvas></div>
-      <div class="bs-name">${B.name}</div>
-      <div class="hp-bar"><i style="width:${(S.remaining / hp) * 100}%"></i><span>${S.killed ? 'VAINCU !' : `${fmtNum(S.remaining)} / ${fmtNum(hp)} PV`}</span></div>
+    <section class="card hx rd2" style="--hc:#ff8a3d">
+      <div class="rd2-stage">
+        <img class="dg2-bg" src="art/decors/${B.theme || 'meeting'}.svg" alt=""><i class="dg2-shade"></i><i class="rd2-glow"></i>
+        <span class="rd2-tag">Boss · Nv.${raidInfo.raid.level}</span>
+        <div class="rd2-art"><canvas class="px" data-monster="${B.sprite}"></canvas></div>
+        <div class="rd2-rw"><small>S’il tombe</small><span><canvas class="px" data-chest="war"></canvas>${R.killChests}</span><span><canvas class="px ico" data-clat></canvas>${R.killClat}</span></div>
+      </div>
+      <b class="rd2-name">${B.name}</b>
+      <div class="rd2-hp ${S.killed ? 'dead' : ''}"><i style="width:${(S.remaining / hp) * 100}%"></i><span>${S.killed ? 'VAINCU !' : `${fmtNum(S.remaining)} / ${fmtNum(hp)} PV`}</span></div>
+      <div class="hd2-charges rd2-charges">
+        <span class="dg2-pips">${'<i class="on"></i>'.repeat(left)}${'<i></i>'.repeat(Math.max(0, RAID.attemptsPerHalf - left))}</span>
+        <span>${left ? `${left} assaut${left > 1 ? 's' : ''}` : 'Plus d’assaut'}</span>
+        ${E.raidNextIn(acc) ? `<span class="dg2-wait">+1 dans <b data-charge="${Date.now() + E.raidNextIn(acc)}">${fmt(E.raidNextIn(acc))}</b></span>` : ''}
+      </div>
       ${canClaim
         ? `<button class="btn primary block big-go" data-act="claimRaid" data-week="${raidInfo.week}">Récupérer ma récompense</button>`
         : `<button class="btn danger block big-go" data-act="attackRaid" ${left > 0 && !S.killed ? '' : 'disabled'}>${S.killed ? 'Boss vaincu' : left > 0 ? `${ico('swords')} Attaquer` : 'Plus d’assaut : reviens plus tard'}</button>`}
     </section>
     <section class="card hx" style="--hc:#ff8a3d">
-      ${secHead(ico('trophy'), 'Dégâts du raid', `${fmtNum(S.total)} dégâts au total`)}
+      ${secHead(ico('trophy'), 'Dégâts', `${fmtNum(S.total)} au total`)}
       ${S.board.length ? S.board.map((b, i) => `
-        <div class="opp rank ${b.id === me ? 'me' : ''}"><div class="pos">${[ico('medal1'), ico('medal2'), ico('medal3')][i] || i + 1}</div>
-          <div class="o-body"><div class="o-name">${nameHtml(b.pseudo, dataOfPseudo(b.pseudo))}</div></div><div class="score">${fmtNum(b.dmg)}</div></div>`).join('')
+        <div class="rd2-row ${b.id === me ? 'me' : ''}">
+          <span class="rd2-pos">${[ico('medal1'), ico('medal2'), ico('medal3')][i] || i + 1}</span>
+          <div class="rd2-who"><b>${nameHtml(b.pseudo, dataOfPseudo(b.pseudo))}</b><i style="width:${Math.max(4, b.dmg / Math.max(1, S.board[0].dmg) * 100)}%"></i></div>
+          <span class="rd2-dmg">${fmtNum(b.dmg)}</span>
+        </div>`).join('')
         : '<p class="empty">Personne ne l’a encore attaqué.</p>'}
     </section>`;
 }
