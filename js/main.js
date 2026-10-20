@@ -836,13 +836,6 @@ function fuseSummary(made) {
     </div>`).join('');
 }
 
-/** D'où vient chaque stat d'un objet : la stat de l'emplacement (toujours la même) et les 2 spécialités (panoplie ou familier) */
-function itemOrigin(itemId) {
-  const it = ITEMS[itemId];
-  if (it.slot === 'pet') return { base: it.voie, spec: it.spec || [], specFrom: 'familier' };
-  const S = SETS[it.set];
-  return { base: ['hat', 'armor', 'amulet'].includes(it.slot) ? 'vit' : S.voie, spec: S.spec, specFrom: 'panoplie' };
-}
 /** Puissance du héros s'il portait cet objet, comparée à maintenant (null si c'est déjà l'objet porté) */
 function powerGain(itemId, rarity) {
   const st = E.stackOf(hero, itemId, rarity);
@@ -853,19 +846,17 @@ function powerGain(itemId, rarity) {
   return then - now;
 }
 const gainPill = (g, big = false) => g === null ? '' : g > 0 ? `<span class="gain up ${big ? 'big' : ''}">▲ +${fmtNum(g)}</span>` : g < 0 ? `<span class="gain down ${big ? 'big' : ''}">▼ ${fmtNum(g)}</span>` : `<span class="gain eq ${big ? 'big' : ''}">= égal</span>`;
-/** Tuiles de stats d'un objet : icône, valeur et d'où ça vient (l'écart global est la puissance, dans l'en-tête) */
+/** Tuiles de stats d'un objet : icône et valeur (l'écart global est la puissance, dans l'en-tête) */
 function statTiles(itemId, rarity) {
   const stats = E.itemStats(itemId, rarity);
-  const O = itemOrigin(itemId);
   const keys = STAT_KEYS.filter(k => stats[k] > 0);
   keys.sort((a, b) => (stats[b] || 0) - (stats[a] || 0));
   const max = Math.max(1, ...keys.map(k => stats[k] || 0));
   return `<div class="stiles">${keys.map(k => {
     const v = stats[k] || 0;
-    const src = [k === O.base ? 'emplacement' : '', O.spec.includes(k) ? O.specFrom : ''].filter(Boolean).join(' + ');
     return `<div class="stile ${v ? '' : 'lost'}" style="--sc:${STATS[k].color}">
       <span class="sti-ic">${ico(STAT_ICON[k])}</span>
-      <span class="sti-txt"><b>${v ? '+' + fmtNum(v) : '0'}</b><small>${STATS[k].name}</small>${src ? `<em>${src}</em>` : ''}</span>
+      <span class="sti-txt"><b>${v ? '+' + fmtNum(v) : '0'}</b><small>${STATS[k].name}</small></span>
       <i class="sti-bar" style="width:${Math.round(100 * v / max)}%"></i>
     </div>`;
   }).join('')}</div>`;

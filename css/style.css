@@ -1903,7 +1903,6 @@ button.bk-m:active { transform: scale(.96); }
 .sti-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.1; }
 .sti-txt b { font-family: var(--pixel); font-weight: 400; font-size: 21px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 10px color-mix(in srgb, var(--sc) 55%, transparent); }
 .sti-txt small { font-size: 11px; font-weight: 800; color: color-mix(in srgb, var(--sc) 50%, #fff); }
-.sti-txt em { font-style: normal; font-size: 9px; font-weight: 900; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
 .sti-d { position: absolute; top: 6px; right: 7px; font-family: var(--pixel); font-size: 11px; }
 .sti-d.up { color: #7bf09a; } .sti-d.down { color: #ff7d8a; }
 .sti-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--sc) 50%, transparent), var(--sc)); box-shadow: 0 0 6px var(--sc); }
