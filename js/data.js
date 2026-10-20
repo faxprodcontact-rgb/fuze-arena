@@ -655,6 +655,13 @@ const T = (id, name, price) => ({ id: 't_' + id, kind: 'title', name, price });
 const C = (id, name, price, color) => ({ id: 'c_' + id, kind: 'color', name, price, color });
 const D = (id, name, price, dye) => ({ id: 'd_' + id, kind: 'dye', name, price, dye });
 const V = (id, name, price, colors) => ({ id: 'v_' + id, kind: 'victory', name, price, colors });
+// Éléments des skins élémentaires : prix, nom et couleurs de l'aura en combat
+export const ELEMENTS = [
+  { id: 'feu', name: 'Feu', price: 200, aura: ['#ff5a1a', '#ffb02e', '#ffe46a'] },
+  { id: 'glace', name: 'Glace', price: 200, aura: ['#4aa6ff', '#bfeaff', '#ffffff'] },
+  { id: 'lumiere', name: 'Lumière', price: 280, aura: ['#ffd23a', '#fff2a8', '#ffffff'] },
+  { id: 'tenebres', name: 'Ténèbres', price: 280, aura: ['#8a20ff', '#c070ff', '#3a0060'] },
+];
 // Skin : une tenue propre à une classe (remplace les anciennes teintures, qui restent portables par ceux qui les ont)
 const SKIN_EXTRA = 20;   // tous les skins coûtent 20 Flouze de plus que le prix écrit ci-dessous
 const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 'skin', cls, name, price: price + SKIN_EXTRA, look });
@@ -785,5 +792,12 @@ export const COSMETICS = [
   K('paladin', 'jade', 'Chevalier de jade', 80, { body: '#1abc9c', sleeve: '#16a085', accent: '#ffd84a', cape: '#0e6655', headC: '#ffd84a', legs: '#0e6655', glove: '#16a085' }),
   K('paladin', 'tenebres', 'Paladin des ténèbres', 90, { body: '#34303d', sleeve: '#2b2733', accent: '#b05cff', cape: '#4a2f91', headC: '#8a93a3', legs: '#26232c', boots: '#16121f', glove: '#2b2733', hair: '#1b1530' }),
   K('paladin', 'solaire', 'Gardien solaire', 150, { body: '#ffd84a', sleeve: '#e5b33a', accent: '#ff9f1a', cape: '#c0392b', headC: '#fff3b0', legs: '#b8860b', glove: '#e5b33a' }),
+  // Skins élémentaires : un dessin complet à part (art/heros/skins/), avec arme et aura en combat. Feu et glace 200, lumière et ténèbres 280.
+  ...Object.entries({
+    guerrier: ['Chevalier des braises', 'Chevalier du givre', 'Champion de l’aube', 'Chevalier du néant'],
+    mage: ['Pyromancien', 'Cryomancien', 'Mage céleste', 'Sorcier du néant'],
+    archer: ['Archer ardent', 'Archer du blizzard', 'Archer de l’aube', 'Archer de l’ombre'],
+    paladin: ['Paladin de flammes', 'Paladin de givre', 'Paladin séraphique', 'Paladin déchu'],
+  }).flatMap(([cls, names]) => ELEMENTS.map((el, i) => ({ id: `k_${cls}_el_${el.id}`, kind: 'skin', cls, name: names[i], price: el.price, art: el.id }))),
 ];
 export const COSMETIC = Object.fromEntries(COSMETICS.map(c => [c.id, c]));

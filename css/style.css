@@ -1855,3 +1855,11 @@ button.bk-m:active { transform: scale(.96); }
 .st-unlock { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 12px; border-radius: 999px; font-weight: 900; font-size: 13px; color: #3a2208; background: linear-gradient(#ffe27a, #f2a91e); }
 .st-unlock canvas.ico { width: 16px; height: 16px; }
 .dgn-go .charge-in { font-size: 11px; } .dgn-go .charge-in b { font-size: 12px; }
+
+/* skins élémentaires : étiquette dans la boutique */
+.shop-item { position: relative; }
+.sh-el { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 2px 7px; border-radius: 999px; font-size: 9.5px; font-weight: 900; letter-spacing: .4px; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.sh-el.el-feu { background: linear-gradient(#ff8a3a, #d6340f); }
+.sh-el.el-glace { background: linear-gradient(#7cc4ff, #2f78d6); }
+.sh-el.el-lumiere { background: linear-gradient(#ffe48a, #e8b432); color: #5a3a08; text-shadow: none; }
+.sh-el.el-tenebres { background: linear-gradient(#a464e0, #3c145e); }

@@ -315,9 +315,16 @@ const lookOf = (classId, dyeId) => {
 /** Prépare les images d'un héros (une couleur) : corps pour chaque pose, et portrait */
 async function vecBuild(classId, dyeId) {
   const A = VEC[classId];
-  const look = lookOf(classId, dyeId);
-  const head = recolor(A.p.head, classId, look), body = recolor(A.p.body, classId, look), weapon = recolor(A.p.weapon, classId, look);
-  const key = `${classId}:${look ? dyeId : ''}`;
+  const look = lookOf(classId, dyeId), art = artOf(classId, dyeId);
+  let head, body, weapon;
+  if (art) {
+    const S = await skinArt(classId, art);
+    ({ head, body, weapon } = S.p);
+    SKIN_WEAPON.set(`${classId}:${dyeId}`, S.weapon);
+  } else {
+    head = recolor(A.p.head, classId, look); body = recolor(A.p.body, classId, look); weapon = recolor(A.p.weapon, classId, look);
+  }
+  const key = vecKey(classId, dyeId);
   // cadre agrandi tout autour (HERO_PAD) : le plumet, le chapeau ou les pieds ne sont plus coupés quand le héros se penche ou court.
   // Le dessin garde la même place : les combats tiennent compte de canvas.pad pour le poser (heroBox dans battle.js).
   const [pl, pt, pr, pb] = HERO_PAD;
@@ -339,7 +346,7 @@ async function vecBuild(classId, dyeId) {
   pc.lw = PW; pc.lh = HERO_H; pc.smooth = true;
   VEC_IMG.set(`${key}:portrait`, pc);
 }
-const vecKey = (classId, dyeId) => `${classId}:${lookOf(classId, dyeId) ? dyeId : ''}`;
+const vecKey = (classId, dyeId) => `${classId}:${lookOf(classId, dyeId) || artOf(classId, dyeId) ? dyeId : ''}`;
 const vecPending = new Set();
 function vecGet(classId, dyeId, what) {
   if (!VEC[classId]) return null;
@@ -353,6 +360,46 @@ function vecGet(classId, dyeId, what) {
 function vecHero(classId, dyeId, pose) { return vecGet(classId, dyeId, pose); }
 function vecPortrait(classId, dyeId) { return vecGet(classId, dyeId, 'portrait'); }
 
+/** L'arme seule, autour du poing (0,0) : dessinée dans une grande zone puis recadrée. Renvoie l'image et son pivot (le poing). */
+async function vecWeapon(p) {
+  const AW = 260, AH = 360, AX = -130, AY = -270, PX = VR / VK;
+  const wImg = await svgImage(svgDoc(`${AX} ${AY} ${AW} ${AH}`, `${p.head}${p.weaponLocal}</g>`));
+  const big = document.createElement('canvas');
+  big.width = Math.round(AW * PX); big.height = Math.round(AH * PX);
+  const bx = big.getContext('2d');
+  bx.drawImage(wImg, 0, 0, big.width, big.height);
+  const data = bx.getImageData(0, 0, big.width, big.height).data;
+  let x0 = big.width, y0 = big.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < big.height; y++) for (let x = 0; x < big.width; x++) if (data[(y * big.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const wc = document.createElement('canvas');
+  wc.width = x1 - x0 + 1; wc.height = y1 - y0 + 1;
+  wc.getContext('2d').drawImage(big, -x0, -y0);
+  wc.lw = wc.width / VR; wc.lh = wc.height / VR; wc.smooth = true;
+  return { wc, pivot: [(-AX * PX - x0) / VR, (-AY * PX - y0) / VR] };
+}
+// Skins élémentaires (feu, glace, lumière, ténèbres) : un dessin complet à part (art/heros/skins/<classe>-<élément>.svg,
+// fabriqué par refonte/outils/skins.cjs), avec sa propre arme. Chargés à la demande.
+const artOf = (classId, dyeId) => { const c = dyeId && COSMETIC[dyeId]; return c && c.art && (!c.cls || c.cls === classId) ? c.art : null; };
+const SKIN_ART = new Map();   // « classe-élément » → promesse de { p, weapon }
+function skinArt(classId, art) {
+  const k = `${classId}-${art}`;
+  if (!SKIN_ART.has(k)) SKIN_ART.set(k, (async () => {
+    const q = new URL(import.meta.url).search;
+    const res = await fetch(new URL(`../art/heros/skins/${k}.svg${q}`, import.meta.url));
+    if (!res.ok) throw new Error('skin introuvable : ' + k);
+    const p = vecParse(await res.text());
+    const { wc } = await vecWeapon(p);
+    return { p, weapon: wc };
+  })());
+  return SKIN_ART.get(k);
+}
+const SKIN_WEAPON = new Map();   // « classe:skin » → arme du skin (prête)
+/** Prépare à l'avance les images d'un skin (pour qu'il soit prêt au moment d'un combat) */
+export function prepareSkin(classId, dyeId) {
+  if (!VEC[classId] || !dyeId || VEC_IMG.has(`${vecKey(classId, dyeId)}:idle`)) return Promise.resolve();
+  return vecBuild(classId, dyeId).catch(() => {});
+}
+
 /** Charge les 4 héros vectoriels (à appeler avant le premier affichage). Sans réseau, le jeu garde le pixel art. */
 export async function loadHeroArt() {
   const q = new URL(import.meta.url).search;
@@ -361,21 +408,7 @@ export async function loadHeroArt() {
       const res = await fetch(new URL(`../art/heros/${classId}.svg${q}`, import.meta.url));
       if (!res.ok) return;
       const p = vecParse(await res.text());
-      // arme seule, autour du poing (0,0) : on la dessine dans une grande zone puis on la recadre
-      const AW = 260, AH = 360, AX = -130, AY = -270, PX = VR / VK;
-      const wImg = await svgImage(svgDoc(`${AX} ${AY} ${AW} ${AH}`, `${p.head}${p.weaponLocal}</g>`));
-      const big = document.createElement('canvas');
-      big.width = Math.round(AW * PX); big.height = Math.round(AH * PX);
-      const bx = big.getContext('2d');
-      bx.drawImage(wImg, 0, 0, big.width, big.height);
-      const data = bx.getImageData(0, 0, big.width, big.height).data;
-      let x0 = big.width, y0 = big.height, x1 = 0, y1 = 0;
-      for (let y = 0; y < big.height; y++) for (let x = 0; x < big.width; x++) if (data[(y * big.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-      const wc = document.createElement('canvas');
-      wc.width = x1 - x0 + 1; wc.height = y1 - y0 + 1;
-      wc.getContext('2d').drawImage(big, -x0, -y0);
-      wc.lw = wc.width / VR; wc.lh = wc.height / VR; wc.smooth = true;
-      const pivot = [(-AX * PX - x0) / VR, (-AY * PX - y0) / VR];
+      const { wc, pivot } = await vecWeapon(p);
       // main (pivot de l'arme) pour chaque pose
       const hands = {};
       for (const [pose, [a, dx, dy]] of Object.entries(VPOSE)) {
@@ -412,8 +445,9 @@ const WEAPON_MAPS = {
       '....bbb....', '....bBb....', '....bbb....', '....bBb....', '....bbb....', '....bBb....', '....kkk....', '....bbb....', '....kkk....', '.....g.....'],
     pal: { l: '#c3cad3', W: '#eef2f6', m: '#8f96a0', d: '#5c6670', G: '#e5b33a', b: '#7a4e2a', B: '#a0703c', k: '#4a2f1a', g: '#e5b33a' } },
 };
-export function weaponCanvas(kind) {
+export function weaponCanvas(kind, dyeId = null) {
   const vk = VEC_BY_WEAPON[kind];
+  if (vk && dyeId && SKIN_WEAPON.has(`${vk}:${dyeId}`)) return SKIN_WEAPON.get(`${vk}:${dyeId}`);   // arme du skin élémentaire
   if (vk && VEC[vk]) return VEC[vk].weapon;
   return cached('weapon2:' + kind, () => {
     const w = WEAPON_MAPS[kind];

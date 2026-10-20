@@ -5,11 +5,11 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt } from './sprites.js?v=20261019191031';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt, prepareSkin } from './sprites.js?v=20261019191031';
 import { hashStr, makeRng } from './rng.js?v=20261019191031';
 import { APP_VERSION } from './version.js?v=20261019191031';
 import { PATCH_NOTES } from './patchnotes.js?v=20261019191031';
@@ -82,6 +82,14 @@ function opponents() {
 async function refreshPlayers() {
   if (!NET.online || !acc) return;
   try { players = await NET.fetchOthers(); } catch (e) { toast(e.message); }
+  warmSkins();
+}
+/** Prépare en arrière-plan les skins élémentaires portés (les miens et ceux des autres) pour qu'ils soient prêts en combat */
+function warmSkins() {
+  if (!acc) return;
+  const list = [acc, ...players.map(p => p.data)].flatMap(a => (a && a.heroes) || []).filter(h => h.dye && COSMETIC[h.dye] && COSMETIC[h.dye].art);
+  if (!list.length) return;
+  Promise.all(list.map(h => prepareSkin(h.classId, h.dye))).then(() => softRender());
 }
 
 // ------------------------------ Rendu ------------------------------
@@ -3169,7 +3177,10 @@ function viewShop() {
   const daily = E.dailyShop(acc);
   const left = daily.filter(d => !d.bought).length;
   let list = COSMETICS.filter(c => c.kind === shopKind);
-  if (shopKind === 'skin') list = [...list.filter(c => c.cls === hero.classId), ...COSMETICS.filter(c => c.kind === 'dye' && owned.has(c.id))];
+  if (shopKind === 'skin') {
+    list = [...list.filter(c => c.cls === hero.classId), ...COSMETICS.filter(c => c.kind === 'dye' && owned.has(c.id))];
+    list.filter(c => c.art).forEach(c => prepareSkin(hero.classId, c.id));
+  }
   list.sort((a, b) => (a.kind === 'dye') - (b.kind === 'dye') || a.price - b.price);
   const isOn = (c) => (c.kind === 'dye' || c.kind === 'skin' ? hero.dye === c.id : acc.cosmetics[c.kind] === c.id);
   const preview = (c) => {
@@ -3213,6 +3224,7 @@ function viewShop() {
         ${list.map(c => `
           <div class="shop-item ${isOn(c) ? 'on' : ''} ${owned.has(c.id) ? 'owned' : ''}">
             <div class="sh-prev">${preview(c)}</div>
+            ${c.art ? `<span class="sh-el el-${c.art}">${ELEMENTS.find(e => e.id === c.art).name}</span>` : ''}
             <div class="sh-name">${esc(c.name)}${c.kind === 'dye' ? '<small>ancienne teinture</small>' : ''}</div>
             ${owned.has(c.id)
               ? `<button class="btn small ${isOn(c) ? '' : 'primary'}" data-act="equipCos" data-id="${c.id}">${isOn(c) ? 'Retirer' : 'Porter'}</button>`
@@ -3934,7 +3946,7 @@ const ACTIONS = {
     SFX.loot(2); save(); render();
     toast(`${c.name} acheté !`);
   },
-  equipCos: (d) => { E.equipCosmetic(acc, hero, d.id); SFX.click(); save(); render(); },
+  equipCos: (d) => { E.equipCosmetic(acc, hero, d.id); SFX.click(); save(); render(); if (COSMETIC[d.id] && COSMETIC[d.id].art) prepareSkin(hero.classId, d.id).then(() => softRender()); },
   challenge: async (d) => {
     const p = players.find(x => x.id === d.id);
     if (!p) return;
@@ -4184,6 +4196,7 @@ async function boot() {
     if (saved) acc = E.migrate(saved);
   }
   render();
+  warmSkins();
   checkUpdate();
 }
 boot();

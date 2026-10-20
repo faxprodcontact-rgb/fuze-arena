@@ -1,7 +1,7 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES } from './data.js?v=20261019191031';
+import { CLASSES, COSMETIC, ELEMENTS } from './data.js?v=20261019191031';
 import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261019191031';
 import { SFX, SFX as SFX_ON, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261019191031';
 
@@ -12,6 +12,37 @@ const INK = '#1b1530';
 // taille de police : l'ancienne police pixel était plus grosse, on garde la même hauteur de lettres
 const PXF = (px) => `${Math.round(px * 1.3 * 10) / 10}px ${FONT}`;
 // rectangle arrondi
+/** Élément du skin porté (feu, glace, lumière, ténèbres) ou null */
+const skinAura = (dye) => { const c = dye && COSMETIC[dye]; return c && c.art ? c.art : null; };
+const rgba = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+/**
+ * Aura d'un skin élémentaire autour du héros : une lueur et de petites particules (braises qui montent, flocons qui tombent,
+ * étincelles, fumée violette). Sans mémoire : tout dépend du temps t. (x, feet) = pieds du héros, w × h = sa taille.
+ */
+function drawSkinAura(ctx, art, x, feet, w, h, t, alpha = 1) {
+  const E = ELEMENTS.find(e => e.id === art);
+  if (!E || alpha <= 0) return;
+  const [c1, c2, c3] = E.aura;
+  ctx.save();
+  const cy = feet - h * 0.45, pulse = 0.8 + 0.2 * Math.sin(t * 3);
+  const g = ctx.createRadialGradient(x, cy, 0, x, cy, h * 0.75);
+  g.addColorStop(0, rgba(c1, (art === 'tenebres' ? 0.3 : 0.22) * alpha * pulse)); g.addColorStop(1, rgba(c1, 0));
+  ctx.fillStyle = g; ctx.fillRect(x - h, cy - h * 0.8, h * 2, h * 1.6);
+  ctx.globalCompositeOperation = art === 'tenebres' ? 'source-over' : 'lighter';
+  for (let k = 0; k < 10; k++) {
+    const ph = (t * 0.42 + k * 0.137) % 1;
+    const px = x + Math.sin(k * 2.39 + t * (0.6 + (k % 3) * 0.2)) * w * 0.6;
+    const py = art === 'glace' ? feet - h * 1.05 + ph * h * 1.05 : feet - ph * h * 1.15;
+    const a = Math.sin(ph * Math.PI) * alpha * (art === 'tenebres' ? 0.55 : 0.9);
+    const r = Math.max(1, w * 0.035) * (0.6 + (k % 3) * 0.35) * (art === 'tenebres' ? 1.8 : 1);
+    ctx.globalAlpha = a; ctx.fillStyle = k % 2 ? c2 : c3;
+    if (art === 'lumiere') {   // petite étoile à 4 branches
+      ctx.beginPath(); ctx.moveTo(px, py - r * 2.2); ctx.lineTo(px + r * 0.5, py - r * 0.5); ctx.lineTo(px + r * 2.2, py); ctx.lineTo(px + r * 0.5, py + r * 0.5);
+      ctx.lineTo(px, py + r * 2.2); ctx.lineTo(px - r * 0.5, py + r * 0.5); ctx.lineTo(px - r * 2.2, py); ctx.lineTo(px - r * 0.5, py - r * 0.5); ctx.closePath(); ctx.fill();
+    } else { ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
 /** Place d'un dessin de héros dans sa case (x, y, w, h) : les héros vectoriels ont une marge autour (canvas.pad), on l'ajoute */
 function heroBox(img, x, y, w, h) {
   const p = img && img.pad;
@@ -423,7 +454,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
       tags: [], dead: false, stars: 0, petHop: 0, glow: 0, glowColor: '#fff',
       // les boss sont dessinés plus gros (4 px au lieu de 3)
       sprite, sw: snap.monster ? lw(sprite) * 4 / 3 : HERO_W * k, sh: snap.monster ? lh(sprite) * 4 / 3 : HERO_H * k,
-      wSprite: weapon ? weaponCanvas(weapon) : null, pivot: weapon ? weaponPivot(weapon) : [0, 0],
+      wSprite: weapon ? weaponCanvas(weapon, snap.dye) : null, pivot: weapon ? weaponPivot(weapon) : [0, 0], aura: snap.monster ? null : skinAura(snap.dye),
       pet: snap.pet ? petCanvas(snap.pet.itemId) : null,
     };
   };
@@ -849,6 +880,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(x, GROUND + 2, Math.max(10, f.sw * S * 0.4 - Math.min(10, -f.offY * 0.3)), 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = f.alpha;
+    if (f.aura && !f.dead) drawSkinAura(ctx, f.aura, x, y, f.sw * S, f.sh * S, time + f.phase, f.alpha);
     // familier
     if (f.pet) {
       const { x: px, y: py, pw, ph } = petBox(f);
@@ -1337,9 +1369,10 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
 /** Petit héros animé pour les écrans de menu */
 export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
-  const sprite = heroCanvas(classId, dyeId);
-  const weapon = CLASSES[classId].weapon;
-  const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
+  let sprite = heroCanvas(classId, dyeId);
+  const weapon = CLASSES[classId].weapon, aura = skinAura(dyeId);
+  let wS = weaponCanvas(weapon, dyeId);
+  const [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;
   const sc = sprite.smooth ? 10 : 4;   // héros vectoriels : plus de résolution, lissés
   const Wc = (HERO_W + 26) * sc, Hc = (HERO_H + 4) * sc;
@@ -1351,7 +1384,9 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   function loop(now) {
     if (!alive || !canvas.isConnected) return;
     const t = (now - t0) / 1000;
+    sprite = heroCanvas(classId, dyeId); wS = weaponCanvas(weapon, dyeId);   // un skin pas encore prêt apparaît dès qu'il l'est
     ctx.clearRect(0, 0, Wc, Hc);
+    if (aura) drawSkinAura(ctx, aura, 18 * sc + HERO_W * sc / 2, (HERO_H + 3) * sc, HERO_W * sc, HERO_H * sc, t);
     ctx.imageSmoothingEnabled = !!sprite.smooth;
     const ox = 18 * sc, oy = 3 * sc + Math.sin(t * 3) * 2;
     ctx.globalAlpha = 0.25; ctx.fillStyle = '#000';
@@ -1434,7 +1469,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
       ...m, side, dir: side === 0 ? 1 : -1, slotX: side === 0 ? px : 1 - px, dy,
       sprite: heroCanvas(m.classId, m.dye || null), spriteAtk: heroCanvas(m.classId, m.dye || null, 'atk'), pose: 'idle',
       spriteRun: [heroCanvas(m.classId, m.dye || null, 'run1'), heroCanvas(m.classId, m.dye || null, 'run2')], running: false,
-      weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon),
+      weapon, wS: weaponCanvas(weapon, m.dye || null), pivot: weaponPivot(weapon), aura: skinAura(m.dye),
       idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon], offX: 0, offY: 0, rot: 0, alpha: 1, flash: 0,
       hp: 1, shown: 1, dead: false, busy: false, cd: 0.6 + Math.random() * 1.8, phase: Math.random() * 6,
       ranged: weapon === 'staff' || weapon === 'bow',
@@ -1535,6 +1570,7 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     ctx.globalAlpha = 0.25 * f.alpha; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(x, footY(f) + 2, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = f.alpha;
+    if (f.aura && !f.dead) drawSkinAura(ctx, f.aura, x, y, SW, SH, time + f.phase, f.alpha);
     ctx.save();
     ctx.translate(x, y); ctx.scale(f.dir, 1);
     ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
@@ -1667,7 +1703,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     return {
       ...base, sprite: heroCanvas(m.classId, m.dye || null), spriteAtk: heroCanvas(m.classId, m.dye || null, 'atk'),
       spriteRun: [heroCanvas(m.classId, m.dye || null, 'run1'), heroCanvas(m.classId, m.dye || null, 'run2')],
-      weapon, wS: weaponCanvas(weapon), pivot: weaponPivot(weapon), sw: HERO_W * SC, sh: HERO_H * SC,
+      weapon, wS: weaponCanvas(weapon, m.dye || null), pivot: weaponPivot(weapon), sw: HERO_W * SC, sh: HERO_H * SC, aura: skinAura(m.dye),
       idle: IDLE_ANGLE[weapon], wAng: IDLE_ANGLE[weapon],
     };
   };
@@ -1827,6 +1863,7 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     ctx.globalAlpha = 0.25 * f.alpha; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(x, footY(f) + 2, Math.max(15, SW * 0.4), 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = f.alpha;
+    if (f.aura && !f.dead) drawSkinAura(ctx, f.aura, x, y, SW, SH, time + f.phase, f.alpha);
     ctx.save();
     ctx.translate(x, y); ctx.scale(f.dir, 1);
     ctx.translate(0, -SH / 2); ctx.rotate((f.rot * Math.PI) / 180); ctx.translate(0, SH / 2);
@@ -1949,18 +1986,20 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
  */
 export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
-  const idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
+  let idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
   const sc = idle.smooth ? 10 : 6, LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
   canvas.width = LW * sc; canvas.height = LH * sc;
   canvas.style.imageRendering = idle.smooth ? 'auto' : '';
-  const weapon = CLASSES[classId].weapon;
-  const wS = weaponCanvas(weapon), [px, py] = weaponPivot(weapon);
+  const weapon = CLASSES[classId].weapon, aura = skinAura(dyeId);
+  let wS = weaponCanvas(weapon, dyeId);
+  const [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;
   let alive = true;
   const t0 = performance.now();
   function loop(now) {
     if (!alive || !canvas.isConnected) return;
     const t = (now - t0) / 1000;
+    idle = heroCanvas(classId, dyeId); atk = heroCanvas(classId, dyeId, 'atk'); wS = weaponCanvas(weapon, dyeId);
     ctx.setTransform(sc, 0, 0, sc, 0, 0);
     ctx.clearRect(0, 0, LW, LH);
     ctx.imageSmoothingEnabled = !!idle.smooth;
@@ -1970,6 +2009,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     const W = HERO_W * K, H = HERO_H * K;
     const ox = (LW - W) / 2 - 2, feet = LH - 5;
     const bob = inAtk ? 0 : Math.sin(t * 2.6) * 0.35;
+    if (aura) drawSkinAura(ctx, aura, LW / 2, feet, W, H, t);
     // socle lumineux
     const g = ctx.createRadialGradient(LW / 2, feet, 0, LW / 2, feet, 16);
     g.addColorStop(0, 'rgba(255,216,74,0.45)'); g.addColorStop(1, 'rgba(255,216,74,0)');
