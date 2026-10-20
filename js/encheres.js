@@ -3,9 +3,9 @@
 //  Hors ligne (jeu de test) : tout est gardé sur le téléphone et les amis
 //  bots mettent des objets en vente et enchérissent, pour pouvoir essayer.
 // =====================================================================
-import * as NET from './net.js?v=20261020175745';
-import { ITEM_LIST, FRIENDS, SELL_PRICE } from './data.js?v=20261020175745';
-import { aucEnd, aucTop, aucNext, eraRow } from './engine.js?v=20261020175745';
+import * as NET from './net.js?v=20261020181820';
+import { ITEM_LIST, FRIENDS, SELL_PRICE } from './data.js?v=20261020181820';
+import { aucEnd, aucTop, aucNext, eraRow } from './engine.js?v=20261020181820';
 
 const KEY = 'fuze-encheres';
 const ME = 'moi';
