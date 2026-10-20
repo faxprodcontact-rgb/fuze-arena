@@ -853,32 +853,30 @@ function powerGain(itemId, rarity) {
   return then - now;
 }
 const gainPill = (g, big = false) => g === null ? '' : g > 0 ? `<span class="gain up ${big ? 'big' : ''}">▲ +${fmtNum(g)}</span>` : g < 0 ? `<span class="gain down ${big ? 'big' : ''}">▼ ${fmtNum(g)}</span>` : `<span class="gain eq ${big ? 'big' : ''}">= égal</span>`;
-/** Tuiles de stats d'un objet : icône, valeur, d'où ça vient, et l'écart avec l'objet porté */
-function statTiles(itemId, rarity, cur = null) {
-  const stats = E.itemStats(itemId, rarity), cmp = cur ? E.itemStats(cur.itemId, cur.rarity) : null;
+/** Tuiles de stats d'un objet : icône, valeur et d'où ça vient (l'écart global est la puissance, dans l'en-tête) */
+function statTiles(itemId, rarity) {
+  const stats = E.itemStats(itemId, rarity);
   const O = itemOrigin(itemId);
-  const keys = STAT_KEYS.filter(k => (stats[k] || 0) || (cmp && cmp[k]));
+  const keys = STAT_KEYS.filter(k => stats[k] > 0);
   keys.sort((a, b) => (stats[b] || 0) - (stats[a] || 0));
   const max = Math.max(1, ...keys.map(k => stats[k] || 0));
   return `<div class="stiles">${keys.map(k => {
-    const v = stats[k] || 0, d = cmp ? v - (cmp[k] || 0) : 0;
+    const v = stats[k] || 0;
     const src = [k === O.base ? 'emplacement' : '', O.spec.includes(k) ? O.specFrom : ''].filter(Boolean).join(' + ');
     return `<div class="stile ${v ? '' : 'lost'}" style="--sc:${STATS[k].color}">
       <span class="sti-ic">${ico(STAT_ICON[k])}</span>
       <span class="sti-txt"><b>${v ? '+' + fmtNum(v) : '0'}</b><small>${STATS[k].name}</small>${src ? `<em>${src}</em>` : ''}</span>
-      ${d ? `<span class="sti-d ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${fmtNum(d)}</span>` : ''}
       <i class="sti-bar" style="width:${Math.round(100 * v / max)}%"></i>
     </div>`;
   }).join('')}</div>`;
 }
 /** Critique et esquive de l'objet (à partir de Légendaire), en pastilles */
-function extraChips(itemId, rarity, cur = null) {
+function extraChips(itemId, rarity) {
   if (ITEMS[itemId].slot === 'pet') return '';
-  const x = E.itemExtras(itemId, rarity), c = cur ? E.itemExtras(cur.itemId, cur.rarity) : { crit: 0, dodge: 0 };
+  const x = E.itemExtras(itemId, rarity);
   if (!x.crit && !x.dodge) return '';
-  const chip = (cls, icon, name, v, old) => { const d = Math.round((v - old) * 1000) / 10;
-    return `<span class="xchip ${cls}">${ico(icon)}<b>+${pctTxt(v)}</b> ${name}${d ? ` <i class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${String(d).replace('.', ',')}</i>` : ''}</span>`; };
-  return `<div class="xchips">${chip('crit', 'boom', 'critique', x.crit, c.crit)}${chip('dodge', 'wind', 'esquive', x.dodge, c.dodge)}</div>`;
+  const chip = (cls, icon, name, v) => `<span class="xchip ${cls}">${ico(icon)}<b>+${pctTxt(v)}</b> ${name}</span>`;
+  return `<div class="xchips">${chip('crit', 'boom', 'critique', x.crit)}${chip('dodge', 'wind', 'esquive', x.dodge)}</div>`;
 }
 /** Petites pastilles de stats (listes d'objets) */
 const statChips = (itemId, r, n = 3) => Object.entries(E.itemStats(itemId, r)).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, n)
@@ -914,8 +912,8 @@ function openItem(itemId, rarity) {
       </div>
       ${gainTxt}
     </div>
-    ${statTiles(itemId, rarity, cur)}
-    ${extraChips(itemId, rarity, cur)}
+    ${statTiles(itemId, rarity)}
+    ${extraChips(itemId, rarity)}
     ${it.set ? setBox(it.set) : ''}
     ${PETS[itemId] ? petBox(itemId, rarity) : ''}
     ${canFuse ? `
