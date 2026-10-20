@@ -71,17 +71,21 @@ Un changement qui ne touche pas au jeu (comme ce fichier) n'a pas besoin de nouv
   ≈ difficulté 3 palier 50 ; équipe parfaite (4 × niv 100 tout Chaotique + panoplie) = D10 P100.
 - Corrections de niveau ponctuelles : `LEVEL_FIXES` (appliquées une seule fois par compte).
 
-## En cours : proposition de refonte graphique (en attente de la réponse du propriétaire)
+## Fuze Arena 2.0 (en ligne depuis le 20/10/2026)
 
-Il veut passer du pixel art à un style dessin vectoriel « Hero Wars » (gros contour, cel-shading,
-couleurs vives, fond bleu nuit et or). La maquette est faite mais n'est PAS appliquée au jeu.
+La refonte graphique (style vectoriel « Hero Wars ») et les nouveautés de jeu sont en ligne depuis le
+20/10/2026 : mise en ligne à 18 h avec un écran d'attente, ouverture à tous à 19 h. Le dossier `refonte/`
+garde les outils qui génèrent les dessins (`refonte/outils/*.cjs`) et les simulations d'équilibrage
+(`refonte/simulations/`).
 
-- Maquette (canevas Claude Design, privé) : https://claude.ai/artifact/5PLawLqU5eQLT7X77ZeWos
-  — 5 planches : écran de combat, fiche héros, kit d'interface, les héros, les monstres.
-- Tous les fichiers sont sur la branche `refonte-graphique`, dossier `refonte/` (voir son
-  `README.md`) : dessins SVG réutilisables (4 héros, 3 monstres, décor forêt, 15 icônes),
-  guide de style `refonte/art/STYLE.md`, planches, aperçus PNG et scripts qui les génèrent.
-- S'il accepte : redessiner toutes les classes, les monstres des donjons, les 5 boss de raid,
-  le trône et les décors, puis les écrans ; réécrire le rendu des combats (`battle.js` /
-  `sprites.js`) pour des dessins vectoriels animés par parties du corps. Travailler sur la
-  branche `refonte-graphique` et ne publier sur `main` qu'une fois validé par lui.
+- Remise à zéro 2.0 : `ERA` dans `data.js` (`open` = mise en ligne, `start` = 19 h). Un compte en ligne
+  sans `era` (ou créé avant 19 h, `born`) choisit un nouveau héros (`renderRebirth`, même pseudo). Les
+  joueurs pas encore passés en 2.0 sont cachés. Trône, raid, journal et enchères ignorent ce qui date d'avant
+  (`E.eraRow` / `E.eraFrom`). Avant 19 h, l'écran d'attente (`renderCountdown`) bloque tout, sauf
+  5 touches sur le logo (`fuze-early`) pour le propriétaire.
+- Enchères : tables `auctions` et `bids` (`serveur/encheres.sql`), à lancer une fois dans Supabase.
+- Récompenses de l'ancien jeu : `OLD_RANKING` / `RANK_GIFTS` dans `js/patchnotes.js` (un message par
+  joueur, titres uniques du podium, `unique: true` dans `COSMETICS`, jamais en vente).
+- Site de test (hors ligne, avec des bots) : `sh refonte/publier-test.sh` →
+  https://faxprodcontact-rgb.github.io/fuze-arena-test/ ; `essai.html?pseudo=X#avant=30` y rejoue la mise
+  en ligne avec un faux serveur (`refonte/essai/fakenet.js`).
