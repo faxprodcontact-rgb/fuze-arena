@@ -25,6 +25,9 @@ for f in index.html js/*.js; do
 done
 printf "// Numéro de version du jeu de test\nexport const APP_VERSION = '%s';\n" "$V" > js/version.js
 printf '{"v":"%s"}\n' "$V" > version.json
+# Essai de la mise en ligne 2.0 (essai.html) : le jeu « en ligne » avec un faux serveur, comme à 19 h
+sed "s/__V__/$V/g" "$SRC/refonte/essai/fakenet.js" > fakenet.js
+sed "s#<script type=\"module\"#<script type=\"importmap\">{\"imports\":{\"./js/net.js?v=$V\":\"./fakenet.js\"}}</script>\n<script type=\"module\"#" index.html > essai.html
 if [ "$1" = "local" ]; then echo "Jeu de test prêt dans $OUT (version $V)"; exit 0; fi
 git init -q -b main
 git add -A
