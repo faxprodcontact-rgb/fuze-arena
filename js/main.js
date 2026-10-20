@@ -875,7 +875,7 @@ function statTiles(itemId, rarity, cur = null) {
 function extraChips(itemId, rarity, cur = null) {
   if (ITEMS[itemId].slot === 'pet') return '';
   const x = E.itemExtras(itemId, rarity), c = cur ? E.itemExtras(cur.itemId, cur.rarity) : { crit: 0, dodge: 0 };
-  if (!x.crit && !x.dodge) return `<div class="xchips"><span class="xchip locked">${ico('lock')} Critique et esquive à partir de <b style="color:${RARITIES[4].color}">Légendaire</b></span></div>`;
+  if (!x.crit && !x.dodge) return '';
   const chip = (cls, icon, name, v, old) => { const d = Math.round((v - old) * 1000) / 10;
     return `<span class="xchip ${cls}">${ico(icon)}<b>+${pctTxt(v)}</b> ${name}${d ? ` <i class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${String(d).replace('.', ',')}</i>` : ''}</span>`; };
   return `<div class="xchips">${chip('crit', 'boom', 'critique', x.crit, c.crit)}${chip('dodge', 'wind', 'esquive', x.dodge, c.dodge)}</div>`;
@@ -902,11 +902,8 @@ function openItem(itemId, rarity) {
   const R = RARITIES[rarity];
   const next = RARITIES[rarity + 1];
   const gain = powerGain(itemId, rarity);
-  const verdict = isEq ? `<div class="verdict on">${ico('check')} Tu le portes</div>`
-    : !curUid ? `<div class="verdict up">${gainPill(gain, true)} de puissance si tu le portes</div>`
-    : gain > 0 ? `<div class="verdict up">${gainPill(gain, true)} de puissance : mieux que ce que tu portes</div>`
-    : gain < 0 ? `<div class="verdict down">${gainPill(gain, true)} de puissance : moins bien que ce que tu portes</div>`
-    : `<div class="verdict eq">Aussi fort que ce que tu portes</div>`;
+  // gain de puissance si on le porte : juste la flèche et la valeur, dans l'en-tête
+  const gainTxt = isEq || gain === null ? '' : gain > 0 ? `<span class="ih-gain up">▲ +${fmtNum(gain)}</span>` : gain < 0 ? `<span class="ih-gain down">▼ ${fmtNum(gain)}</span>` : '<span class="ih-gain eq">=</span>';
   openModal(`
     <div class="ihero" style="--rc:${R.color}">
       <div class="ih-art"><canvas class="px" data-icon="${itemId}"></canvas>${stack.length > 1 ? `<span class="ih-n">×${stack.length}</span>` : ''}</div>
@@ -915,9 +912,8 @@ function openItem(itemId, rarity) {
         <h3>${esc(it.name)}</h3>
         <small>${SLOTS[slot].name}${it.set ? ` · ${esc(SETS[it.set].name)}` : ''}</small>
       </div>
+      ${gainTxt}
     </div>
-    ${verdict}
-    <div class="isub">Ce qu’il te donne${cur ? `<small>comparé à ${esc(ITEMS[cur.itemId].name)} (${RARITIES[cur.rarity].name})</small>` : ''}</div>
     ${statTiles(itemId, rarity, cur)}
     ${extraChips(itemId, rarity, cur)}
     ${it.set ? setBox(it.set) : ''}
@@ -932,7 +928,7 @@ function openItem(itemId, rarity) {
         </div>
         <div class="fuse-st">${Object.entries(E.itemStats(itemId, rarity + 1)).map(([k, v]) => `<span style="--sc:${STATS[k].color}">${STATS[k].short} <s>${fmtNum(stats[k] || 0)}</s> → <b>${fmtNum(v)}</b></span>`).join('')}</div>
         <button class="btn block" style="margin-top:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuse" data-id="${itemId}" data-r="${rarity}">Fusionner en ${next.name}</button>
-      </div>` : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Il faut ${need} exemplaires pour le fusionner en <b style="color:${next.color}">${next.name}</b> (tu en as ${stack.length}).</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
+      </div>` : ''}
     ${spare ? `<div class="sell-row"><button class="sell-btn" data-act="sellAsk" data-id="${itemId}" data-r="${rarity}"><canvas class="px" data-clat></canvas>Vendre · ${SELL_PRICE[rarity]} pièce</button></div>` : ''}
     <div class="close-row">
       ${isEq

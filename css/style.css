@@ -1971,3 +1971,8 @@ button.bk-m:active { transform: scale(.96); }
 .pick-go .gain { font-size: 12px; padding: 2px 8px; }
 .gain.up { color: #053a14; background: linear-gradient(#b8ffc9, #5be078); }
 .gain.eq { color: #4a2c00; background: linear-gradient(#fff0a8, #ffc93a); }
+
+/* gain de puissance dans l'en-tête de la fiche objet */
+.ihero { padding-right: 76px; }
+.ih-gain { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-family: var(--pixel); font-size: 22px; white-space: nowrap; text-shadow: 0 2px 0 #000; }
+.ih-gain.up { color: #5be078; } .ih-gain.down { color: #ff6d7a; } .ih-gain.eq { color: #ffd45a; }
