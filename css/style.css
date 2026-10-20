@@ -1943,3 +1943,31 @@ button.bk-m:active { transform: scale(.96); }
 .pick-go .gain { font-size: 10.5px; padding: 1px 6px; }
 .sc-bonus.past { color: #a8a0d8; opacity: .55; }
 .sc-tip { margin-top: 6px; font-size: 10.5px; font-weight: 700; color: #8f86c8; font-style: italic; }
+
+/* carte de panoplie compacte, vente discrète avec confirmation */
+.setcard { padding: 9px 11px; }
+.setcard .sc-top b { font-size: 13.5px; }
+.sc-pips i { width: 10px; height: 10px; border-radius: 3px; }
+.sc-line { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.sc-st { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; border-radius: 999px; font-size: 10.5px; font-weight: 900; color: #fff;
+  background: color-mix(in srgb, var(--sc) 28%, #120c3d); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sc) 55%, transparent); }
+.sc-st canvas.ico { width: 13px; height: 13px; }
+.sc-tiers { margin-left: auto; display: flex; gap: 4px; }
+.sc-tiers i { font-style: normal; padding: 2px 6px; border-radius: 7px; font-size: 10px; font-weight: 800; color: #8f86c8; background: rgba(0,0,0,.25); }
+.sc-tiers i b { font-family: var(--pixel); font-weight: 400; font-size: 10.5px; }
+.sc-tiers i.on { color: #06220e; background: linear-gradient(#9dffb6, #4cd964); }
+.sell-row { display: flex; justify-content: center; margin-top: 12px; }
+.sell-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 800; color: #c9c3ff;
+  background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.12); }
+.sell-btn canvas { width: 14px; height: auto; }
+.sell-confirm { text-align: center; }
+.sell-confirm .sc-ic { width: 70px; height: 70px; margin: 0 auto 8px; }
+.sell-confirm .sc-ic canvas { width: 54px; }
+.sell-confirm h3 { margin: 0 0 4px; }
+.sell-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.sell-choices .btn canvas { width: 14px; height: auto; margin-left: 4px; vertical-align: middle; }
+/* pastilles de puissance lisibles partout (pas de contour hérité) */
+.gain { text-shadow: none !important; -webkit-text-stroke: 0; line-height: 1.25; }
+.pick-go .gain { font-size: 12px; padding: 2px 8px; }
+.gain.up { color: #053a14; background: linear-gradient(#b8ffc9, #5be078); }
+.gain.eq { color: #4a2c00; background: linear-gradient(#fff0a8, #ffc93a); }

@@ -394,13 +394,14 @@ function setBox(setId) {
   const set = SETS[setId];
   const active = E.activeSets(hero).find(a => a.setId === setId);
   const n = active ? active.count : 0;
+  const tier = [...SET_TIERS].reverse().find(([k]) => n >= k);
   return `
     <div class="setcard">
-      <div class="sc-top"><b>${set.name}</b><span class="sc-pips">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''} ${SET_TIERS.some(([k]) => k === i) ? 'step' : ''}"></i>`).join('')}</span></div>
-      <div class="sc-spec">${set.spec.map(k => `<span style="--sc:${STATS[k].color}">${ico(STAT_ICON[k])}${STATS[k].name}</span>`).join('')}<span class="voie" style="--sc:${STATS[set.voie].color}">arme et bottes : ${STATS[set.voie].name}</span></div>
-      ${SET_TIERS.map(([k, p], i) => { const on = n >= k && !(SET_TIERS[i + 1] && n >= SET_TIERS[i + 1][0]);
-        return `<div class="sc-bonus ${on ? 'on' : n >= k ? 'past' : ''}"><em>${k} pièces</em>+${Math.round(p * 100)} % ${set.spec.map(s => STATS[s].name).join(' et ')}${on ? ` ${ico('check')}` : ''}</div>`; }).join('')}
-      <div class="sc-tip">Astuce : 3 pièces d’une panoplie + 2 d’une autre = 4 stats boostées</div>
+      <div class="sc-top"><b>${set.name}</b><span class="sc-pips">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span></div>
+      <div class="sc-line">
+        ${set.spec.map(k => `<span class="sc-st" style="--sc:${STATS[k].color}">${ico(STAT_ICON[k])}${STATS[k].short}</span>`).join('')}
+        <span class="sc-tiers">${SET_TIERS.map(([k, p]) => `<i class="${tier && tier[0] === k ? 'on' : ''}">${k}p <b>+${Math.round(p * 100)}%</b></i>`).join('')}</span>
+      </div>
     </div>`;
 }
 
@@ -932,20 +933,31 @@ function openItem(itemId, rarity) {
         <div class="fuse-st">${Object.entries(E.itemStats(itemId, rarity + 1)).map(([k, v]) => `<span style="--sc:${STATS[k].color}">${STATS[k].short} <s>${fmtNum(stats[k] || 0)}</s> → <b>${fmtNum(v)}</b></span>`).join('')}</div>
         <button class="btn block" style="margin-top:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuse" data-id="${itemId}" data-r="${rarity}">Fusionner en ${next.name}</button>
       </div>` : (rarity < RARITIES.length - 1 ? `<p class="hint" style="margin-top:12px">Il faut ${need} exemplaires pour le fusionner en <b style="color:${next.color}">${next.name}</b> (tu en as ${stack.length}).</p>` : `<p class="hint" style="margin-top:12px">Rareté maximale !</p>`)}
-    ${spare ? `
-      <div class="sell-box">
-        <span>Revente : <b>${SELL_PRICE[rarity]}</b> Flouze pièce${isEq ? ' (l’objet équipé est gardé)' : ''}</span>
-        <div class="row" style="gap:6px;margin-top:8px">
-          <button class="btn small" style="flex:1" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="1">Vendre 1 · +${SELL_PRICE[rarity]}<canvas class="px" data-clat></canvas></button>
-          ${spare > 1 ? `<button class="btn small" style="flex:1" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="${spare}">Vendre les ${spare} · +${spare * SELL_PRICE[rarity]}<canvas class="px" data-clat></canvas></button>` : ''}
-        </div>
-      </div>` : ''}
+    ${spare ? `<div class="sell-row"><button class="sell-btn" data-act="sellAsk" data-id="${itemId}" data-r="${rarity}"><canvas class="px" data-clat></canvas>Vendre · ${SELL_PRICE[rarity]} pièce</button></div>` : ''}
     <div class="close-row">
       ${isEq
         ? `<button class="btn" data-act="unequip" data-slot="${slot}">Retirer</button>`
         : `<button class="btn primary" data-act="equip" data-id="${itemId}" data-r="${rarity}">Équiper</button>`}
       <button class="btn" data-act="closeModal">Fermer</button>
     </div>`);
+}
+/** Confirmation avant de vendre (pour ne rien vendre par erreur) */
+function openSellConfirm(itemId, rarity) {
+  const it = ITEMS[itemId], R = RARITIES[rarity];
+  const spare = E.stackOf(hero, itemId, rarity).filter(s => s.uid !== hero.equipped[it.slot]).length;
+  if (!spare) return;
+  const p = SELL_PRICE[rarity];
+  openModal(`
+    <div class="sell-confirm" style="--rc:${R.color}">
+      <div class="it r${rarity} sc-ic" style="--rc:${R.color}"><canvas class="px" data-icon="${itemId}"></canvas></div>
+      <h3>Vendre ${esc(it.name)} ?</h3>
+      <p class="hint"><b style="color:${R.color}">${R.name}</b> · tu en as ${spare} en trop${E.stackOf(hero, itemId, rarity).length > spare ? ' (celui que tu portes est gardé)' : ''}. Une vente ne s’annule pas.</p>
+      <div class="sell-choices">
+        <button class="btn danger" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="1">Vendre 1 · +${p}<canvas class="px" data-clat></canvas></button>
+        ${spare > 1 ? `<button class="btn danger" data-act="sell" data-id="${itemId}" data-r="${rarity}" data-n="${spare}">Vendre les ${spare} · +${spare * p}<canvas class="px" data-clat></canvas></button>` : ''}
+        <button class="btn" data-act="item" data-id="${itemId}" data-r="${rarity}">Annuler</button>
+      </div>
+    </div>`, { center: true });
 }
 
 /** Fiche d'un familier : son affinité de classe et son attaque */
@@ -3864,6 +3876,7 @@ const ACTIONS = {
   },
   bagMode: (d) => { bagMode = d.mode; render(); },
   bagSet: (d) => { bagSet = d.id; render(); },
+  sellAsk: (d) => openSellConfirm(d.id, +d.r),
   sell: (d) => {
     const r = E.sellItems(acc, hero, d.id, +d.r, +d.n || 1);
     if (!r) return;
