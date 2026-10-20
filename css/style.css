@@ -2332,3 +2332,12 @@ canvas[data-hero] { translate: -10.4% 0; }
 @keyframes pod-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .pstage .pod-crown { top: -14px; }
 .pstage .pod.p1 .pod-bubble { bottom: calc(100% + 26px); }
+
+/* Fuze Arena 2.0 : écran d'attente jusqu'à 19 h */
+.era-wait { min-height: 100svh; justify-content: center; align-items: center; text-align: center; }
+.era-wait .logo-img { cursor: default; -webkit-tap-highlight-color: transparent; }
+.era-v { font-family: var(--pixel); font-size: 64px; line-height: 1; color: #ffd45a; text-shadow: var(--ol), 0 6px 0 #a8621a, 0 0 30px rgba(255, 212, 90, .55); margin: 4px 0 18px; animation: era-pulse 2.4s ease-in-out infinite; }
+.era-timer { font-family: var(--pixel); font-size: 44px; letter-spacing: 2px; color: #fff; text-shadow: var(--ol); font-variant-numeric: tabular-nums; margin-bottom: 26px; }
+.era-wait #era-play { max-width: 280px; font-size: 22px; }
+.era-wait #era-play:disabled { filter: grayscale(1) brightness(.75); opacity: .8; }
+@keyframes era-pulse { 50% { transform: scale(1.06); } }

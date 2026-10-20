@@ -5,7 +5,7 @@
 // =====================================================================
 import * as NET from './net.js?v=20261019191031';
 import { ITEM_LIST, FRIENDS, SELL_PRICE } from './data.js?v=20261019191031';
-import { aucEnd, aucTop, aucNext } from './engine.js?v=20261019191031';
+import { aucEnd, aucTop, aucNext, eraRow } from './engine.js?v=20261019191031';
 
 const KEY = 'fuze-encheres';
 const ME = 'moi';
@@ -52,7 +52,11 @@ function botLife(s, now) {
 // ---------- commun ----------
 /** Toutes les ventes récentes (en cours et terminées) et leurs offres */
 export async function load() {
-  if (NET.online) return NET.fetchAuctions();
+  if (NET.online) {   // rien de l'ancien jeu ni des essais d'avant 19 h
+    const r = await NET.fetchAuctions();
+    const auctions = r.auctions.filter(a => eraRow(a.created_at)), ids = new Set(auctions.map(a => a.id));
+    return { auctions, bids: r.bids.filter(b => ids.has(b.auction_id)) };
+  }
   const s = loadLocal();
   botLife(s, Date.now());
   saveLocal(s);

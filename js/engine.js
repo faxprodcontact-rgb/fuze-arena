@@ -1287,14 +1287,19 @@ export function newHero(name, classId, id = 'h1') {
   };
 }
 
-// Fuze Arena 2.0 : un compte sans cette marque date de l'ancien jeu
-export const isEra = (data) => !!data && data.era === ERA.id;
+// Fuze Arena 2.0 : un compte sans cette marque date de l'ancien jeu (après 19 h, un compte d'essai créé avant aussi)
 export const eraStart = () => new Date(...ERA.start).getTime();
+export const eraLive = () => Date.now() >= eraStart();
+export const isEra = (data) => !!data && data.era === ERA.id && (!eraLive() || (data.born || 0) >= eraStart());
+/** Ce qui est enregistré en ligne compte depuis 19 h (avant 19 h, pour l'essai : depuis la mise en ligne) */
+export const eraFrom = () => (eraLive() ? eraStart() : new Date(...ERA.open).getTime());
+export const eraRow = (createdAt) => new Date(createdAt).getTime() >= eraFrom();
 
 export function newAccount(pseudo, classId) {
   return {
     v: 2,
     era: ERA.id,
+    born: Date.now(),
     pseudo,
     active: 0,
     nextHeroId: 2,

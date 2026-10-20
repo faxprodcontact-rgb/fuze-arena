@@ -339,6 +339,28 @@ function renderCreate() {
   hydrate(app);
 }
 
+/** Fuze Arena 2.0 : de la mise en ligne à 19 h, le logo et le compte à rebours ; « Jouer » s'allume à 19 h */
+const EARLY = 'fuze-early';   // le propriétaire entre avant 19 h pour tester : 5 touches sur le logo
+let countdownTimer = null, logoTaps = 0;
+function renderCountdown() {
+  app.innerHTML = `
+    <div class="create era-wait">
+      <img class="logo-img" src="icons/icon.svg?v=2" alt="" data-act="eraLogo"><h1 class="logo">FUZE<span>ARENA</span></h1>
+      <div class="era-v">2.0</div>
+      <div class="era-timer" id="era-timer"></div>
+      <button class="btn primary block" id="era-play" data-act="eraPlay" disabled>Jouer</button>
+    </div>`;
+  const tick = () => {
+    const left = E.eraStart() - Date.now(), el = document.getElementById('era-timer'), b = document.getElementById('era-play');
+    if (!el) { clearInterval(countdownTimer); return; }
+    el.textContent = fmt(Math.max(0, left));
+    if (b) b.disabled = left > 0;
+  };
+  tick();
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(tick, 1000);
+}
+
 /** Fuze Arena 2.0 : un ancien compte repart de zéro et choisit la classe de son premier héros */
 function renderRebirth() {
   app.innerHTML = `
@@ -983,7 +1005,7 @@ function modeHead({ id, c, art, title, sub, chips = [], extra = '', info }) {
     <section class="card mhead ${infoCls(id)}" data-info="${id}" style="--tc:${c}">
       <div class="mh-top">
         <span class="mh-art">${art}</span>
-        <div class="mh-txt"><h2>${title}</h2><small>${sub}</small></div>
+        <div class="mh-txt"><h2>${title}</h2>${sub ? `<small>${sub}</small>` : ''}</div>
       </div>
       ${chips.length ? `<div class="mh-chips">${chips.join('')}</div>` : ''}
       ${extra}
@@ -1014,7 +1036,7 @@ function viewFights() {
   const clatGot = acc.fights.clat || {};
   return modeHead({
     id: 'arena', c: '#ff5d6c', art: '<canvas class="px" data-emblem="arena"></canvas>',
-    title: 'Arène', sub: 'Bats chacun de tes potes',
+    title: 'Arène', sub: '',
     chips: [
       mchip(ico('swords'), 'Combats classés', `${todo.length} / ${list.length}`, todo.length ? 'hot' : ''),
       mchip('<canvas class="px" data-chest="combat"></canvas>', 'Coffre de combat', `${acc.winProgress} / ${WINS_PER_COMBAT_CHEST}`),
@@ -1070,7 +1092,7 @@ function viewDungeons() {
   const nextLocked = lockedList[0], moreLocked = Math.max(0, lockedList.length - 1);
   return modeHead({
     id: 'dungeons', c: '#4cd964', art: '<canvas class="px" data-emblem="dungeons"></canvas>',
-    title: 'Donjons', sub: 'Bats les boss pour gagner des clefs',
+    title: 'Donjons', sub: '',
     chips: [
       mchip(ico('swords'), 'Combats dispo', left, left ? 'hot' : ''),
       mchip('<canvas class="px" data-key></canvas>', 'Clefs du jour', `${E.keysEarned(hero)} / ${DUNGEON_KEYS_MAX}`, E.keysLeftToEarn(hero) ? '' : 'full'),
@@ -1155,7 +1177,7 @@ function viewRanking() {
   const myPos = list.findIndex(e => e.me) + 1;
   return modeHead({
     id: 'ranking', c: '#ffd45a', art: '<canvas class="px" data-emblem="ranking"></canvas>',
-    title: 'Classement', sub: 'Qui est le plus fort du groupe ?',
+    title: 'Classement', sub: '',
     chips: [
       mchip(ico('trophy'), 'Ta place', `${myPos} / ${list.length}`, myPos <= 3 ? 'hot' : ''),
       mchip(ico('medal1'), 'En tête', esc(list[0].name)),
@@ -1271,7 +1293,7 @@ function viewWar() {
     title: 'Guerre', sub, chips, extra, info: WAR_RULES_UL(),
   });
   if (!war.section) {
-    return head('Choisis ton camp pour la guerre', [], `
+    return head('', [], `
       <div class="sec-pick" style="margin-top:12px">
         ${Object.entries(WAR.sections).map(([id, s]) => `
           <button class="sec-card" style="--sc:${s.color}" data-act="joinSection" data-sec="${id}">
@@ -1409,7 +1431,7 @@ function viewChat() {
   if (!NET.online) return offlineCard('Tchat', 'Le tchat marche seulement dans la version en ligne.');
   return modeHead({
     id: 'chat', c: '#3d9bff', art: '<canvas class="px" data-emblem="talk"></canvas>',
-    title: 'Tchat', sub: 'Chambrer les potes',
+    title: 'Tchat', sub: '',
     chips: [
       mchip('<i class="dot-on"></i>', 'En ligne', `${onlineCount()} / ${players.length + 1}`),
       mchip(ico('chat'), 'Messages', chatMsgs.length),
@@ -1656,12 +1678,12 @@ function viewCombat() {
 function viewHub(id) {
   const h = HUBS[id], T = combatTiles();
   return `
-    <section class="hub-head" style="--tc:${h.c};--tc2:${h.c2}"><b>${h.name}</b><small>${h.desc}</small></section>
+    <section class="hub-head" style="--tc:${h.c};--tc2:${h.c2}"><b>${h.name}</b></section>
     <section class="modes">
       ${h.ids.map(k => { const x = T[k]; return `
         <button class="mode wide" data-act="tab" data-id="${k}" style="--tc:${x.c}">
           <span class="m-art">${tileArt(x)}</span>
-          <span class="m-txt"><b>${x.name}</b><small>${x.sub}</small><em>${x.tag}</em></span>
+          <span class="m-txt"><b>${x.name}</b><small>${x.sub}</small></span>
           <span class="m-go">›</span>
           ${x.badge > 0 ? `<span class="badge">${x.badge}</span>` : ''}
         </button>`; }).join('')}
@@ -1671,9 +1693,9 @@ function viewHub(id) {
 // ------------------------------ Hub Social ------------------------------
 function viewSocial() {
   const tiles = [
-    { id: 'journal', name: 'Journal', sub: 'Revois tes combats', emblem: 'journal', badge: journalUnseen, c: '#ff8a3d' },
-    { id: 'chat', name: 'Tchat', sub: 'Chambrer les potes', emblem: 'talk', badge: chatUnread, c: '#3d9bff' },
-    { id: 'ranking', name: 'Classement', sub: 'Qui est le plus fort ?', emblem: 'ranking', badge: 0, c: '#ffd45a' },
+    { id: 'journal', name: 'Journal', sub: '', emblem: 'journal', badge: journalUnseen, c: '#ff8a3d' },
+    { id: 'chat', name: 'Tchat', sub: '', emblem: 'talk', badge: chatUnread, c: '#3d9bff' },
+    { id: 'ranking', name: 'Classement', sub: '', emblem: 'ranking', badge: 0, c: '#ffd45a' },
     { id: 'players', name: 'Joueurs', sub: NET.online ? `<i class="dot-on"></i>${onlineCount()} en ligne` : 'En ligne seulement', emblem: 'players', badge: 0, c: '#4cd964' },
   ];
   const list = rankingEntries('power');
@@ -1685,7 +1707,7 @@ function viewSocial() {
       ${tiles.map(t => `
         <button class="mode" data-act="tab" data-id="${t.id}" style="--tc:${t.c}">
           <span class="m-art"><canvas class="px" data-emblem="${t.emblem}"></canvas></span>
-          <span class="m-txt"><b>${t.name}</b><small>${t.sub}</small></span>
+          <span class="m-txt"><b>${t.name}</b>${t.sub ? `<small>${t.sub}</small>` : ''}</span>
           ${t.badge > 0 ? `<span class="badge">${t.badge}</span>` : ''}
         </button>`).join('')}
     </section>
@@ -1741,7 +1763,7 @@ function viewPlayers() {
   const strongest = rows.map(r => ({ r, p: E.powerScore(snapOf(r.data, E.strongestHero(r.data), r.name)) })).sort((a, b) => b.p - a.p)[0];
   return modeHead({
     id: 'players', c: '#4cd964', art: '<canvas class="px" data-emblem="players"></canvas>',
-    title: 'Joueurs', sub: 'Touche un joueur pour voir sa carte',
+    title: 'Joueurs', sub: '',
     chips: [
       mchip('<i class="dot-on"></i>', 'En ligne', `${n} / ${rows.length}`, n > 1 ? 'hot' : ''),
       mchip(ico('bolt'), 'Le plus puissant', esc(strongest.r.name)),
@@ -1872,7 +1894,7 @@ const KIND_NAME = { arena: 'Arène', war: 'Guerre', rematch: 'Revanche', revenge
 async function loadJournal() {
   if (!NET.online) return;
   try {
-    journal = (await NET.fetchMyFights()).filter(f => new Date(f.created_at).getTime() >= E.eraStart());   // rien de l'ancien jeu
+    journal = (await NET.fetchMyFights()).filter(f => E.eraRow(f.created_at));   // rien de l'ancien jeu
     let seen = '';
     try { seen = localStorage.getItem(JOURNAL_SEEN) || ''; } catch (e) { /* stockage indisponible */ }
     journalUnseen = journal.filter(f => f.defender_id === NET.myId() && f.created_at > seen).length;
@@ -1918,7 +1940,7 @@ function viewJournal() {
   const nAtt = journal.filter(f => f.defender_id === me).length;
   return modeHead({
     id: 'journal', c: '#ff8a3d', art: '<canvas class="px" data-emblem="journal"></canvas>',
-    title: 'Journal', sub: 'Tes derniers combats contre les potes',
+    title: 'Journal', sub: '',
     chips: [
       mchip(ico('check'), 'Gagnés', nWin, nWin ? 'hot' : ''),
       mchip(ico('cross'), 'Perdus', journal.length - nWin),
@@ -2393,7 +2415,7 @@ function loadThrone() {
         throneInfo = { week, order: E.throneRanking(L.order, L.fights, ids), prevWeek, prevOrder: P ? P.order : [] };
         return;
       }
-      const since = new Date(Math.max(E.throneRoundStart(new Date(E.throneRoundStart() - 86400000)) - 3600000, E.eraStart())).toISOString();
+      const since = new Date(Math.max(E.throneRoundStart(new Date(E.throneRoundStart() - 86400000)) - 3600000, E.eraFrom())).toISOString();
       let rows = await NET.fetchThrone(since);
       const startOf = (w) => rows.find(r => r.kind === 'throne_start' && r.a_snap && r.a_snap.week === w);
       const fightsOf = (w) => rows.filter(r => r.kind === 'throne' && r.a_snap && r.a_snap.week === w);
@@ -2464,7 +2486,7 @@ function viewThrone() {
   const kpet = king.data ? petOf(kh) : '';
   return prevCard + modeHead({
     id: 'throne', c: '#ffd45a', art: '<canvas class="px" data-emblem="throne"></canvas>',
-    title: 'Le trône', sub: 'Défie ceux au-dessus de toi',
+    title: 'Le trône', sub: '',
     chips: [
       mchip(ico('crown'), 'Ta place', `${myRank + 1} / ${list.length}`, myRank === 0 ? 'hot' : ''),
       mchip(ico('medal1'), 'Le roi', esc(king.name)),
@@ -2605,7 +2627,7 @@ function viewPvp() {
   const left = E.pvpRewardsLeft(acc);
   return modeHead({
     id: 'pvp', c: '#b05cff', art: '<canvas class="px" data-emblem="pvp"></canvas>',
-    title: 'PvP en direct', sub: 'Ton équipe contre celle d’un pote connecté',
+    title: 'PvP en direct', sub: '',
     chips: [
       mchip('<i class="dot-on"></i>', 'Potes en ligne', online.length, online.length ? 'hot' : ''),
       mchip('<canvas class="px" data-clat></canvas>', 'Gains du jour', `${PVP.rewardsPerDay - left} / ${PVP.rewardsPerDay}`),
@@ -2786,7 +2808,7 @@ function loadChamp() {
       }
       // Fuze Arena 2.0 : le premier championnat commence la semaine qui suit la mise en ligne
       if (E.throneWeekStart() < E.eraStart()) { champInfo = { week, slots: [], matches: {}, prev: null, soon: E.champRoundAt(E.throneWeekStart(), 0) + 7 * 86400000 + 3 * 3600000 }; return; }   // lundi prochain (marge pour le changement d'heure)
-      const since = new Date(Math.max(E.throneWeekStart() - 7 * 86400000, E.eraStart())).toISOString();
+      const since = new Date(Math.max(E.throneWeekStart() - 7 * 86400000, E.eraFrom())).toISOString();
       let rows = await NET.fetchChamp(since);
       const startOf = (w) => rows.find(r => r.kind === 'champ_start' && r.a_snap && r.a_snap.week === w);
       const matchesOf = (w) => {
@@ -3019,7 +3041,7 @@ function loadRaid() {
   raidError = '';
   raidLoading = (async () => {
     try {
-      const list = (await NET.fetchLatestRaids()).filter(r => new Date(r.created_at).getTime() >= E.eraStart()).map(fixRaid);   // rien de l'ancien jeu
+      const list = (await NET.fetchLatestRaids()).filter(r => E.eraRow(r.created_at)).map(fixRaid);   // rien de l'ancien jeu
       const endOf = (r) => raidEndOf(new Date(r.created_at).getTime());
       let raid = list.find(r => E.isRaidTag(r.boss) && Date.now() < endOf(r)) || null;
       // boss déjà battu : pas besoin d'attendre la fin des 7 jours, le suivant arrive tout de suite
@@ -3029,7 +3051,7 @@ function loadRaid() {
         // raid fini : on ouvre le boss suivant de la rotation (le même pour tout le monde, donc le même nom de semaine)
         const tag = E.nextRaidTag(list[0] && list[0].boss);
         const lv = groupLevels();
-        const week = 'f2-' + (tag === RAID.tag ? 'v3' : tag.replace(':', '-')) + '-' + E.dayKey();   // « f2- » : jamais le nom d'un raid de l'ancien jeu
+        const week = (E.eraLive() ? 'f2-' : 'f2t-') + (tag === RAID.tag ? 'v3' : tag.replace(':', '-')) + '-' + E.dayKey();   // « f2- » : jamais le nom d'un raid de l'ancien jeu (« f2t- » : essai avant 19 h)
         raid = fixRaid(await NET.openRaid(week, tag, E.raidHp(lv, tag), Math.round(lv.reduce((a, b) => a + b, 0) / lv.length)));
       }
       if (!raid) throw new Error('Le raid n’a pas pu être ouvert.');
@@ -3091,7 +3113,7 @@ function viewRaid() {
   const B = curRaid();
   return prevCard + modeHead({
     id: 'raid', c: '#ff8a3d', art: `<span class="mh-fire">${ico('fire')}</span>`,
-    title: `Raid : ${B.name}`, sub: B.cycle ? `Tour ${B.cycle + 1} : il revient plus fort !` : 'Tout le groupe tape le même boss',
+    title: `Raid : ${B.name}`, sub: B.cycle ? `Tour ${B.cycle + 1} : il revient plus fort !` : '',
     chips: [
       mchip(ico('swords'), 'Tes assauts', `${left} / ${RAID.attemptsPerHalf}`, left && !S.killed ? 'hot' : ''),
       mchip(ico('clock'), 'Prochaine charge', E.raidNextIn(acc) ? `<span data-charge="${Date.now() + E.raidNextIn(acc)}">${fmt(E.raidNextIn(acc))}</span>` : 'Pleine'),
@@ -3182,7 +3204,7 @@ function viewHorde() {
   const best = st.best || 0, top = HORDE.keys[0][0] + 5;   // la piste va un peu au-delà du dernier palier
   return modeHead({
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
-    title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
+    title: 'La Horde', sub: '',
     chips: [
       mchip(ico('swords'), 'Charges', `${left} / ${HORDE.runsPerHalf}`, left ? 'hot' : ''),
       mchip(ico('trophy'), 'Ton record', `${st.best || 0}`),
@@ -3276,7 +3298,7 @@ function viewTower() {
   const prizeAt = Math.ceil(next / 10) * 10;   // prochain palier de clefs (tous les 10 étages)
   return modeHead({
     id: 'tower', c: '#a77bff', art: '<canvas class="px" data-emblem="tower"></canvas>',
-    title: 'Tour infinie', sub: 'Monte le plus haut possible : elle ne s’arrête jamais',
+    title: 'Tour infinie', sub: '',
     chips: [
       mchip('▲', 'Prochain étage', next, 'hot'),
       mchip(ico('trophy'), `Record ${CLASSES[hero.classId].name}`, t.best),
@@ -3374,7 +3396,7 @@ function viewShop() {
   };
   return modeHead({
     id: 'shop', c: '#ffd45a', art: '<canvas class="px" data-emblem="shop"></canvas>',
-    title: 'Boutique', sub: 'Dépense ton Flouze',
+    title: 'Boutique', sub: '',
     chips: [
       mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', fmtNum(acc.clat), 'hot'),
       mchip('<canvas class="px" data-key></canvas>', `Clefs ${CLASSES[hero.classId].name}`, hero.keys),
@@ -4027,6 +4049,16 @@ const ACTIONS = {
     pickedClass = d.id;
     document.querySelectorAll('.class-card').forEach(c => c.classList.toggle('sel', c.dataset.id === d.id));
   },
+  eraLogo: () => {
+    if (++logoTaps < 5) return;
+    try { localStorage.setItem(EARLY, '1'); } catch (e) { /* stockage indisponible */ }
+    clearInterval(countdownTimer); start();
+  },
+  eraPlay: (d, el) => {
+    if (!E.eraLive()) return;
+    el.disabled = true; SFX.click();
+    clearInterval(countdownTimer); start();
+  },
   rebirth: async (d, el) => {
     el.disabled = true;
     acc = E.newAccount(rebirth.pseudo, pickedClass);
@@ -4471,9 +4503,12 @@ document.addEventListener('keydown', (ev) => {
 document.addEventListener('input', (ev) => { if (ev.target.id === 'chat-input') chatDraft = ev.target.value; });
 
 // Minuteurs (coffres, fin de journée, combat auto)
+let eraReload = false;
 setInterval(() => {
   if (!acc) return;
   if (!hero) return;
+  // 19 h : le compte d'essai du propriétaire repart de zéro comme tout le monde
+  if (NET.online && !eraReload && !E.isEra(acc)) { eraReload = true; NET.flush().then(() => location.reload()); return; }
   autoTick();
   if (E.applySpecialReset(acc)) { save(); softRender(); toast('Remise à zéro spéciale de 20 h : tout est rechargé !'); return; }
   const before = hero.chest.stored;
@@ -4529,9 +4564,17 @@ async function checkUpdate() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 setInterval(checkUpdate, 5 * 60 * 1000);
 
+let artReady = null;
 async function boot() {
   // dessins vectoriels des héros (refonte) : chargés une fois avant le premier affichage
-  await Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {}), loadItemArt().catch(() => {})]);
+  artReady = Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {}), loadItemArt().catch(() => {})]);
+  let early = false;
+  try { early = localStorage.getItem(EARLY) === '1'; } catch (e) { /* stockage indisponible */ }
+  if (NET.online && !E.eraLive() && !early) { renderCountdown(); return; }   // Fuze Arena 2.0 : on attend 19 h (les dessins chargent derrière)
+  await start();
+}
+async function start() {
+  await artReady;
   if (NET.online) {
     app.innerHTML = '<div class="create"><img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1><p class="lead">Connexion…</p></div>';
     try {
