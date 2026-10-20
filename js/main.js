@@ -820,7 +820,7 @@ function viewBag() {
       ${countFusable() ? `<button class="btn small block fuse-all" style="margin-bottom:12px;background:linear-gradient(#c58bff,#8c3fe0)" data-act="fuseAll">${ico('sparkle')} Tout fusionner</button>` : ''}
       ${body}
       ${commons ? `<button class="btn small block sell-all" style="margin-top:14px" data-act="sellCommons">Vendre tous les Communs non équipés (${commons}) · +${commons * SELL_PRICE[0]}<canvas class="px" data-clat></canvas></button>` : ''}
-      <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Mythique et Chaotique ne s’obtiennent que par fusion, et il faut <b>3 Mythiques</b> identiques pour 1 Chaotique. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
+      <div class="more-txt">2 objets identiques (même objet, même rareté) = 1 objet de la rareté au-dessus. Mythique et Chaotique ne s’obtiennent que par fusion : il faut <b>3 Légendaires</b> identiques pour 1 Mythique, et <b>3 Mythiques</b> pour 1 Chaotique. Touche un objet pour l’équiper, le fusionner ou le vendre. L’objet équipé n’est jamais vendu.</div>
       ${moreBtn('bag')}
     </section>`;
 }

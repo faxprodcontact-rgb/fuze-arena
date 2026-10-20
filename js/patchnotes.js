@@ -18,7 +18,7 @@ export const PATCH_NOTES = [
         'Un seul perso au départ : le 2ᵉ se débloque au niveau 15, le 3ᵉ au niveau 30 et le 4ᵉ au niveau 50.',
         'Niveaux : rapides au début, de plus en plus longs vers le niveau 100.',
         'Coffres : 10 au maximum par ouverture. Plus tu en ouvres, plus ta chance monte (compteur sur chaque coffre).',
-        'Fusion : il faut 3 Mythiques identiques pour 1 Chaotique.',
+        'Fusion : il faut 3 Légendaires identiques pour 1 Mythique, et 3 Mythiques pour 1 Chaotique.',
         'Le marchand vend des objets de toutes les raretés, du Commun à l’Épique, et change ses 3 objets toutes les 4 h.',
         'Nouveau dans la boutique : les enchères. Mets 1 objet en vente pendant 24 h, il part au plus offrant.',
         'Équipement revu : chapeau, armure et amulette donnent toujours de la Vie ; arme, bottes et familier de l’Attaque ou de la Magie. Chaque panoplie ajoute ses 2 spécialités (17 panoplies, toutes différentes).',

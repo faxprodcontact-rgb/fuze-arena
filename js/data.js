@@ -54,7 +54,7 @@ export const OPEN_MAX = 10;                       // coffres ouverts au maximum 
 // Objets identiques (même objet, même rareté) qu'il faut fusionner pour monter d'un rang, depuis Commun … jusqu'à Mythique.
 // 3 Mythiques pour 1 Chaotique : un joueur à fond finit tout en Chaotique vers le jour 40, niveau ~96 (voir refonte/simulations/equipement.mjs ;
 // c'était le jour 34 avant les 4 panoplies élémentaires : plus d'objets différents = moins de doublons à fusionner).
-export const FUSE_NEED = [2, 2, 2, 2, 2, 3];
+export const FUSE_NEED = [2, 2, 2, 2, 3, 3];   // objets identiques pour monter d'une rareté : 3 Légendaires → 1 Mythique, 3 Mythiques → 1 Chaotique (tout Chaotique vers le jour 47)
 
 // Probabilités de rareté dans les coffres (en %)
 export const CHEST_ODDS = {
