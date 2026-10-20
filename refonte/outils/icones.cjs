@@ -245,6 +245,15 @@ def('emb-champ', 'championnat', I => {
   I.vol(RR(18, 54, 28, 8, 3), 'red', { hl: false, k: 1.4 });
   I.spark(52, 8, 5); I.spark(12, 10, 3.5);
 });
+def('emb-story', 'mode histoire', I => {
+  // carte au trésor dépliée : chemin en pointillés, drapeau du départ, croix rouge de l'arrivée
+  I.vol(P('M4 14L22 8L42 14L60 8L60 52L42 58L22 52L4 58Z'), 'paper', { sw: 2 });
+  I.flat(P('M22 8L22 52L42 58L42 14Z'), '#e0c690', 0);
+  I.raw(`<path d="M12 48C18 44 16 36 24 34C32 32 30 24 38 22C44 20 46 26 50 22" fill="none" stroke="#8f4c0a" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="1 5"/>`);
+  I.raw(`<path d="M45 14L55 24M55 14L45 24" stroke="#1b1530" stroke-width="6" stroke-linecap="round"/><path d="M45 14L55 24M55 14L45 24" stroke="#e3343d" stroke-width="3.4" stroke-linecap="round"/>`);
+  I.rope('M11 50V32', '#9a6234', 2.4); I.vol(P('M12 32L22 35L12 39Z'), 'blue', { hl: false, k: 1.2 });
+  I.spark(55, 40, 4.2);
+});
 def('emb-bets', 'paris et duels', I => { I.embed('flouze', 'translate(-6 -4) rotate(-14 32 32) scale(0.92)'); I.embed('flouze', 'translate(10 10) rotate(8 32 32) scale(0.92)'); I.spark(54, 10, 4.5); });
 
 // ---------------------------------------------------------------- coffres : normal / combat, fermé / ouvert

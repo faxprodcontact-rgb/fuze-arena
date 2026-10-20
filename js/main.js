@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -1382,7 +1382,7 @@ const softRender = () => { if (!modalRoot.innerHTML && !document.querySelector('
 const HUBS = {
   hub_pvp: { name: 'PVP', tag: 'Joueur contre joueur', desc: 'Affronte tes potes : arène, direct, trône et tournoi.', c: '#ff5d6c', c2: '#ff9a3d', ids: ['fights', 'pvp', 'throne', 'champ'] },
   hub_coop: { name: 'COOP', tag: 'Tous ensemble', desc: 'Faites équipe contre le gros boss et pour ton camp.', c: '#3d9bff', c2: '#4ce0ff', ids: ['raid', 'war'] },
-  hub_pvm: { name: 'PVM', tag: 'Joueur contre monstres', desc: 'Donjons, tour infinie et Horde : chasse aux monstres.', c: '#4cd964', c2: '#c8ff4c', ids: ['dungeons', 'tower', 'horde'] },
+  hub_pvm: { name: 'PVM', tag: 'Joueur contre monstres', desc: 'Histoire, donjons, tour infinie et Horde : chasse aux monstres.', c: '#4cd964', c2: '#c8ff4c', ids: ['story', 'dungeons', 'tower', 'horde'] },
 };
 const PARENT = { hub_pvp: 'combat', hub_coop: 'combat', hub_pvm: 'combat', bets: 'hub_pvp', journal: 'social', chat: 'social', ranking: 'social', players: 'social' };
 for (const [h, x] of Object.entries(HUBS)) for (const id of x.ids) PARENT[id] = h;
@@ -1494,6 +1494,7 @@ function combatTiles() {
     champ: { name: 'Championnat', sub: champSub(), tag: 'Tournoi à 8 chaque semaine, combats à 19 h 30', emblem: 'champ', badge: 0, c: '#ffd45a' },
     raid: { name: curRaid().name, sub: `${raidLeft}/${RAID.attemptsPerHalf} assauts`, tag: 'Tout le groupe tape le même boss', monster: curRaid().sprite, badge: raidLeft, c: '#ff8a3d' },
     war: { name: 'Guerre', sub: acc.war.section ? WAR.sections[acc.war.section].name : 'Choisis ton camp', tag: 'Assassins contre Templiers, chaque semaine', emblem: 'war', badge: warLeft, c: '#3d9bff' },
+    story: { name: 'Histoire', sub: storySub(), tag: '5 zones, des boss, et des étoiles à récolter', emblem: 'story', badge: E.storyClaimable(hero), c: '#ffb02e' },
     dungeons: { name: 'Donjons', sub: `${runs} combat${runs > 1 ? 's' : ''} dispo`, tag: 'Des vagues de monstres et des clefs à gagner', emblem: 'dungeons', badge: runs, c: '#4cd964' },
     tower: { name: 'Tour infinie', sub: `Étage ${hero.tower.best + 1}`, tag: 'Monte le plus haut possible, étage par étage', emblem: 'tower', badge: 0, c: '#a77bff' },
     horde: { name: 'La Horde', sub: `${E.hordeRunsLeft(hero)}/${HORDE.runsPerHalf} essais`, tag: 'Des monstres à la chaîne : va le plus loin possible', emblem: 'horde', badge: E.hordeRunsLeft(hero), c: '#ff3d6e' },
@@ -2063,6 +2064,151 @@ function startAutoVisual(canvas) {
   };
   play();
   return () => holder.stop();
+}
+
+// ------------------------------ Mode histoire ------------------------------
+// Chaque perso a son histoire : 3 modes (Normal, Enfer, Chaotique) × 5 zones × 10 combats, dans l'ordre.
+// La carte montre le chemin de la zone choisie ; on touche un combat pour voir ses monstres et le lancer.
+let storySel = null;   // { m, z } : mode et zone affichés (par défaut, là où en est le perso)
+const STORY_PTS = [[50, 92], [76, 84], [68, 73], [38, 67], [20, 56], [36, 45], [66, 40], [80, 30], [70, 21], [56, 12]];   // places des 10 combats sur la carte (%)
+function storySub() {
+  const S = E.storyState(hero);
+  if (S.prog > E.STORY_LAST) return 'Histoire terminée !';
+  const st = E.storyStage(S.prog);
+  return `${STORY.modes[st.mode].name} · zone ${st.zone + 1} · combat ${st.fight + 1}`;
+}
+const storyUnlocked = (m, z) => E.storyState(hero).prog >= E.storyG(m, z, 0);
+const starsHtml = (n, cls = '') => `<span class="stars ${cls}">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>`;
+function viewStory() {
+  const S = E.storyState(hero);
+  if (!storySel || storySel.hero !== hero.id) {
+    const st = E.storyStage(Math.min(S.prog, E.STORY_LAST));
+    storySel = { hero: hero.id, m: st.mode, z: st.zone };
+  }
+  const { m, z } = storySel, Z = STORY.zones[z], M = STORY.modes[m];
+  const total = Object.values(S.stars).reduce((a, b) => a + b, 0);
+  const zs = E.storyZoneStars(hero, m, z);
+  // carte : le chemin (fait en or jusqu'au combat en cours), les combats avec leurs étoiles
+  const pts = STORY_PTS;
+  const curve = (list) => list.map((p, i) => {
+    if (!i) return `M${p[0]} ${p[1]}`;
+    const a = list[i - 2] || list[i - 1], b = list[i - 1], d = list[i + 1] || p;
+    return `C${(b[0] + (p[0] - a[0]) / 6).toFixed(1)} ${(b[1] + (p[1] - a[1]) / 6).toFixed(1)} ${(p[0] - (d[0] - b[0]) / 6).toFixed(1)} ${(p[1] - (d[1] - b[1]) / 6).toFixed(1)} ${p[0]} ${p[1]}`;
+  }).join('');
+  const g0 = E.storyG(m, z, 0), done = Math.max(0, Math.min(10, S.prog - g0));
+  const nodes = pts.map(([x, y], f) => {
+    const g = g0 + f, kind = E.storyKind(g), stars = S.stars[g] || 0;
+    const state = g < S.prog ? 'done' : g === S.prog ? 'now' : 'locked';
+    const foes = E.storyFoes(g), big = foes[foes.length - 1];
+    return `<button class="st-node ${kind} ${state}" style="left:${x}%;top:${y}%" data-act="storyNode" data-g="${g}" aria-label="Combat ${f + 1}">
+      ${state === 'locked' ? '' : starsHtml(stars)}
+      <span class="st-disc">${kind === 'mob' ? `<b>${f + 1}</b>` : `<canvas class="px" data-monster="${big.monster}"></canvas>`}${state === 'locked' ? `<em>${ico('lock')}</em>` : ''}</span>
+      ${kind !== 'mob' ? `<small>${kind === 'boss' ? 'BOSS' : 'Petit boss'}</small>` : ''}
+      ${state === 'now' ? `<span class="st-me"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas></span>` : ''}
+    </button>`;
+  }).join('');
+  const reward = (tier) => {
+    const got = S.claimed[`${m}-${z}-${tier}`], ready = zs >= tier && !got;
+    const chest = tier === 20 ? 'normal' : M.id === 'chaos' ? 'legendary' : 'epic';
+    const label = tier === 20 ? `${STORY.chests20} coffres` : M.id === 'chaos' ? 'Coffre Légendaire' : 'Coffre Épique';
+    return `<div class="st-r ${got ? 'got' : ready ? 'ready' : ''}">
+      <canvas class="px" data-chest="${chest}"></canvas>
+      <div><b>${tier} ★</b><small>${label}</small></div>
+      ${got ? `<span class="st-ok">${ico('check')}</span>` : ready ? `<button class="btn small primary" data-act="storyClaim" data-m="${m}" data-z="${z}" data-t="${tier}">Récupérer</button>` : `<span class="st-need">encore ${tier - zs} ★</span>`}
+    </div>`;
+  };
+  return `
+    <section class="st-top">
+      <span class="st-hero"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas></span>
+      <div><b>Histoire</b><small>Ton ${CLASSES[hero.classId].name} · niveau ${hero.level}</small></div>
+      <span class="st-total">${fmtNum(total)}<i>★</i><small>/ ${(E.STORY_LAST + 1) * 3}</small></span>
+    </section>
+    <div class="st-modes">${STORY.modes.map((x, i) => `<button class="${i === m ? 'on' : ''} ${storyUnlocked(i, 0) ? '' : 'lock'}" style="--mc:${x.color}" data-act="storyMode" data-m="${i}">${storyUnlocked(i, 0) ? '' : ico('lock')}${x.name}</button>`).join('')}</div>
+    <div class="st-zones">${STORY.zones.map((x, i) => `<button class="${i === z ? 'on' : ''} ${storyUnlocked(m, i) ? '' : 'lock'}" data-act="storyZone" data-z="${i}"><b>${i + 1}</b><small>${storyUnlocked(m, i) ? `${E.storyZoneStars(hero, m, i)}★` : ico('lock')}</small></button>`).join('')}</div>
+    <section class="st-map mode-${M.id}">
+      <img class="st-bg" src="art/decors/${Z.theme}.svg" alt=""><i class="st-tint"></i>
+      <div class="st-title"><small>${M.name} · zone ${z + 1}</small><b>${esc(Z.name)}</b></div>
+      <svg class="st-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="${curve(pts)}" class="todo"/>
+        ${done > 0 ? `<path d="${curve(pts.slice(0, Math.min(10, done + 1)))}" class="done"/>` : ''}
+      </svg>
+      ${nodes}
+    </section>
+    <section class="card st-rew">
+      <div class="st-rew-top"><b>Étoiles de la zone</b><span>${zs} / 30 ★</span></div>
+      <div class="st-bar"><i style="width:${Math.round(100 * zs / 30)}%"></i><span style="left:66.67%"></span></div>
+      <div class="st-rs">${reward(20)}${reward(30)}</div>
+      <p class="hint">1 ★ si tu gagnes, 2 ★ s’il te reste ${Math.round(STORY.stars[0] * 100)} % de vie, 3 ★ avec ${Math.round(STORY.stars[1] * 100)} %. Tu peux rejouer un combat pour avoir plus d’étoiles (l’XP ne se gagne qu’une fois).</p>
+    </section>`;
+}
+/** Fiche d'un combat : ses monstres, la puissance conseillée, les étoiles déjà gagnées */
+function openStoryFight(g) {
+  const S = E.storyState(hero), st = E.storyStage(g), Z = STORY.zones[st.zone], kind = E.storyKind(g);
+  const foes = E.storyFoes(g), need = E.storyNeed(g), power = E.powerScore(mySnap());
+  const locked = g > S.prog, first = !S.stars[g];
+  const ratio = power / need;
+  openModal(`
+    <div class="sf-head ${kind}">
+      <small>${STORY.modes[st.mode].name} · ${esc(Z.name)}</small>
+      <h3>${kind === 'boss' ? `BOSS : ${esc(foes[foes.length - 1].name)}` : kind === 'mini' ? `Petit boss : ${esc(foes[foes.length - 1].name)}` : `Combat ${st.fight + 1}`}</h3>
+      ${locked ? '' : starsHtml(S.stars[g] || 0, 'big')}
+    </div>
+    <div class="sf-foes">${foes.map((f, i) => `<div class="sf-foe ${f.boss ? 'boss' : ''}"><canvas class="px" data-monster="${f.monster}"></canvas><b>${esc(f.name)}</b><small>Nv.${f.level}</small></div>${i < foes.length - 1 ? '<i>›</i>' : ''}`).join('')}</div>
+    <p class="hint" style="text-align:center;margin:4px 0 10px">Les ${foes.length} monstres arrivent à la suite, sans pause.</p>
+    <div class="sf-pow">
+      <div><small>Puissance conseillée</small><b>${fmtNum(need)}</b></div>
+      <div class="${ratio >= 1.1 ? 'good' : ratio >= 0.9 ? 'ok' : 'bad'}"><small>Ton héros</small><b>${fmtNum(power)}</b></div>
+    </div>
+    <div class="rw" style="display:flex;justify-content:center;margin:10px 0 4px">${first ? `<span class="pill gold">+${fmtNum(E.storyXp(g))} XP (1re victoire)</span>` : '<span class="pill">XP déjà gagnée</span>'}</div>
+    <div class="row" style="gap:8px;margin-top:12px">
+      <button class="btn block" data-act="closeModal">Fermer</button>
+      ${locked ? `<button class="btn block" disabled>${ico('lock')} Gagne d’abord le combat d’avant</button>` : `<button class="btn primary block" data-act="storyFight" data-g="${g}">${ico('swords')} ${first ? 'Combattre' : 'Rejouer'}</button>`}
+    </div>`, { center: true });
+}
+/** Lance un combat d'histoire : les monstres arrivent à la suite (comme une vague de donjon) */
+function startStoryFight(g) {
+  const S = E.storyState(hero);
+  if (g > S.prog || g > E.STORY_LAST) return;
+  closeModal();
+  const h = hero, me = mySnap(), foes = E.storyFoes(g), last = foes.length - 1;
+  const st = E.storyStage(g), Z = STORY.zones[st.zone], kind = E.storyKind(g);
+  const title = (i) => `${esc(Z.name)} <span style="color:var(--gold)">·</span> ${foes[i].boss ? `${kind === 'boss' ? 'BOSS' : 'Petit boss'} : ${esc(foes[i].name)}` : `Combat ${st.fight + 1} · ${i + 1}/${foes.length}`}`;
+  const live = E.createWave(me, foes, (Math.random() * 2 ** 31) | 0);
+  let cur = 0;
+  const prevProg = S.prog;
+  runBattle({
+    me, foe: foes[0], live, theme: Z.theme, manual: true, victory: myVictory(), title: title(0),
+    onEvent: (e) => {
+      if (e.type !== 'nextFoe') return;
+      cur++;
+      const t = document.querySelector('.battle-vs');
+      if (t) t.innerHTML = title(cur);
+    },
+    finish: (result) => {
+      const won = result.winner === 0;
+      const rw = E.storyResult(h, g, won, result.hpFrac || 0);
+      save();
+      const S2 = E.storyState(h);
+      let unlock = '';
+      if (won && S2.prog > prevProg && S2.prog <= E.STORY_LAST) {
+        const ns = E.storyStage(S2.prog);
+        if (ns.fight === 0) unlock = ns.zone === 0 ? `Mode ${STORY.modes[ns.mode].name} débloqué !` : `Zone ${ns.zone + 1} débloquée : ${STORY.zones[ns.zone].name} !`;
+        storySel = { hero: h.id, m: ns.mode, z: ns.zone };
+      } else if (won && S2.prog > E.STORY_LAST && prevProg <= E.STORY_LAST) unlock = 'Tu as fini toute l’histoire. Légende !';
+      const next = won && g + 1 <= E.STORY_LAST && g + 1 <= S2.prog ? () => { render(); openStoryFight(g + 1); } : null;
+      return {
+        rewards: rw,
+        headline: won ? (kind === 'boss' ? 'BOSS VAINCU !' : 'VICTOIRE !') : 'DÉFAITE…',
+        next, nextLabel: 'Combat suivant ›', backLabel: 'Carte',
+        rewardsHtml: won ? `
+          <div class="sr-stars">${[1, 2, 3].map(i => `<i class="${i <= rw.stars ? 'on' : ''}" style="animation-delay:${i * 0.25}s">★</i>`).join('')}</div>
+          <p class="hint" style="margin:0">Il te reste ${Math.round((result.hpFrac || 0) * 100)} % de vie${rw.stars < 3 ? ` · 3 ★ à partir de ${Math.round(STORY.stars[1] * 100)} %` : ''}${rw.better && !rw.first ? ' · nouveau record d’étoiles !' : ''}</p>
+          <div class="rw">${xpPills(rw)}</div>
+          ${unlock ? `<div class="st-unlock">${ico('star')} ${unlock}</div>` : ''}`
+          : `<p style="color:var(--muted);margin:0">${result.kills ? `${result.kills} monstre${result.kills > 1 ? 's' : ''} battu${result.kills > 1 ? 's' : ''} sur ${foes.length}. ` : ''}Rien de perdu : améliore ton héros et retente quand tu veux !</p>`,
+      };
+    },
+  });
 }
 
 // ------------------------------ Le trône ------------------------------
@@ -3110,7 +3256,7 @@ function updateXpBonus() {
   E.setXpBonus(catchup, E.altXpBonus(acc, hero));   // persos secondaires : ×2 en plus, jusqu'au niveau du perso le plus haut du compte
 }
 
-const VIEWS = { hub_pvp: () => viewHub('hub_pvp'), hub_coop: () => viewHub('hub_coop'), hub_pvm: () => viewHub('hub_pvm'), throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
+const VIEWS = { story: viewStory, hub_pvp: () => viewHub('hub_pvp'), hub_coop: () => viewHub('hub_coop'), hub_pvm: () => viewHub('hub_pvm'), throne: viewThrone, hero: viewHero, chests: viewChests, bag: viewBag, fights: viewFights, dungeons: viewDungeons, ranking: viewRanking, war: viewWar, chat: viewChat,
   combat: viewCombat, social: viewSocial, shop: viewShop, tower: viewTower, raid: viewRaid, horde: viewHorde, pvp: viewPvp, bets: viewBets, champ: viewChamp, journal: viewJournal, players: viewPlayers };
 
 // ------------------------------ Modales & toasts ------------------------------
@@ -3284,7 +3430,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
       <div class="result">
         <h2 class="${out.headClass || (won ? 'win' : 'lose')}">${pxCaps(out.headline || (won ? 'VICTOIRE' : 'DÉFAITE…')).replace(/\s*!+\s*$/, '')}</h2>
         ${out.rewardsHtml || ''}
-        ${out.next ? `<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>` : '<button class="btn primary" data-act="endFight">Continuer</button>'}
+        ${out.next ? `${out.backLabel ? `<div class="row" style="gap:8px;justify-content:center"><button class="btn" data-act="endFight">${out.backLabel}</button>` : ''}<button class="btn primary" data-act="waveNext">${out.nextLabel}</button>${out.backLabel ? '</div>' : ''}` : '<button class="btn primary" data-act="endFight">Continuer</button>'}
       </div>`;
     waveNext = out.next || null;
     hydrate(slot);
@@ -3599,6 +3745,27 @@ const ACTIONS = {
     save(); softRender();
   },
   statStep: (d) => { statStep = +d.n; softRender(); },
+  storyMode: (d) => {
+    const m = +d.m;
+    if (!storyUnlocked(m, 0)) { toast(`Finis les 5 zones du mode ${STORY.modes[m - 1].name} pour débloquer le mode ${STORY.modes[m].name}.`); return; }
+    const S = E.storyState(hero);
+    let z = 0;
+    while (z < STORY.zones.length - 1 && S.prog >= E.storyG(m, z + 1, 0)) z++;
+    storySel = { hero: hero.id, m, z }; SFX.click(); render();
+  },
+  storyZone: (d) => {
+    const z = +d.z;
+    if (!storyUnlocked(storySel.m, z)) { toast('Finis le boss de la zone d’avant pour débloquer celle-ci.'); return; }
+    storySel = { ...storySel, z }; SFX.click(); render();
+  },
+  storyNode: (d) => openStoryFight(+d.g),
+  storyFight: (d) => startStoryFight(+d.g),
+  storyClaim: (d) => {
+    const r = E.storyClaim(acc, hero, +d.m, +d.z, +d.t);
+    if (!r) return;
+    save(); render(); SFX.loot(r.legendary ? 4 : r.epic ? 3 : 1);
+    toast(r.chests ? `+${r.chests} coffres pour ton ${CLASSES[hero.classId].name} !` : r.legendary ? '+1 coffre Légendaire ! (onglet Coffres)' : '+1 coffre Épique ! (onglet Coffres)');
+  },
   resetStats: () => {
     if (acc.clat < STAT_RESET_COST) { toast(`Il faut ${STAT_RESET_COST} Flouze pour replacer tes points.`); return; }
     if (!confirm(`Replacer tous tes points pour ${STAT_RESET_COST} Flouze ?`)) return;

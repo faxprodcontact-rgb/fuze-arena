@@ -24,6 +24,8 @@ export const PATCH_NOTES = [
         'Combat auto : en grand en haut de l’onglet Combats, et il donne un peu d’XP.',
         'Nouveau : le Championnat, un tournoi à 8 chaque semaine, combats à 19 h 30, avec son tableau dessiné.',
         'Les modes de combat sont rangés en 3 parties : PVP, COOP et PVM.',
+        'Nouveau : le mode Histoire (dans PVM). 5 zones de 10 combats avec petit boss et boss, puis l’Enfer et le Chaotique. Gagne des étoiles pour des coffres, et de l’XP à chaque première victoire.',
+        'Le gros boss ne donne plus d’XP : c’est l’Histoire qui la remplace.',
         'Arène : tu peux retenter un pote tant que tu ne l’as pas battu (une défaite ne coûte rien).',
         'La Horde se compte par perso, et chaque nouveau perso arrive avec 5 coffres.',
         'Le blason de niveau change tous les 10 niveaux, jusqu’au blason Légende du niveau 100.',

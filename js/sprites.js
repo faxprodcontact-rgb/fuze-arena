@@ -1195,7 +1195,7 @@ function vecArt(k, id) {
 //  Elles remplacent les icônes pixel : petites icônes, emblèmes des modes (emb-*), coffres, Flouze, clef.
 // =====================================================================
 const ICON_VEC = new Map();
-const ICON_NAMES = 'amulet bag bolt boom boot chat check clock coffre-combat-ouvert coffre-combat coffre-normal-ouvert coffre-normal coffre-war-ouvert coffre-war coffre-epic coffre-epic-ouvert coffre-legendary coffre-legendary-ouvert cross crown dice emb-arena emb-bets emb-champ emb-dungeons emb-horde emb-journal emb-players emb-pvp emb-ranking emb-shop emb-skull emb-talk emb-throne emb-tower emb-war fire fist flag flouze gear heart helmet hourglass key lock magic medal1 medal2 medal3 mute pause paw play plus scroll shield skip skull-boss skull-done skull-wave skull sparkle speaker star sword swords target trophy up wind'.split(' ');
+const ICON_NAMES = 'amulet bag bolt boom boot chat check clock coffre-combat-ouvert coffre-combat coffre-normal-ouvert coffre-normal coffre-war-ouvert coffre-war coffre-epic coffre-epic-ouvert coffre-legendary coffre-legendary-ouvert cross crown dice emb-arena emb-bets emb-champ emb-dungeons emb-horde emb-journal emb-players emb-pvp emb-ranking emb-shop emb-skull emb-story emb-talk emb-throne emb-tower emb-war fire fist flag flouze gear heart helmet hourglass key lock magic medal1 medal2 medal3 mute pause paw play plus scroll shield skip skull-boss skull-done skull-wave skull sparkle speaker star sword swords target trophy up wind'.split(' ');
 export async function loadIconArt() {
   const q = new URL(import.meta.url).search;
   await Promise.all(ICON_NAMES.map(async (n) => {

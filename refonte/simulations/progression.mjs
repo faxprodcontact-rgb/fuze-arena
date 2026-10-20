@@ -4,7 +4,8 @@
 // - Coffres : 1 toutes les 30 min, stock de 5 ; réveillé 16 h, il les ouvre régulièrement → 37 coffres/jour (+ toutes ses clefs).
 // - Donjons : tous les donjons débloqués, 3 vagues toutes les 12 h (6 par jour) ; les 2 plus durs joués (XP pleine),
 //   les autres passés avec le bouton (moitié de l'XP). Il gagne toutes ses vagues. Clefs de donjon : 5 par 12 h.
-// - Horde : 6 essais par jour (vrais combats simulés). Raid : 6 assauts par jour. Tour : il monte tant qu'il gagne (vrais combats).
+// - Horde : 6 essais par jour (vrais combats simulés). Le raid ne donne plus d'XP. Tour : il monte tant qu'il gagne (vrais combats).
+// - Histoire : chaque combat gagné dès que le héros a le niveau prévu (XP à la première victoire seulement).
 // - Arène : ~7 victoires par jour → 2 coffres de combat. Combat auto : le plafond de 25 % d'un niveau par jour.
 // - Championnat / guerre / trône : ~1 coffre de guerre et 2 clefs par semaine.
 // - Force du héros : celle d'un bot du même niveau (points placés, équipement selon le niveau).
@@ -14,7 +15,8 @@ import fs from 'fs';
 import * as E from '../../js/engine.js';
 // même ?v= que l'engine : les réglages changés ici s'appliquent bien au moteur
 const V = fs.readFileSync(new URL('../../js/engine.js', import.meta.url), 'utf8').match(/data\.js\?v=(\d+)/)[1];
-const { DUNGEONS, MAX_LEVEL, AUTO, RAID, XP_CURVE } = await import(`../../js/data.js?v=${V}`);
+const { DUNGEONS, MAX_LEVEL, AUTO, RAID, XP_CURVE, STORY } = await import(`../../js/data.js?v=${V}`);
+if (process.env.XPMULT) STORY.xpMult = +process.env.XPMULT;
 // essais de courbe : GROWTH=1.03 MULT=1.2 node …
 if (process.env.GROWTH) XP_CURVE.growth = +process.env.GROWTH;
 if (process.env.MULT) XP_CURVE.mult = +process.env.MULT;
@@ -27,7 +29,8 @@ function run(catchup) {
   const hero = E.newHero('Sim', cls);
   const days = [];
   let towerBest = 0, warChestCredit = 0, throneKeys = 0;
-  const src = { coffres: 0, donjons: 0, horde: 0, raid: 0, tour: 0, auto: 0 };
+  const src = { coffres: 0, donjons: 0, horde: 0, histoire: 0, tour: 0, auto: 0 };
+  let story = 0;   // prochain combat d'histoire
   const gain = (k, xp) => {
     if (hero.level >= MAX_LEVEL) return;
     E.setXpBonus(catchup ? E.catchupBonus(hero.level, MAX_LEVEL) : 1);
@@ -54,8 +57,6 @@ function run(catchup) {
         const kills = E.createHorde(snap(), day * 1000 + half * 10 + t).result().kills;
         gain('horde', Math.round((25 + 5 * hero.level) * (0.4 + 0.1 * kills)));
       }
-      // raid : 3 assauts
-      for (let t = 0; t < RAID.attemptsPerHalf; t++) gain('raid', 25 + 5 * hero.level);
     }
     // tour : il monte tant qu'il gagne (jusqu'à 5 essais par étage)
     for (let guard = 0; guard < 40; guard++) {
@@ -74,7 +75,9 @@ function run(catchup) {
     for (let c = 0; c < normal; c++) gain('coffres', 20);
     for (let c = 0; c < COMBAT_CHESTS; c++) gain('coffres', 60);
     if (warChestCredit >= 1) { warChestCredit -= 1; gain('coffres', 120); }
-    // combat auto : le plafond du jour (25 % d'un niveau)
+    // histoire : il gagne chaque combat dès qu'il a le niveau prévu (XP à la première victoire seulement)
+    while (story < 150 && STORY.levels[story] <= hero.level) gain('histoire', E.storyXp(story++));
+    // combat auto : le plafond du jour
     gain('auto', Math.round(E.xpForLevel(hero.level) * AUTO.xpDayCap));
     days.push({ day, level: hero.level, xp: hero.xp, tower: towerBest });
     hero.keys = 0;   // les clefs gagnées en route ont été comptées ci-dessus ; celles des montées de niveau du soir partent le lendemain

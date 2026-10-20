@@ -678,6 +678,39 @@ export const AUTO = {
 // Championnat : chaque semaine (à partir du lundi), un tableau de 8 joueurs tiré au hasard.
 // Quarts le lundi, demi-finales le mardi, finale le mercredi, à 19 h 30. Chaque match se joue en 3 manches
 // (2 manches gagnées suffisent), équipe de 4 contre équipe de 4 en relais, sans soin entre deux duels.
+// Mode histoire (PVM) : 5 zones de 10 combats, chacune dans son biome. Un petit boss au 5e combat, un boss au 10e.
+// Les 5 zones finies en Normal débloquent l'Enfer (zone 1), puis le Chaotique : 3 × 5 = 15 zones en tout.
+// Chaque perso a sa propre histoire et se bat seul ; les monstres d'un combat arrivent à la suite (comme une vague de donjon).
+// Étoiles selon la vie restante à la fin (1 = gagné, 2 = 40 %, 3 = 70 %). 20 étoiles d'une zone : 5 coffres ;
+// 30 étoiles : 1 coffre Épique (Légendaire en Chaotique). XP seulement à la première victoire d'un combat.
+export const STORY = {
+  fights: 10, mini: 5, boss: 10,
+  modes: [
+    { id: 'normal', name: 'Normal', color: '#4cd964' },
+    { id: 'enfer', name: 'Enfer', color: '#ff5d3d' },
+    { id: 'chaos', name: 'Chaotique', color: '#ff2bd6' },
+  ],
+  zones: [
+    { id: 'foret', name: 'Forêt des Murmures', theme: 'forest', mobs: ['rat', 'wolf', 'goblin', 'frog'], mini: { sprite: 'goblin', name: 'Chef Gobelin' }, boss: { sprite: 'slimeKing', name: 'Roi Gluant' } },
+    { id: 'marais', name: 'Marais Maudits', theme: 'swamp', mobs: ['frog', 'mushroom', 'zombie', 'spider'], mini: { sprite: 'mushroom', name: 'Champignon Ancestral' }, boss: { sprite: 'hydra', name: 'Hydre des Marais' } },
+    { id: 'glace', name: 'Pics Gelés', theme: 'glacier', mobs: ['wolf', 'polarBear', 'golem', 'skeleton'], mini: { sprite: 'polarBear', name: 'Ours Colosse' }, boss: { sprite: 'yeti', name: 'Yéti Ancestral' } },
+    { id: 'feu', name: 'Terres de Feu', theme: 'volcano', mobs: ['salamander', 'fireElem', 'golem', 'spider'], mini: { sprite: 'salamander', name: 'Salamandre Reine' }, boss: { sprite: 'dragon', name: 'Dragon Ancien' } },
+    { id: 'abysses', name: 'Abysses', theme: 'abyss', mobs: ['ghost', 'abyssEye', 'blackKnight', 'mummy'], mini: { sprite: 'vampire', name: 'Comte Vampire' }, boss: { sprite: 'demon', name: 'Seigneur des Abysses' } },
+  ],
+  stars: [0.4, 0.7],          // part de vie à garder pour 2 et 3 étoiles
+  chests20: 5,                // 20 étoiles : 5 coffres normaux (pour ce perso)
+  // Réglés combat par combat par refonte/simulations/histoire.mjs (relancer et recopier histoire.json après un changement) :
+  // strength = force des monstres (× un monstre de niveau 50) ; need = puissance conseillée ; levels = niveau affiché des monstres.
+  // Chaque combat est fait pour le héros attendu d'un joueur à fond à ce moment-là ; le dernier boss du Chaotique
+  // demande un héros niveau 100 tout Chaotique avec sa panoplie pour les 3 étoiles.
+  strength: [0.164, 0.278, 0.314, 0.407, 0.428, 0.438, 0.509, 0.5, 0.693, 0.705, 0.758, 0.753, 0.749, 0.838, 0.713, 0.828, 0.888, 0.847, 0.873, 0.751, 1.077, 1.056, 1.076, 1.122, 1.08, 1.115, 1.176, 1.231, 1.278, 1.072, 1.31, 1.267, 1.201, 1.322, 1.169, 1.321, 1.376, 1.292, 1.261, 1.352, 1.601, 1.546, 1.609, 1.639, 1.593, 1.664, 1.711, 1.629, 1.724, 1.419, 1.991, 1.869, 2.002, 2.022, 1.97, 1.921, 1.931, 1.903, 1.963, 1.849, 1.906, 1.908, 1.983, 1.959, 1.817, 2.006, 1.993, 2.021, 2.047, 1.747, 2.514, 2.499, 2.568, 2.499, 2.371, 2.607, 2.577, 2.591, 2.584, 2.188, 2.474, 2.499, 2.535, 2.442, 2.403, 2.575, 2.487, 2.586, 2.622, 2.068, 2.323, 2.361, 2.438, 2.361, 2.394, 2.472, 2.394, 2.453, 2.53, 2.118, 2.905, 2.915, 2.938, 2.973, 2.981, 3.043, 3.088, 3.02, 3.114, 2.883, 3.051, 2.979, 3.047, 3.075, 2.752, 3.084, 3.15, 3.026, 3.135, 2.306, 3.067, 3.109, 3.487, 3.468, 3.222, 3.488, 3.524, 3.5, 3.54, 2.93, 3.527, 3.421, 3.453, 3.57, 3.333, 3.457, 3.629, 3.5, 3.463, 2.743, 3.444, 3.084, 3.222, 3.485, 3.182, 3.183, 3.54, 3.157, 3.237, 2.23],
+  need: [84, 152, 162, 211, 221, 229, 249, 258, 367, 376, 387, 396, 396, 406, 413, 424, 433, 433, 441, 551, 559, 569, 579, 589, 599, 599, 608, 618, 627, 636, 647, 655, 664, 675, 675, 684, 694, 702, 702, 877, 886, 895, 895, 905, 913, 921, 921, 932, 932, 941, 951, 951, 959, 959, 970, 979, 979, 988, 988, 998, 1007, 1007, 1018, 1018, 1028, 1038, 1038, 1048, 1048, 1204, 1214, 1214, 1224, 1224, 1233, 1244, 1244, 1252, 1252, 1262, 1273, 1273, 1282, 1282, 1292, 1299, 1299, 1309, 1309, 1319, 1319, 1327, 1327, 1338, 1346, 1355, 1365, 1365, 1375, 1375, 1375, 1384, 1384, 1394, 1404, 1404, 1413, 1413, 1422, 1422, 1422, 1433, 1433, 1440, 1440, 1450, 1461, 1461, 1470, 1470, 1470, 1481, 1671, 1680, 1680, 1680, 1680, 1680, 1690, 1690, 1699, 1699, 1708, 1708, 1719, 1719, 1726, 1726, 1736, 1736, 1747, 1747, 1747, 1755, 1766, 1766, 1775, 1775, 1775, 1784],
+  levels: [2, 4, 5, 7, 8, 9, 11, 12, 14, 15, 16, 17, 17, 18, 19, 20, 21, 21, 22, 23, 24, 25, 26, 27, 28, 28, 29, 30, 31, 32, 33, 34, 35, 36, 36, 37, 38, 39, 39, 40, 41, 42, 42, 43, 44, 45, 45, 46, 46, 47, 48, 48, 49, 49, 50, 51, 51, 52, 52, 53, 54, 54, 55, 55, 56, 57, 57, 58, 58, 59, 60, 60, 61, 61, 62, 63, 63, 64, 64, 65, 66, 66, 67, 67, 68, 69, 69, 70, 70, 71, 71, 72, 72, 73, 74, 75, 76, 76, 77, 77, 77, 78, 78, 79, 80, 80, 81, 81, 82, 82, 82, 83, 83, 84, 84, 85, 86, 86, 87, 87, 87, 88, 88, 89, 89, 89, 89, 89, 90, 90, 91, 91, 92, 92, 93, 93, 94, 94, 95, 95, 96, 96, 96, 97, 98, 98, 99, 99, 99, 100],
+  // [force, PV] de chaque monstre selon le combat : PV par monstre quand ils sont 2, 3 ou 4 ; sbires puis petit boss ; sbires puis boss
+  foes: { mobHp: { 2: 0.85, 3: 0.75, 4: 0.6 }, miniAdd: [0.85, 0.7], mini: [1.05, 1.4], bossAdd: [0.85, 0.55], boss: [1.1, 1.6] },
+  xpMult: 1.3,                // XP d'un combat = (25 + 5 × niveau) × ce nombre (× 1,5 petit boss, × 2 boss) : remplace l'XP du raid (niveau 100 vers le 46e jour)
+};
+
 export const CHAMP = { size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3, roundNames: ['Quarts de finale', 'Demi-finales', 'Finale'] };
 
 // Le marchand : 3 objets tirés au hasard chaque jour parmi tous les équipements, de Commun à Épique.

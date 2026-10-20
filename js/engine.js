@@ -5,7 +5,7 @@
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
-  CHAMP, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  CHAMP, STORY, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -1444,10 +1444,104 @@ export function createWave(A, foes, seed, { manual = false } = {}) {
     result() {
       while (api.next());
       const end = log[log.length - 1] || {};
-      return { log, winner: end.winner ?? 1, kills: end.kills || 0, usedManual };
+      const hpLeft = Math.max(0, cur.result().hp[0]);
+      return { log, winner: end.winner ?? 1, kills: end.kills || 0, usedManual, hpLeft, hpFrac: hpLeft / A.maxHp };
     },
   };
   return api;
+}
+
+// ------------------------------ Mode histoire ------------------------------
+// Combat global g = mode × 50 + zone × 10 + combat (0 à 149). Chaque perso avance dans l'ordre : hero.story.prog = prochain combat à gagner.
+export const STORY_PER_MODE = STORY.zones.length * STORY.fights;
+export const STORY_LAST = STORY.modes.length * STORY_PER_MODE - 1;
+export const storyStage = (g) => ({ mode: Math.floor(g / STORY_PER_MODE), zone: Math.floor(g / STORY.fights) % STORY.zones.length, fight: g % STORY.fights });
+export const storyG = (mode, zone, fight) => mode * STORY_PER_MODE + zone * STORY.fights + fight;
+const lerpAnchors = (N, g, geo) => {
+  let i = 1;
+  while (i < N.length - 1 && g > N[i][0]) i++;
+  const [g0, p0] = N[i - 1], [g1, p1] = N[i];
+  const t = Math.max(0, Math.min(1, (g - g0) / Math.max(1, g1 - g0)));
+  return geo ? p0 * Math.pow(p1 / p0, t) : p0 + (p1 - p0) * t;
+};
+/** Puissance de héros demandée pour le combat g */
+export const storyNeed = (g) => STORY.need[g] ?? 0;
+/** Force des monstres du combat g (réglée par simulation, voir STORY.strength) */
+export const storyStrength = (g) => STORY.strength[g] ?? STORY.strength[STORY.strength.length - 1];
+export const storyLevel = (g) => STORY.levels[g] ?? 100;
+export const storyKind = (g) => { const f = storyStage(g).fight + 1; return f === STORY.boss ? 'boss' : f === STORY.mini ? 'mini' : 'mob'; };
+export function storyState(hero) {
+  hero.story ||= { prog: 0, stars: {}, claimed: {} };
+  return hero.story;
+}
+/** Le profil (stats, sorts) d'un monstre : celui du donjon qui a ce dessin */
+function profileOf(sprite) {
+  for (const d of DUNGEONS) for (const x of dungeonFoes(d)) if (x.sprite === sprite) return x;
+  return DUNGEONS[0];
+}
+/** Les monstres du combat g, qui arrivent à la suite : 2 à 4 monstres, ou des sbires puis le petit boss / le boss */
+export function storyFoes(g) {
+  const { zone, fight } = storyStage(g), Z = STORY.zones[zone], kind = storyKind(g);
+  const f = storyStrength(g), lvl = storyLevel(g);
+  const mk = (sprite, name, power, hp) => {
+    const m = buildMonster({ ...profileOf(sprite), lvl: 50 });
+    for (const q in m.stats) m.stats[q] = Math.max(1, Math.round(m.stats[q] * f * power));
+    m.maxHp = Math.max(10, Math.round(m.maxHp * f * hp));
+    m.level = lvl;
+    if (name) m.name = name;
+    return m;
+  };
+  const pick = (j) => Z.mobs[(fight * 3 + j * 5 + g) % Z.mobs.length];
+  const B = STORY.foes;
+  if (kind === 'mini') return [mk(pick(0), null, ...B.miniAdd), { ...mk(Z.mini.sprite, Z.mini.name, ...B.mini), boss: true }];
+  if (kind === 'boss') return [mk(pick(0), null, ...B.bossAdd), mk(pick(1), null, ...B.bossAdd), { ...mk(Z.boss.sprite, Z.boss.name, ...B.boss), boss: true }];
+  const n = 2 + (fight % 3);                       // 2, 3 ou 4 monstres
+  const hp = B.mobHp[n];
+  return Array.from({ length: n }, (_, j) => mk(pick(j), null, 1, hp));
+}
+/** XP du combat g (seulement la première fois qu'on le gagne) */
+export const storyXp = (g) => Math.round((25 + 5 * storyLevel(g)) * STORY.xpMult * ({ mini: 1.5, boss: 2 }[storyKind(g)] || 1));
+/** Étoiles selon la part de vie restante */
+export const storyStarsFor = (frac) => frac >= STORY.stars[1] ? 3 : frac >= STORY.stars[0] ? 2 : 1;
+/** Fin d'un combat d'histoire : étoiles (on garde le meilleur), progression, XP à la première victoire */
+export function storyResult(hero, g, won, hpFrac) {
+  const S = storyState(hero);
+  if (!won || g > S.prog) return { won: false, stars: 0, xp: 0 };
+  const first = !S.stars[g];
+  const stars = storyStarsFor(hpFrac);
+  const better = stars > (S.stars[g] || 0);
+  if (better) S.stars[g] = stars;
+  if (g === S.prog) S.prog = Math.min(STORY_LAST + 1, g + 1);
+  let lv = null, xp = 0;
+  if (first) { xp = storyXp(g); lv = gainXp(hero, xp); }
+  return { won: true, stars, best: S.stars[g], better, first, xp, ...(lv || {}) };
+}
+/** Étoiles gagnées dans une zone (sur 30) */
+export function storyZoneStars(hero, mode, zone) {
+  const S = storyState(hero);
+  let n = 0;
+  for (let f = 0; f < STORY.fights; f++) n += S.stars[storyG(mode, zone, f)] || 0;
+  return n;
+}
+/** Récompense d'une zone : tier 20 (5 coffres) ou 30 (coffre Épique, ou Légendaire en Chaotique). Une seule fois. */
+export function storyClaim(acc, hero, mode, zone, tier) {
+  const S = storyState(hero), key = `${mode}-${zone}-${tier}`;
+  if (S.claimed[key] || storyZoneStars(hero, mode, zone) < tier) return null;
+  S.claimed[key] = true;
+  if (tier === 20) { refreshChests(hero); hero.chest.stored += STORY.chests20; return { chests: STORY.chests20 }; }
+  if (STORY.modes[mode].id === 'chaos') { acc.legendaryChests = (acc.legendaryChests || 0) + 1; return { legendary: 1 }; }
+  acc.epicChests = (acc.epicChests || 0) + 1;
+  return { epic: 1 };
+}
+/** Récompenses d'étoiles prêtes à récupérer (pour la pastille) */
+export function storyClaimable(hero) {
+  const S = storyState(hero);
+  let n = 0;
+  for (let m = 0; m < STORY.modes.length; m++) for (let z = 0; z < STORY.zones.length; z++) {
+    const s = storyZoneStars(hero, m, z);
+    for (const tier of [20, 30]) if (s >= tier && !S.claimed[`${m}-${z}-${tier}`]) n++;
+  }
+  return n;
 }
 
 /** Combats de donjon de la demi-journée (remis à zéro à minuit et à midi) */
