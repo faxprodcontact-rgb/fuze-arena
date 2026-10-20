@@ -5,10 +5,16 @@
 // - 2 coffres de combat par jour (arène) ; ~1,5 coffre de guerre par semaine (raid, guerre, championnat).
 // - Bonus de chance des coffres (compteurs d'ouvertures) ; il fusionne tout chaque soir (« Tout fusionner »).
 // - Niveau jour par jour : la courbe de progression.mjs (niveau 100 vers le 45ᵉ jour). La boutique n'est pas comptée.
+// Essais : ODDS=« 72,22,5,1,0 » (chances du coffre normal), LUCK=« 3 » (bonus de chance), FUSE=« 2,2,2,2,2,3 ».
 import fs from 'fs';
 import * as E from '../../js/engine.js';
 const V = fs.readFileSync(new URL('../../js/engine.js', import.meta.url), 'utf8').match(/data\.js\?v=(\d+)/)[1];
-const { RARITIES, SLOT_ORDER, ITEMS, MAX_LEVEL, FUSE_NEED } = await import(`../../js/data.js?v=${V}`);
+const { RARITIES, SLOT_ORDER, ITEMS, MAX_LEVEL, FUSE_NEED, CHEST_ODDS } = await import(`../../js/data.js?v=${V}`);
+// essais : ODDS=« 70,23,5.5,1.5,0 » = chances (%) du coffre normal
+if (process.env.ODDS) CHEST_ODDS.normal = process.env.ODDS.split(',').map(Number);
+// LUCK=« 3 » = points de chance gagnés à chaque palier d'ouvertures
+const { CHEST_LUCK } = await import(`../../js/data.js?v=${V}`);
+if (process.env.LUCK) CHEST_LUCK.gain = +process.env.LUCK;
 import { makeRng } from '../../js/rng.js';
 
 const LEVELS = [15, 23, 29, 35, 40, 44, 47, 50, 53, 56, 59, 61, 63, 65, 67, 69, 71, 72, 74, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 88, 89, 89, 90, 91, 92, 93, 94, 95, 96, 96, 97, 98, 99, 99, 100];

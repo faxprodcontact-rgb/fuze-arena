@@ -319,6 +319,155 @@ const SHAPES = {
   },
 };
 
+// ---------------------------------------------------------------- panoplies élémentaires (feu, glace, lumière, ténèbres)
+// déplace et agrandit un tracé absolu (commandes M C L Q Z) : (x, y) = nouvelle origine, s = échelle
+const tp = (d, x, y, s = 1) => d.replace(/(-?\d*\.?\d+)\s+(-?\d*\.?\d+)/g, (m, a, b) => `${r1(x + a * s)} ${r1(y + b * s)}`);
+const FIRE = ['#fff3a0', '#ff9a1a', '#e8460e', '#a01a06'], ICE = ['#ffffff', '#bfeaff', '#5ab4ff', '#2a6ad0'];
+const SUN = ['#fffbe0', '#ffd23a', '#e8a412', '#a86a06'], VOID = ['#d6b8ff', '#7a30b0', '#4a1a78', '#22093e'];
+const ROCK = ['#7a5e58', '#4a3a3e', '#2c2228', '#1a1014'], SHADE = ['#6a5a86', '#3c2a5a', '#2a1e3a', '#160e22'];
+const FL = 'M-8 0C-12 -6 -10 -14 -6 -18C-5 -13 -3 -11 -2 -13C-4 -20 0 -28 6 -32C4 -24 9 -20 10 -14C11 -18 13 -19 14 -22C17 -14 15 -4 8 0Z';
+const FL_IN = 'M-4 0C-6 -5 -4 -10 -1 -13C0 -9 3 -8 4 -10C5 -6 6 -2 3 0Z';
+const flame = (I, x, y, s = 1) => { I.vol(P(tp(FL, x, y, s)), FIRE, { k: 2 * s, gloss: false, dw: 2 + 3 * s }); I.flat(P(tp(FL_IN, x, y, s)), '#fff3a0', 0); };
+const crystal = (I, x, y, h, w, t = ICE) => { I.vol(P(`M${x} ${y}L${x - w} ${y - h * 0.35}L${x} ${y - h}L${x + w} ${y - h * 0.35}Z`), t, { k: 1.6, gloss: false }); I.line(`M${x} ${y - h}L${x} ${y}`, '#ffffff', 1.2); };
+const sunDisc = (I, x, y, r) => {
+  I.glow(x, y, r * 2.2, '#ffd23a', 0.7);
+  I.raw(`<path d="${star(x, y, 8, r * 1.65, r * 1.05).d}" fill="#ffd23a" stroke="${O}" stroke-width="1.8"/>`);
+  I.vol(E(x, y, r), SUN, { k: 1.4 });
+};
+Object.assign(SHAPES, {
+  // ----- feu
+  firehelm(I, m, a) {
+    flame(I, 30, 20, 0.85); flame(I, 22, 22, 0.55); flame(I, 40, 22, 0.6);
+    I.vol(P('M14 56L14 36C14 24 22 16 32 16C42 16 50 24 50 36L50 56Z'), ROCK);
+    I.flat(RR(18, 34, 28, 7, 3), '#2a0a06', 1.6); I.glow(32, 37, 14, '#ff7a1a', 0.8); I.flat(RR(21, 36, 22, 3, 1.5), '#ffb02e', 0);
+    I.line('M32 18V32M18 46H46', '#ff7a1a', 1.6);
+  },
+  flameblade(I, m, a) {
+    const i0 = I.body.length;
+    I.glow(32, 26, 16, '#ff7a1a', 0.6);
+    I.vol(P('M28 46L36 46L36 16L32 4L28 16Z'), FIRE, { k: 1.4 });
+    I.line('M32 8V44', '#fff3a0', 1.4);
+    flame(I, 37, 38, 0.32); flame(I, 27, 28, 0.28); flame(I, 37, 20, 0.26);
+    I.vol(RR(20, 45, 24, 5, 2.5), ROCK, { hl: false, k: 1 });
+    I.vol(RR(29, 50, 6, 10, 2), ROCK, { hl: false, k: 1 }); I.vol(E(32, 61, 3.2), FIRE, { hl: false, k: 0.8 });
+    wrap(I, i0, 'rotate(40 32 34) translate(0 -1)');
+  },
+  lavaplate(I, m, a) {
+    I.vol(P('M20 6L28 6C28 13 36 13 36 6L44 6L52 18L50 59L14 59L12 18Z'), ROCK);
+    I.glow(32, 38, 20, '#ff5a1a', 0.55);
+    I.rope('M20 22L26 30L22 40L30 48L26 58M44 22L38 30L42 38L36 46L40 58M32 14L34 26L30 34', '#ff9a1a', 1.8, '#fff3a0');
+    flame(I, 12, 22, 0.4); flame(I, 52, 22, 0.4);
+  },
+  emberboots(I, m, a) {
+    I.vol(P(BOOT), ROCK);
+    I.vol(RR(15, 4, 24, 8, 3), FIRE, { hl: false, k: 1.4 });
+    I.vol(RR(10, 50, 47, 7, 3), FIRE, { hl: false, k: 1 });
+    I.rope('M22 20L28 26L24 34', '#ff7a1a', 1.4);
+    flame(I, 16, 50, 0.42); flame(I, 26, 50, 0.32); flame(I, 46, 50, 0.3);
+  },
+  flameheart(I, m, a) {
+    chainV(I, '#c9a227');
+    I.glow(32, 44, 20, '#ff5a1a', 0.7);
+    I.vol(P('M32 59C24 52 16 46 16 38C16 32 21 28 26 28C29 28 31 30 32 32C33 30 35 28 38 28C43 28 48 32 48 38C48 46 40 52 32 59Z'), ['#ff8a7a', '#e3343d', '#a81d35', '#6e1129']);
+    flame(I, 32, 50, 0.45);
+  },
+  // ----- glace
+  icecrown(I, m, a) {
+    crystal(I, 16, 40, 22, 6); crystal(I, 48, 40, 22, 6); crystal(I, 24, 38, 30, 7); crystal(I, 40, 38, 30, 7); crystal(I, 32, 38, 40, 8);
+    I.vol(RR(10, 38, 44, 14, 5), ['#ffffff', '#c3cce0', '#8fa6c8', '#5a6e96']);
+    for (const x of [18, 32, 46]) I.vol(E(x, 45, 3.4), ICE, { hl: false, k: 0.8, gloss: false });
+    I.spark(52, 18, 3.5);
+  },
+  icespear(I, m, a) {
+    const i0 = I.body.length;
+    I.rope('M32 62V22', '#5a6e96', 3.6, '#c3cce0');
+    I.rope('M32 40V44M32 50V54', '#bfeaff', 3.6);
+    crystal(I, 32, 26, 24, 7); crystal(I, 24, 26, 10, 3.5); crystal(I, 40, 26, 10, 3.5);
+    wrap(I, i0, 'rotate(40 32 34)');
+    I.spark(50, 14, 3.5);
+  },
+  crystalplate(I, m, a) {
+    I.vol(P('M20 6L28 6C28 13 36 13 36 6L44 6L52 18L50 59L14 59L12 18Z'), ICE);
+    I.line('M14 22L32 32L50 22M32 32V58M18 44L32 50L46 44', '#ffffff', 1.4);
+    crystal(I, 12, 22, 16, 4); crystal(I, 52, 22, 16, 4);
+  },
+  frostboots(I, m, a) {
+    I.vol(P(BOOT), ['#9fd0ff', '#3773d8', '#23499c', '#162f6c']);
+    I.vol(RR(14, 4, 26, 9, 4), ['#ffffff', '#f4f6fb', '#cdd3e2', '#9aa2bd'], { hl: false, k: 1.4 });
+    crystal(I, 20, 6, 12, 3.5); crystal(I, 28, 5, 15, 4); crystal(I, 36, 6, 11, 3.5);
+    I.vol(RR(10, 50, 47, 7, 3), ICE, { hl: false, k: 1 });
+  },
+  snowflake(I, m, a) {
+    chainV(I, '#c9d1da');
+    I.glow(32, 44, 18, '#7ad8ff', 0.7);
+    const arms = [90, 150, 210].map(r => `M${r1(32 - 17 * Math.cos(r * Math.PI / 180))} ${r1(44 - 17 * Math.sin(r * Math.PI / 180))}L${r1(32 + 17 * Math.cos(r * Math.PI / 180))} ${r1(44 + 17 * Math.sin(r * Math.PI / 180))}`).join('');
+    I.rope(arms, '#e8f8ff', 3, '#ffffff');
+    const tips = [30, 90, 150, 210, 270, 330].map(r => { const c = Math.cos(r * Math.PI / 180), s = Math.sin(r * Math.PI / 180), x = 32 + 11 * c, y = 44 + 11 * s;
+      return `M${r1(x - 5 * s + 4 * c)} ${r1(y + 5 * c + 4 * s)}L${r1(x)} ${r1(y)}L${r1(x + 5 * s + 4 * c)} ${r1(y - 5 * c + 4 * s)}`; }).join('');
+    I.rope(tips, '#e8f8ff', 2);
+    I.vol(E(32, 44, 3), ICE, { hl: false, k: 0.8, gloss: false });
+  },
+  // ----- lumière
+  sundiadem(I, m, a) {
+    sunDisc(I, 32, 26, 9);
+    I.vol(P('M8 50C14 40 24 36 32 36C40 36 50 40 56 50L52 54C46 46 40 44 32 44C24 44 18 46 12 54Z'), SUN);
+    for (const x of [18, 46]) I.vol(E(x, 46, 2.6), ['#ffffff', '#bfeaff', '#5ab4ff', '#2a6ad0'], { hl: false, k: 0.6, gloss: false });
+    I.spark(52, 14, 3.5); I.spark(12, 20, 2.8);
+  },
+  sunscepter(I, m, a) {
+    const i0 = I.body.length;
+    I.rope('M32 62V28', '#e8a412', 4, '#fff3a0');
+    I.vol(RR(26, 42, 12, 5, 2.5), SUN, { hl: false, k: 1 });
+    wrap(I, i0, 'rotate(30 32 40)');
+    sunDisc(I, 42, 20, 10);
+  },
+  celestrobe(I, m, a) {
+    I.vol(P('M22 6L28 6C28 12 36 12 36 6L42 6L54 16L52 30L46 26L50 60L14 60L18 26L12 30L10 16Z'), ['#ffffff', '#fffaf0', '#e8dcc0', '#b8a680']);
+    I.rope('M28 8L32 18L36 8M32 18V60', '#ffd23a', 2.2);
+    I.rope('M16 56H48', '#ffd23a', 2.4);
+    I.raw(`<path d="${star(24, 40, 4, 4, 1.4).d}" fill="#ffd23a" stroke="${O}" stroke-width="1.2"/><path d="${star(41, 48, 4, 3.4, 1.2).d}" fill="#ffd23a" stroke="${O}" stroke-width="1.2"/>`);
+  },
+  wingsandals(I, m, a) {
+    I.vol(P('M4 30C10 22 18 18 22 20C18 24 18 28 20 30C14 30 10 32 6 34Z'), ['#ffffff', '#fffaf0', '#e8dcc0', '#b8a680'], { k: 1.4 });
+    I.vol(P('M6 46C6 38 12 34 20 34L30 34C36 38 44 40 52 40C58 40 60 44 58 48L6 48Z'), ['#ffffff', '#fffaf0', '#e8dcc0', '#b8a680']);
+    I.vol(RR(4, 47, 56, 6, 3), SUN, { hl: false, k: 1 });
+    I.rope('M22 34L28 42M30 34L36 41M38 37L42 40', '#ffd23a', 2);
+    I.spark(52, 26, 3.4);
+  },
+  sunamulet(I, m, a) { chainV(I, '#e5b33a'); sunDisc(I, 32, 44, 9); I.spark(50, 32, 3.2); },
+  // ----- ténèbres
+  shadowhood(I, m, a) {
+    I.vol(P('M10 58C10 38 14 18 32 8C50 18 54 38 54 58L44 58C44 46 40 38 32 38C24 38 20 46 20 58Z'), SHADE);
+    I.flat(P('M20 58C20 44 24 30 32 30C40 30 44 44 44 58Z'), '#0a0610', 1.6);
+    for (const x of [27, 37]) { I.glow(x, 42, 6, '#c070ff', 0.9); I.flat(E(x, 42, 2.4, 1.6), '#e8b8ff', 0); }
+    I.rope('M32 10C36 18 38 26 38 32', '#8a40c8', 1.4);
+  },
+  scythe(I, m, a) {
+    I.rope('M16 60L44 8', '#3a2c4e', 3.6, '#6a5a86');
+    I.vol(P('M42 10C30 4 14 8 6 22C16 16 28 16 38 20Z'), ['#e8e0ff', '#a898c8', '#6a5a86', '#3a2c4e'], { k: 1.6 });
+    I.line('M38 16C28 12 18 14 10 19', '#c070ff', 1.4);
+    I.vol(E(44, 9, 3.4), VOID, { hl: false, k: 0.8, gloss: false }); I.glow(44, 9, 7, '#c070ff', 0.8);
+  },
+  shadowcloak(I, m, a) {
+    I.vol(P('M22 6L28 8C28 13 36 13 36 8L42 6L56 22L50 60L44 54L38 60L32 54L26 60L20 54L14 60L8 22Z'), SHADE);
+    I.flat(P('M28 10C30 14 34 14 36 10L38 52L32 48L26 52Z'), '#5a2a8a', 1.4);
+    I.vol(E(32, 16, 4), VOID, { hl: false, k: 0.8, gloss: false });
+  },
+  phantomboots(I, m, a) {
+    I.raw(`<path d="M8 50C14 44 20 56 28 50C34 46 40 56 48 50C52 47 56 50 58 53" fill="none" stroke="#c070ff" stroke-width="5" opacity="0.45"/>`);
+    I.vol(P(BOOT), SHADE);
+    I.vol(RR(15, 4, 24, 8, 3), VOID, { hl: false, k: 1.4 });
+    I.vol(RR(10, 50, 47, 7, 3), ['#6a5a86', '#2a1e3a', '#160e22', '#0a0610'], { hl: false, k: 1 });
+    I.rope('M22 18L26 24L22 30', '#c070ff', 1.4);
+  },
+  voideye(I, m, a) {
+    chainV(I, '#c9d1da');
+    I.glow(32, 44, 18, '#8a20ff', 0.75);
+    I.vol(P('M14 44C20 34 26 31 32 31C38 31 44 34 50 44C44 54 38 57 32 57C26 57 20 54 14 44Z'), ['#ffffff', '#e8e0f4', '#b8a6dc', '#7a62a0']);
+    I.vol(E(32, 44, 8), VOID, { k: 1.4 }); I.flat(E(32, 44, 3, 5), '#0a0610', 0); I.flat(E(30, 41, 1.6), '#ffffff', 0);
+  },
+});
+
 // ---------------------------------------------------------------- familiers (vus de face assis pour les chats, de profil vers la droite pour les chiens)
 function catFront(I, m, l, eye, o = {}) {
   const bw = o.bw ?? 16, hr = o.hr ?? 14, hy = o.hy ?? 22, by = o.by ?? 46;

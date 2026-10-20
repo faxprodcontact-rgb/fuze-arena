@@ -20,6 +20,7 @@ export const PATCH_NOTES = [
         'Coffres : 10 au maximum par ouverture. Plus tu en ouvres, plus ta chance monte (compteur sur chaque coffre).',
         'Fusion : il faut 3 Mythiques identiques pour 1 Chaotique.',
         'Le marchand vend des objets de toutes les raretés, du Commun à l’Épique.',
+        '4 nouvelles panoplies : Brasier (Attaque), Givre (Défense), Aube (Magie) et Néant (Chance), dans tous les coffres comme les autres.',
         'Nouveaux skins élémentaires dans la boutique : Feu et Glace (200 Flouze), Lumière et Ténèbres (280 Flouze), pour chaque classe. Un tout nouveau look, une arme assortie et une aura en combat.',
         'Entraînement : touche un de tes sorts pour que ton héros le lance et voir ses dégâts.',
         'Combat auto : en grand en haut de l’onglet Combats, et il donne un peu d’XP.',

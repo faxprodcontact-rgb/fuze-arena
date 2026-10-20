@@ -48,7 +48,8 @@ export const CHEST_LUCK = { step: { normal: 100, combat: 50, war: 25 }, gain: 2,
 export const OPEN_MAX = 10;                       // coffres ouverts au maximum d'un coup
 
 // Objets identiques (même objet, même rareté) qu'il faut fusionner pour monter d'un rang, depuis Commun … jusqu'à Mythique.
-// 3 Mythiques pour 1 Chaotique : un joueur à fond finit tout en Chaotique vers le niveau 90 (voir refonte/simulations/equipement.mjs).
+// 3 Mythiques pour 1 Chaotique : un joueur à fond finit tout en Chaotique vers le jour 40, niveau ~96 (voir refonte/simulations/equipement.mjs ;
+// c'était le jour 34 avant les 4 panoplies élémentaires : plus d'objets différents = moins de doublons à fusionner).
 export const FUSE_NEED = [2, 2, 2, 2, 2, 3];
 
 // Probabilités de rareté dans les coffres (en %)
@@ -313,6 +314,11 @@ export const SETS = {
   // Panoplies de magie (pour que les mages aient autant de choix que les autres)
   mcdo: { name: 'Panoplie McDo', stat: 'mag', bonus3: { mag: 0.10 }, bonus5: { mag: 0.20, vit: 0.10 } },
   foot: { name: 'Panoplie du Footballeur', stat: 'mag', bonus3: { mag: 0.10 }, bonus5: { mag: 0.20, spd: 0.10 } },
+  // Panoplies élémentaires (assorties aux skins feu, glace, lumière, ténèbres)
+  brasier: { name: 'Panoplie du Brasier', stat: 'atk', el: 'feu' },
+  givre: { name: 'Panoplie du Givre', stat: 'def', el: 'glace' },
+  aube: { name: 'Panoplie de l’Aube', stat: 'mag', el: 'lumiere' },
+  neant: { name: 'Panoplie du Néant', stat: 'lck', el: 'tenebres' },
 };
 
 // ---------------------------------------------------------------------
@@ -439,6 +445,36 @@ export const ITEM_LIST = [
     ['armor', 'Maillot n°10', 'jersey', ['#2d5fbf', '#f4f4f8']],
     ['boots', 'Crampons', 'cleats', ['#ff5d6c', '#f4f4f8']],
     ['amulet', 'Médaille de champion', 'medal', ['#ffd84a', '#2d5fbf']],
+  ]),
+
+  // Panoplies élémentaires
+  ...setItems('brasier', 'atk', [
+    ['hat', 'Heaume ardent', 'firehelm', ['#3a2a2e', '#ff9a1a']],
+    ['weapon', 'Lame de braise', 'flameblade', ['#e8460e', '#ffd23a']],
+    ['armor', 'Cuirasse de lave', 'lavaplate', ['#3a2a2e', '#ff7a1a']],
+    ['boots', 'Bottes de cendre', 'emberboots', ['#3a2a2e', '#ff9a1a']],
+    ['amulet', 'Cœur de flamme', 'flameheart', ['#e3343d', '#ffb02e']],
+  ]),
+  ...setItems('givre', 'atk', [
+    ['hat', 'Couronne de givre', 'icecrown', ['#7cc4ff', '#e8f8ff']],
+    ['weapon', 'Lance de glace', 'icespear', ['#7cc4ff', '#9aa3ad']],
+    ['armor', 'Armure de cristal', 'crystalplate', ['#7cc4ff', '#e8f8ff']],
+    ['boots', 'Bottes du blizzard', 'frostboots', ['#3773d8', '#bfeaff']],
+    ['amulet', 'Flocon éternel', 'snowflake', ['#bfeaff', '#c9d1da']],
+  ]),
+  ...setItems('aube', 'mag', [
+    ['hat', 'Diadème solaire', 'sundiadem', ['#ffd23a', '#fff6c8']],
+    ['weapon', 'Sceptre de lumière', 'sunscepter', ['#ffd23a', '#fff6c8']],
+    ['armor', 'Robe céleste', 'celestrobe', ['#fffaf0', '#ffd23a']],
+    ['boots', 'Sandales ailées', 'wingsandals', ['#fffaf0', '#ffd23a']],
+    ['amulet', 'Soleil sacré', 'sunamulet', ['#ffd23a', '#e5b33a']],
+  ]),
+  ...setItems('neant', 'atk', [
+    ['hat', 'Capuche de l’ombre', 'shadowhood', ['#2a1e3a', '#c070ff']],
+    ['weapon', 'Faux du néant', 'scythe', ['#4a3a5e', '#c070ff']],
+    ['armor', 'Manteau d’ombre', 'shadowcloak', ['#2a1e3a', '#8a40c8']],
+    ['boots', 'Bottes fantômes', 'phantomboots', ['#3c2a5a', '#c070ff']],
+    ['amulet', 'Œil du néant', 'voideye', ['#7a30b0', '#c9d1da']],
   ]),
 
   // Familiers — chats
