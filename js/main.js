@@ -453,7 +453,7 @@ function viewHero() {
 
     <section class="card train hx hx-gold">
       <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Entraînement</h2></div></div>
-      <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
+      <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div></div>
       <div class="hero-switch">
         ${byLevel(acc.heroes).map(([h, i]) => `
           <button class="hs ${i === acc.active ? 'on' : ''}" data-act="switchHero" data-i="${i}" aria-label="${CLASSES[h.classId].name} niveau ${h.level}">
