@@ -1035,6 +1035,9 @@ const chargeText = (n, ms, where) => `${n ? `Encore ${n} charge${n > 1 ? 's' : '
 // ------------------------------ Vue Donjons ------------------------------
 function viewDungeons() {
   const left = E.totalRunsLeft(hero);
+  const open = DUNGEONS.filter(d => hero.level >= d.lvl).sort((a, b) => b.lvl - a.lvl);   // le plus dur (le plus rentable) en haut
+  const lockedList = DUNGEONS.filter(d => hero.level < d.lvl);
+  const nextLocked = lockedList[0], moreLocked = Math.max(0, lockedList.length - 1);
   return modeHead({
     id: 'dungeons', c: '#4cd964', art: '<canvas class="px" data-emblem="dungeons"></canvas>',
     title: 'Donjons', sub: 'Bats les boss pour gagner des clefs',
@@ -1048,30 +1051,47 @@ function viewDungeons() {
       Bats le boss : de l’XP et <b>1 clef</b> (1 clef = 1 coffre), jusqu’à <b>${DUNGEON_KEYS_MAX} clefs par jour</b> (remise à minuit). Ensuite, tu gagnes seulement l’XP. Chaque monstre battu rapporte un peu d’XP en plus, et même en cas de défaite tu gagnes un peu d’XP.<br><br>
       <b>${ico('skip')} Passer</b> : tes ${DUNGEON_SKIP_KEEP} donjons débloqués les plus durs se font en vrai. Les autres peuvent être passés d’un coup : tu reçois les récompenses de tes vagues restantes, mais avec <b>la moitié de l’XP</b>.`,
   }) + `
+    <div class="pv-steps" style="--hc:#4cd964">
+      <div><b>1</b><span>2 monstres<br>puis le boss</span></div>
+      <div><b>2</b><span>Boss battu :<br>XP + <canvas class="px ico" data-key></canvas> 1 clef</span></div>
+      <div><b>3</b><span>Jusqu’à ${DUNGEON_KEYS_MAX} clefs<br>par jour</span></div>
+    </div>
     <section class="card hx" style="--hc:#4cd964">
-      ${secHead(ico('skull'), 'Choisis ton donjon', `${DUNGEONS.filter(d => hero.level >= d.lvl).length} / ${DUNGEONS.length} débloqués`)}
-      ${DUNGEONS.map(d => {
-        const locked = hero.level < d.lvl, n = E.runsLeft(hero, d), clears = hero.dungeonClears[d.id] || 0;
-        const skip = !locked && n > 0 && E.canSkipDungeon(hero, d), keyOk = E.keysLeftToEarn(hero) > 0;
-        return `
-        <div class="dgn ${locked ? 'locked' : n ? '' : 'empty'}">
-          <div class="dgn-art"><canvas class="px" data-monster="${d.sprite}"></canvas>${d.alt ? `<canvas class="px alt" data-monster="${d.alt.sprite}"></canvas>` : ''}</div>
-          <div class="dgn-body">
-            <div class="dgn-name">${d.name}</div>
-            <div class="dgn-sub">${d.boss}${d.alt ? ` ou ${d.alt.boss}` : ''}</div>
-            ${locked ? `<div class="dgn-lock">${ico('lock')} Niveau ${d.lvl} requis</div>`
-              : `<div class="dgn-rw"><span>+${E.waveXp(d)} XP</span><span class="${keyOk ? '' : 'off'}"><canvas class="px" data-key></canvas>+1</span>${clears ? `<em>vaincu ${clears}×</em>` : ''}</div>`}
-          </div>
-          ${locked ? '' : `
-          <div class="dgn-go">
-            <button class="foe-btn fight" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}><i class="emo"><canvas class="px" data-emblem="skull"></canvas></i>${n > 0 ? 'Entrer' : 'Recharge'}</button>
-            ${skip ? `<button class="btn small blue skip-btn" data-act="skipDungeon" data-id="${d.id}">${ico('skip')} Passer ×${n}<small>½ XP</small></button>`
-              : `<span class="runs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(DUNGEON_RUNS - n)}</span>`}
-            ${n < DUNGEON_RUNS ? chargeLine(E.dungeonNextIn(hero, d)) : ''}
-          </div>`}
-        </div>`;
-      }).join('')}
+      ${secHead(ico('skull'), 'Choisis ton donjon', `${open.length} / ${DUNGEONS.length} débloqués`)}
+      <div class="dg2-list">
+        ${open.map((d, i) => dungeonCard(d, i === 0)).join('')}
+        ${nextLocked ? dungeonCard(nextLocked, false) : ''}
+        ${moreLocked ? `<div class="dg2-more">${ico('lock')} Encore ${moreLocked} donjon${moreLocked > 1 ? 's' : ''} à débloquer en montant de niveau</div>` : ''}
+      </div>
     </section>`;
+}
+
+/** Une carte de donjon : son décor en fond, son boss en grand, ce qu'il rapporte et ses charges */
+const THEME_C = { cave: '#8c7bff', forest: '#4cd964', crypt: '#b8c2d0', swamp: '#8fd16b', mine: '#e0a060', volcano: '#ff6a3d', glacier: '#7fd4ff', castle: '#c58bff', abyss: '#b05cff', meeting: '#ff5d6c' };
+function dungeonCard(d, top) {
+  const locked = hero.level < d.lvl, n = locked ? 0 : E.runsLeft(hero, d);
+  const skip = !locked && n > 0 && E.canSkipDungeon(hero, d), keyOk = E.keysLeftToEarn(hero) > 0;
+  const wait = !locked && n < DUNGEON_RUNS ? E.dungeonNextIn(hero, d) : 0;
+  return `
+    <div class="dg2 ${locked ? 'locked' : ''} ${!locked && !n ? 'empty' : ''} ${top ? 'top' : ''}" style="--dc:${THEME_C[d.theme] || '#4cd964'}">
+      <img class="dg2-bg" src="art/decors/${d.theme}.svg" alt="" loading="lazy"><i class="dg2-shade"></i>
+      ${top ? '<span class="dg2-ribbon">Recommandé</span>' : ''}
+      <div class="dg2-boss"><canvas class="px" data-monster="${d.sprite}"></canvas>${d.alt ? `<canvas class="px alt" data-monster="${d.alt.sprite}"></canvas>` : ''}</div>
+      <div class="dg2-info">
+        <span class="dg2-lv">Nv.${d.lvl}</span>
+        <b>${d.name}</b>
+        <small>${d.boss}${d.alt ? ` ou ${d.alt.boss}` : ''}</small>
+        ${locked ? `<span class="dg2-lock">${ico('lock')} Niveau ${d.lvl} requis</span>` : `
+        <div class="dg2-rw"><span>+${fmtNum(E.waveXp(d))} XP</span><span class="${keyOk ? '' : 'off'}"><canvas class="px" data-key></canvas>+1</span></div>`}
+      </div>
+      ${locked ? '' : `
+      <div class="dg2-go">
+        <span class="dg2-pips">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(DUNGEON_RUNS - n)}</span>
+        <button class="dg2-enter" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}>${n > 0 ? 'Entrer' : 'Recharge'}</button>
+        ${skip ? `<button class="dg2-skip" data-act="skipDungeon" data-id="${d.id}"><span>${ico('skip')} Passer ×${n}</span><small>½ XP</small></button>` : ''}
+        ${wait > 0 ? `<span class="dg2-wait">+1 dans <b data-charge="${Date.now() + wait}">${fmt(wait)}</b></span>` : ''}
+      </div>`}
+    </div>`;
 }
 
 // ------------------------------ Vue Classement ------------------------------
@@ -3062,10 +3082,12 @@ function claimRaid(week) {
 }
 
 // ------------------------------ La Horde ------------------------------
+/** Les monstres qui défilent sur la scène de la Horde (de plus en plus gros) */
+const HORDE_MOBS = ['rat', 'goblin', 'skeleton', 'mushroom', 'golem'];
 function viewHorde() {
   const st = E.hordeState(acc);
   const left = E.hordeRunsLeft(hero);
-  const ex = [...HORDE.keys].reverse().map(([k, n]) => `<span><b>${k}</b> monstres <i>→</i> <b>${n}</b><canvas class="px" data-key></canvas></span>`).join('');
+  const best = st.best || 0, top = HORDE.keys[0][0] + 5;   // la piste va un peu au-delà du dernier palier
   return modeHead({
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
     title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
@@ -3077,10 +3099,24 @@ function viewHorde() {
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
       Tu gagnes des <b>clefs</b> pour ton perso selon le nombre de monstres battus (${[...HORDE.keys].reverse().map(([k, n]) => `${k} monstres → ${n} clef${n > 1 ? 's' : ''}`).join(', ')}). <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
-    <section class="card hx horde-stage" style="--hc:#ff3d6e">
-      ${secHead(ico('flag'), 'Combien tu gagnes', 'Clefs pour ton perso selon les monstres battus')}
-      <div class="horde-ex">${ex}</div>
-      <button class="btn danger block big-go" data-act="startHorde" ${left ? '' : 'disabled'}>${left ? `${ico('swords')} Lancer la horde` : 'Plus d’essai : reviens à minuit ou à midi'}</button>
+    <section class="card hx hd2" style="--hc:#ff3d6e">
+      <div class="hd2-stage">
+        <img class="dg2-bg" src="art/decors/abyss.svg" alt=""><i class="dg2-shade"></i>
+        <div class="hd2-mobs">${HORDE_MOBS.map((sp, i) => `<canvas class="px" data-monster="${sp}" style="--i:${i}"></canvas>`).join('')}</div>
+        <div class="hd2-rec">${ico('trophy')}<small>Ton record</small><b>${best}</b><small>monstre${best > 1 ? 's' : ''}</small></div>
+      </div>
+      <div class="hd2-track">
+        <small class="hd2-lbl">Clefs pour ton ${CLASSES[hero.classId].name} selon les monstres battus</small>
+        <div class="hd2-bar"><i style="width:${Math.min(100, best / top * 100)}%"></i>
+          ${[...HORDE.keys].reverse().map(([k, n]) => `<span class="hd2-tier ${best >= k ? 'got' : ''}" style="left:${k / top * 100}%"><em><canvas class="px ico" data-key></canvas>${n}</em><b>${k}</b></span>`).join('')}
+        </div>
+      </div>
+      <div class="hd2-charges">
+        <span class="dg2-pips">${'<i class="on"></i>'.repeat(left)}${'<i></i>'.repeat(HORDE.runsPerHalf - left)}</span>
+        <span>${left ? `${left} essai${left > 1 ? 's' : ''} pour ce perso` : 'Plus d’essai pour ce perso'}</span>
+        ${E.hordeNextIn(hero) ? `<span class="dg2-wait">+1 dans <b data-charge="${Date.now() + E.hordeNextIn(hero)}">${fmt(E.hordeNextIn(hero))}</b></span>` : ''}
+      </div>
+      <button class="btn danger block big-go" data-act="startHorde" ${left ? '' : 'disabled'}>${left ? `${ico('swords')} Lancer la horde` : 'Plus d’essai : change de perso ou attends la recharge'}</button>
     </section>
     <section class="card hx" style="--hc:#ff3d6e">
       ${secHead(ico('trophy'), 'Classement', 'Le record de chaque joueur')}
@@ -3156,10 +3192,21 @@ function viewTower() {
     ],
     info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br>Tous les 10 étages : <b>${TOWER.keysEvery10} clefs</b> pour ton perso, et <b>${TOWER.keysFrom50} clefs</b> à partir de l’étage 50 (50, 60, 70…). Chaque perso a son propre record.<br><br><b>XP</b> : chaque étage réussi rapporte de l’XP (une défaite ne rapporte rien).`,
   }) + `
-    <section class="card hx boss-stage" style="--hc:#a77bff">
-      <div class="bs-tag">ETAGE ${next}</div>
-      <div class="bs-art"><canvas class="px" data-monster="${m.dungeon.sprite}"></canvas></div>
-      <div class="bs-name">${m.snap.name} <span class="pill">Nv.${m.snap.level}</span></div>
+    <section class="card hx tw2" style="--hc:#a77bff">
+      <div class="tw2-wrap">
+        <div class="tw2-shaft">${towerFloors(next)}</div>
+        <div class="tw2-foe">
+          <img class="dg2-bg" src="art/decors/${m.theme || 'castle'}.svg" alt=""><i class="dg2-shade"></i>
+          <span class="tw2-tag">Étage ${next}</span>
+          <div class="tw2-art"><canvas class="px" data-monster="${m.dungeon.sprite}"></canvas></div>
+          <b class="tw2-name">${m.snap.name}</b>
+          <div class="tw2-meta"><span class="pill">Nv.${m.snap.level}</span>${powerCmp(m.snap)}</div>
+        </div>
+      </div>
+      <div class="tw2-goal">
+        <div class="tw2-goal-txt"><span>${prizeAt - next ? `Encore <b>${prizeAt - next + 1}</b> étages` : '<b>Cet étage</b>'}</span><span class="tw2-prize"><canvas class="px ico" data-key></canvas>+${E.towerKeys(prizeAt)} clefs à l’étage ${prizeAt}</span></div>
+        <div class="tw2-bar"><i style="width:${Math.round(((next - 1) % 10) / 10 * 100)}%"></i></div>
+      </div>
       <button class="btn danger block big-go" data-act="attackTower">${ico('swords')} Attaquer l’étage ${next}</button>
     </section>
     <section class="card hx" style="--hc:#a77bff">
@@ -3170,6 +3217,20 @@ function viewTower() {
           <div class="o-body"><div class="o-name">${nameHtml(r.name, r.data)}</div><div class="o-sub">${CLASSES[r.classId].name}</div></div>
           <div class="score">Étage ${r.floor}</div></div>`).join('')}
     </section>`;
+}
+
+/** La tour vue de côté : les étages autour du prochain, les paliers de clefs (tous les 10) en or */
+function towerFloors(next) {
+  const rows = [];
+  const goal = Math.ceil(next / 10) * 10;
+  if (goal > next + 3) {   // le prochain palier de clefs, tout en haut, même s'il est loin
+    rows.push(`<div class="tw2-fl gift far"><span>${goal}</span><em><canvas class="px ico" data-key></canvas>+${E.towerKeys(goal)}</em></div>`, '<div class="tw2-gap">⋮</div>');
+  }
+  for (let f = Math.min(next + 3, goal); f >= Math.max(1, next - 2); f--) {
+    const k = E.towerKeys(f);
+    rows.push(`<div class="tw2-fl ${f < next ? 'done' : f === next ? 'now' : ''} ${k ? 'gift' : ''}"><span>${f}</span>${k ? `<em><canvas class="px ico" data-key></canvas>+${k}</em>` : f < next ? ico('check') : f === next ? ico('swords') : ''}</div>`);
+  }
+  return `<i class="tw2-roof"></i>${rows.join('')}<i class="tw2-base"></i>`;
 }
 
 function attackTower() {

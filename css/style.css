@@ -2029,3 +2029,125 @@ canvas[data-hero] { translate: -10.4% 0; }
 .auc-now { margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: center; }
 .auc-now b { color: var(--gold); }
 .horde-ex span:only-child { grid-column: 1 / -1; justify-content: center; }
+
+/* =====================================================================
+   PVM : Donjons, Tour infinie, Horde (refaits le 20/10)
+   ===================================================================== */
+/* 3 étapes en images : comment ça marche, en un coup d'œil */
+.pv-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: -4px 0 12px; }
+.pv-steps > div { display: flex; align-items: center; gap: 7px; padding: 8px 8px; border-radius: 12px; background: linear-gradient(180deg, #19124b, #0e0a2b);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hc) 30%, transparent); }
+.pv-steps b { flex-shrink: 0; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; font-family: var(--pixel); font-weight: 400; font-size: 11px; color: #0d0926;
+  background: var(--hc); box-shadow: 0 0 8px color-mix(in srgb, var(--hc) 60%, transparent); }
+.pv-steps span { font-size: 10px; font-weight: 800; line-height: 1.25; color: #d9d2ff; }
+.pv-steps canvas.ico { width: 11px; height: 11px; vertical-align: -1px; }
+
+/* ---------- Donjons : une carte par donjon, avec son décor ---------- */
+.dg2-list { display: flex; flex-direction: column; gap: 10px; }
+.dg2 { position: relative; overflow: hidden; isolation: isolate; display: flex; align-items: stretch; min-height: 112px; border-radius: 16px; background: #120d36;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--dc) 45%, transparent), 0 4px 0 rgba(0,0,0,.4); }
+.dg2-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 72%; z-index: -2; transform: scale(1.15); }
+.dg2-shade { position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(10,7,30,.15) 0%, rgba(10,7,30,.55) 34%, rgba(10,7,30,.88) 62%, rgba(10,7,30,.95) 100%), linear-gradient(0deg, rgba(10,7,30,.6), transparent 45%); }
+.dg2.top { min-height: 148px; box-shadow: inset 0 0 0 2px var(--dc), 0 0 22px color-mix(in srgb, var(--dc) 35%, transparent), 0 4px 0 rgba(0,0,0,.4); }
+.dg2-ribbon { position: absolute; top: 10px; left: -30px; z-index: 2; width: 120px; padding: 3px 0; transform: rotate(-35deg); text-align: center;
+  font-family: var(--pixel); font-size: 9px; letter-spacing: .5px; text-transform: uppercase; color: #0d0926; background: var(--gold); box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.dg2-boss { position: relative; flex: 0 0 96px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; }
+.dg2-boss canvas { position: relative; z-index: 1; width: 70px; height: 74px; object-fit: contain; object-position: bottom; filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); }
+.dg2-boss canvas.alt { position: absolute; right: 2px; bottom: 10px; z-index: 0; width: 40px; height: 44px; filter: brightness(.6) drop-shadow(0 2px 0 rgba(0,0,0,.5)); }
+.dg2.top .dg2-boss { flex-basis: 118px; }
+.dg2.top .dg2-boss canvas:not(.alt) { width: 96px; height: 104px; animation: cbt-bob 3s ease-in-out infinite; }
+.dg2-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 10px 4px 10px 0; }
+.dg2-lv { align-self: flex-start; padding: 1px 7px; border-radius: 6px; font-family: var(--pixel); font-size: 9.5px; color: #0d0926; background: var(--dc); }
+.dg2-info > b { font-family: var(--pixel); font-weight: 400; font-size: 14px; line-height: 1.15; color: #fff; text-shadow: 0 2px 0 #000; }
+.dg2.top .dg2-info > b { font-size: 16.5px; }
+.dg2-info > small { font-size: 11px; font-weight: 700; color: #cfc7f5; line-height: 1.25; }
+.dg2-rw { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.dg2-rw span { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 7px; font-family: var(--pixel); font-size: 10px; color: var(--gold); background: rgba(0,0,0,.45); box-shadow: inset 0 0 0 1px rgba(255,216,74,.25); }
+.dg2-rw span.off { opacity: .4; text-decoration: line-through; }
+.dg2-rw canvas { width: 13px; height: auto; }
+.dg2-lock { margin-top: 3px; font-size: 11.5px; font-weight: 800; color: var(--muted); }
+.dg2-go { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 10px 10px 0; }
+.dg2-pips { display: flex; gap: 4px; }
+.dg2-pips i { width: 10px; height: 10px; border-radius: 3px; transform: rotate(45deg); background: #1b1530; box-shadow: inset 0 0 0 2px rgba(255,255,255,.12); }
+.dg2-pips i.on { background: #4cd964; box-shadow: 0 0 6px rgba(76,217,100,.7); }
+.dg2-enter { min-width: 76px; padding: 9px 12px; border: 0; border-radius: 12px; font-family: var(--pixel); font-size: 13px; color: #fff; cursor: pointer;
+  background: linear-gradient(180deg, #ff6b7a, #d6304a); box-shadow: 0 3px 0 #8e1d31, inset 0 2px 0 rgba(255,255,255,.3); text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+.dg2-enter:active { transform: translateY(2px); box-shadow: 0 1px 0 #8e1d31; }
+.dg2-enter:disabled { background: #2a2350; box-shadow: none; color: var(--muted); }
+.dg2-skip { padding: 5px 8px; border: 0; border-radius: 9px; font-size: 10px; font-weight: 900; color: #cfe6ff; background: rgba(61,155,255,.25); box-shadow: inset 0 0 0 1px rgba(61,155,255,.5); }
+.dg2-skip canvas.ico { width: 11px; height: 11px; }
+.dg2-wait { font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.dg2-wait b { font-family: var(--pixel); font-weight: 400; color: #ffcf6a; }
+.dg2.locked { min-height: 92px; filter: saturate(.25); opacity: .75; }
+.dg2.locked .dg2-boss canvas { filter: brightness(0) drop-shadow(0 0 1px rgba(255,255,255,.4)); }
+.dg2.empty .dg2-boss canvas:not(.alt) { filter: grayscale(.6) brightness(.7); }
+.dg2-more { padding: 10px; border-radius: 12px; text-align: center; font-size: 11.5px; font-weight: 800; color: var(--muted); background: rgba(255,255,255,.04); }
+
+/* ---------- Tour infinie : la tour vue de côté + le monstre du prochain étage ---------- */
+.tw2-wrap { display: flex; align-items: stretch; gap: 12px; }
+.tw2-shaft { position: relative; flex: 0 0 104px; display: flex; flex-direction: column; gap: 3px; padding: 0 8px; }
+.tw2-roof { display: block; height: 22px; margin: 0 -4px 2px; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, #b48cff, #6a3fd0); }
+.tw2-base { display: block; height: 8px; margin: 2px -6px 0; border-radius: 3px; background: #2a2058; }
+.tw2-fl { position: relative; display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0 8px; border-radius: 6px;
+  font-family: var(--pixel); font-size: 12px; color: #9a8fd6; background: repeating-linear-gradient(90deg, #1d1650 0 14px, #18123f 14px 28px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.tw2-fl em { display: inline-flex; align-items: center; gap: 2px; font-style: normal; font-size: 10.5px; color: var(--gold); }
+.tw2-fl canvas.ico, .tw2-fl .ico { width: 12px; height: 12px; }
+.tw2-fl.gift { box-shadow: inset 0 0 0 1.5px rgba(255,216,74,.55), 0 0 8px rgba(255,216,74,.2); }
+.tw2-fl.done { color: #5d548f; opacity: .7; }
+.tw2-fl.now { color: #fff; background: linear-gradient(90deg, #8a5cff, #5b2fd6); box-shadow: 0 0 0 2px #fff, 0 0 16px rgba(167,123,255,.7); transform: scale(1.06); z-index: 1; }
+.tw2-foe { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 0;
+  border-radius: 14px; background: radial-gradient(ellipse 80% 60% at 50% 60%, rgba(167,123,255,.25), transparent 70%); }
+.tw2-tag { padding: 3px 10px; border-radius: 9px; font-family: var(--pixel); font-size: 12px; color: #fff; background: #5b2fd6; box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.tw2-art { height: 120px; display: grid; place-items: end center; }
+.tw2-art canvas { width: auto; height: 116px; max-width: 140px; object-fit: contain; filter: drop-shadow(0 4px 0 rgba(0,0,0,.45)); animation: cbt-bob 3s ease-in-out infinite; }
+.tw2-name { font-family: var(--pixel); font-weight: 400; font-size: 14px; color: #fff; text-align: center; text-shadow: 0 2px 0 #000; }
+.tw2-meta { display: flex; align-items: center; gap: 6px; }
+.tw2-goal { margin: 12px 0 10px; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 1px rgba(255,216,74,.18); }
+.tw2-goal-txt { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; font-weight: 800; color: var(--muted); margin-bottom: 7px; }
+.tw2-goal-txt b { color: #fff; }
+.tw2-prize { display: inline-flex; align-items: center; gap: 3px; color: var(--gold); text-align: right; }
+.tw2-prize canvas.ico { width: 13px; height: 13px; }
+.tw2-bar { height: 10px; border-radius: 6px; background: #1b1530; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.tw2-bar i { display: block; height: 100%; min-width: 6px; border-radius: 6px; background: linear-gradient(90deg, #a77bff, #ffd84a); box-shadow: 0 0 8px rgba(255,216,74,.5); }
+
+/* ---------- Horde : la scène, la piste des paliers de clefs, les charges ---------- */
+.hd2-stage { position: relative; overflow: hidden; isolation: isolate; height: 150px; margin: -2px 0 12px; border-radius: 14px; box-shadow: inset 0 0 0 2px rgba(255,61,110,.45); }
+.hd2-stage .dg2-bg { object-position: center 70%; }
+.hd2-stage .dg2-shade { background: linear-gradient(0deg, rgba(10,7,30,.75), rgba(10,7,30,.1) 60%), radial-gradient(ellipse 60% 70% at 85% 30%, rgba(255,61,110,.25), transparent 70%); }
+.hd2-mobs { position: absolute; left: 0; right: 0; bottom: 10px; height: 100px; }
+.hd2-mobs canvas { position: absolute; bottom: 0; left: calc(4% + var(--i) * 15%); width: calc(34px + var(--i) * 9px); height: calc(38px + var(--i) * 12px); object-fit: contain; object-position: bottom;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); animation: hd2-march 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * -.45s); }
+@keyframes hd2-march { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.hd2-rec { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; align-items: center; padding: 7px 12px; border-radius: 12px; background: rgba(10,7,30,.8);
+  box-shadow: inset 0 0 0 1.5px rgba(255,216,74,.5); }
+.hd2-rec .ico { width: 18px; height: 18px; }
+.hd2-rec small { font-size: 9.5px; font-weight: 800; color: var(--muted); }
+.hd2-rec b { font-family: var(--pixel); font-weight: 400; font-size: 26px; line-height: 1; color: var(--gold); text-shadow: 0 0 10px rgba(255,216,74,.5); }
+.hd2-track { padding: 0 6px; }
+.hd2-lbl { display: block; font-size: 11px; font-weight: 800; color: var(--muted); margin-bottom: 30px; }
+.hd2-bar { position: relative; height: 12px; border-radius: 7px; background: #1b1530; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); margin: 0 8px 28px; }
+.hd2-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: linear-gradient(90deg, #ff3d6e, #ffd84a); box-shadow: 0 0 8px rgba(255,61,110,.5); }
+.hd2-tier { position: absolute; top: 50%; width: 0; }
+.hd2-tier::before { content: ''; position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: #2a2058; box-shadow: 0 0 0 2px #0d0926; }
+.hd2-tier.got::before { background: var(--gold); box-shadow: 0 0 0 2px #0d0926, 0 0 8px rgba(255,216,74,.8); }
+.hd2-tier em { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
+  font-style: normal; font-family: var(--pixel); font-size: 11px; color: var(--gold); }
+.hd2-tier em canvas.ico { width: 13px; height: 13px; }
+.hd2-tier b { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-family: var(--pixel); font-weight: 400; font-size: 10.5px; color: #cfc7f5; }
+.hd2-tier b::after { content: ' m.'; font-size: 8.5px; color: var(--muted); }
+.hd2-tier:not(.got) em { color: #8f86c2; }
+.hd2-charges { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-size: 11.5px; font-weight: 800; color: #d9d2ff; }
+.hd2-charges .dg2-pips i.on { background: #ff3d6e; box-shadow: 0 0 6px rgba(255,61,110,.7); }
+.dg2-go { width: 96px; padding-left: 0; }
+.dg2-enter { width: 92px; min-width: 0; padding: 9px 4px; }
+.dg2-skip { width: 92px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; padding: 4px 4px; }
+.dg2-skip small { font-size: 8.5px; font-weight: 800; opacity: .8; }
+.dg2-info > small { font-size: 10.5px; }
+.dg2-shade { background: linear-gradient(90deg, rgba(10,7,30,.05) 0%, rgba(10,7,30,.45) 32%, rgba(10,7,30,.85) 60%, rgba(10,7,30,.93) 100%), linear-gradient(0deg, rgba(10,7,30,.55), transparent 45%); }
+.tw2-foe { position: relative; overflow: hidden; isolation: isolate; box-shadow: inset 0 0 0 2px rgba(167,123,255,.4); background: #120d36; }
+.tw2-foe .dg2-shade { background: linear-gradient(0deg, rgba(10,7,30,.85), rgba(10,7,30,.15) 55%, rgba(10,7,30,.5)); }
+.tw2-gap { text-align: center; font-size: 14px; line-height: 10px; color: #6f63b3; }
+.tw2-fl.far { opacity: .9; }
+.tw2-shaft { padding: 0 6px; background: linear-gradient(90deg, transparent 0 4px, #241b5a 4px calc(100% - 4px), transparent calc(100% - 4px)); border-radius: 4px; }
+.hd2-mobs canvas { left: calc(3% + var(--i) * 12.5%); }
