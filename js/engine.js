@@ -6,7 +6,7 @@ import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
   CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
-  ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
+  ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP, AUCTION,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
 import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261019191031';
@@ -1106,6 +1106,53 @@ export function sellItems(acc, hero, itemId, rarity, count = 1) {
   return { gain, n: spare.length };
 }
 
+// ------------------------------ Enchères ------------------------------
+/** Fin d'une enchère (24 h après sa mise en vente) */
+export const aucEnd = (a) => new Date(a.created_at).getTime() + AUCTION.hours * 3600e3;
+/** Meilleure offre d'une enchère (à égalité, la première arrivée) */
+export function aucTop(bids, auctionId) {
+  let t = null;
+  for (const b of bids) if (b.auction_id === auctionId && (!t || b.amount > t.amount || (b.amount === t.amount && b.id < t.id))) t = b;
+  return t;
+}
+/** Offre minimum pour passer devant : le prix de départ, ou la meilleure offre + 5 % (1 Flouze au moins) */
+export const aucNext = (a, top) => top ? top.amount + Math.max(1, Math.ceil(top.amount * AUCTION.step)) : a.min_price;
+/** Objets qu'on peut mettre en vente : ceux du sac, sauf ceux qui sont équipés */
+export function aucSellable(hero) {
+  const eq = new Set(Object.values(hero.equipped));
+  return hero.inventory.filter(i => !eq.has(i.uid));
+}
+/**
+ * Règle ce qui revient à ce compte : Flouze des mises dépassées, Flouze d'un objet vendu, objet gagné,
+ * objet pas vendu rendu au vendeur. Chaque chose n'est réglée qu'une fois (acc.auc). Renvoie ce qui s'est passé.
+ */
+export function aucSettle(acc, me, auctions, bids, now = Date.now()) {
+  if (!acc.auc) acc.auc = { done: [], back: [] };
+  const done = new Set(acc.auc.done), back = new Set(acc.auc.back), out = [];
+  for (const a of auctions) {
+    if (!ITEMS[a.item_id]) continue;
+    const top = aucTop(bids, a.id);
+    for (const b of bids) {
+      if (b.auction_id !== a.id || b.user_id !== me || b === top || back.has(b.id)) continue;
+      acc.clat += b.amount; back.add(b.id);
+      out.push({ type: 'back', a, b });
+    }
+    if (now < aucEnd(a) || done.has(a.id)) continue;
+    if (a.seller_id === me) {
+      if (top) { acc.clat += top.amount; out.push({ type: 'sold', a, top }); }
+      else { addItem(acc.heroes.find(h => h.id === a.hero_id) || activeHero(acc), a.item_id, a.rarity); out.push({ type: 'unsold', a }); }
+      done.add(a.id);
+    } else if (top && top.user_id === me) {
+      addItem(activeHero(acc), a.item_id, a.rarity);
+      out.push({ type: 'won', a, top });
+      done.add(a.id);
+    }
+  }
+  acc.auc.done = [...done].slice(-300);
+  acc.auc.back = [...back].slice(-600);
+  return out;
+}
+
 /** Replacer ses points : payant */
 export function resetStats(acc, hero) {
   if (acc.clat < STAT_RESET_COST) return false;
@@ -1247,6 +1294,7 @@ export function newAccount(pseudo, classId) {
     missions: { day: '', progress: {}, claimed: {}, bonus: false },
     raid: { day: '', used: 0, claimed: {}, local: {} },
     paidWagers: [],
+    auc: { done: [], back: [] },   // enchères déjà réglées (vente, achat) et mises dépassées déjà rendues
     trainRecord: { dmg: 0, classId: classId },
     resetId: RESET_ID,
     specialReset: SPECIAL_RESET && SPECIAL_RESET.id,   // un compte neuf n'a pas besoin de la remise à zéro spéciale
@@ -1319,6 +1367,7 @@ export function migrate(save) {
   if (!acc.missions) acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
   if (!acc.raid) acc.raid = { day: '', used: 0, claimed: {}, local: {} };
   if (!acc.paidWagers) acc.paidWagers = [];
+  if (!acc.auc) acc.auc = { done: [], back: [] };
   if (!acc.chestCount) acc.chestCount = { normal: 0, combat: 0, war: 0 };
   acc.epicChests ||= 0; acc.legendaryChests ||= 0;
   if (!acc.war.weeks) acc.war.weeks = {};
@@ -2058,8 +2107,15 @@ export function applyLevelFixes(acc) {
 
 // ------------------------------ Marchand du jour ------------------------------
 /** Les 3 objets gris du jour (les mêmes pour tout le monde), et ce qui a déjà été acheté aujourd'hui */
+/** Créneau du marchand (change toutes les 4 h) et temps avant le prochain */
+export const shopSlot = (d = new Date()) => `${dayKey(d)}h${Math.floor(d.getHours() / SHOP_DAILY.everyH)}`;
+export function msToNextShop(now = Date.now()) {
+  const d = new Date(now), next = new Date(now);
+  next.setHours((Math.floor(d.getHours() / SHOP_DAILY.everyH) + 1) * SHOP_DAILY.everyH, 0, 0, 0);
+  return next - d;
+}
 export function dailyShop(acc) {
-  const day = dayKey();
+  const day = shopSlot();
   if (!acc.shop || acc.shop.day !== day) acc.shop = { day, bought: {} };
   const rng = makeRng(hashStr('marchand2' + day));
   const pool = ITEM_LIST.slice();

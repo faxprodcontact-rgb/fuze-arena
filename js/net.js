@@ -259,6 +259,34 @@ export async function placeWager(challengeId, pseudo, side, amount, odds) {
   if (error) throw new Error(/row-level/i.test(error.message) ? 'Les paris sur ce duel sont fermés.' : frError(error));
 }
 
+// ------------------------------ Enchères ------------------------------
+/** Ventes aux enchères des derniers jours (en cours et terminées) et leurs offres */
+export async function fetchAuctions(days = 14) {
+  const c = await client();
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const { data: auctions, error } = await c.from('auctions').select('*').gte('created_at', since).order('created_at', { ascending: false });
+  if (error) throw new Error(frError(error));
+  if (!auctions.length) return { auctions, bids: [] };
+  const { data: bids, error: e2 } = await c.from('bids').select('*').in('auction_id', auctions.map(a => a.id));
+  if (e2) throw new Error(frError(e2));
+  return { auctions, bids };
+}
+
+/** Met un objet en vente (24 h). La base refuse si on a déjà une vente en cours. */
+export async function createAuction(row) {
+  const c = await client();
+  const { data, error } = await c.from('auctions').insert({ ...row, seller_id: userId }).select().single();
+  if (error) throw new Error(/row-level/i.test(error.message) ? 'Tu as déjà un objet en vente.' : frError(error));
+  return data;
+}
+
+/** Offre sur une vente. La base refuse si la vente est finie ou si quelqu'un a déjà mis autant ou plus. */
+export async function placeBid(auctionId, pseudo, amount) {
+  const c = await client();
+  const { error } = await c.from('bids').insert({ auction_id: auctionId, user_id: userId, pseudo, amount });
+  if (error) throw new Error(/row-level/i.test(error.message) ? 'Offre refusée : la vente est finie ou quelqu’un a déjà mis plus.' : frError(error));
+}
+
 // ------------------------------ Raid ------------------------------
 export async function getRaid(week) {
   const c = await client();

@@ -16,6 +16,9 @@ export const DUNGEON_KEYS_MAX = 10; // clefs gagnées au maximum en donjon par j
 export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
 export const KEY_PRICE = 70;       // une clef coûte 70 Flouze à la boutique (1 clef = 1 coffre)
 export const SELL_PRICE = [1, 3, 7, 16, 40, 100, 250];   // revente d'un objet selon sa rareté (en Flouze)
+// Enchères (boutique) : 1 objet en vente à la fois par joueur, pendant 24 h, vendu au plus offrant.
+// Chaque offre doit dépasser la meilleure d'au moins 5 % (1 Flouze minimum). Le Flouze misé est bloqué, et rendu si quelqu'un met plus.
+export const AUCTION = { hours: 24, step: 0.05, maxPrice: 100000 };
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
 export const RESET_ID = '2026-10-18-maj';
@@ -764,7 +767,8 @@ export const CHAMP = { size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3
 
 // Le marchand : 3 objets tirés au hasard chaque jour parmi tous les équipements, de Commun à Épique.
 // odds = chances de chaque rareté (en %), prices = prix en Flouze selon la rareté.
-export const SHOP_DAILY = { count: 3, odds: [50, 30, 15, 5], prices: [10, 50, 150, 300] };
+// Le marchand : 3 objets au hasard, renouvelés toutes les 4 h (0 h, 4 h, 8 h, 12 h, 16 h, 20 h)
+export const SHOP_DAILY = { count: 3, odds: [50, 30, 15, 5], prices: [10, 50, 150, 300], everyH: 4 };
 
 export const COSMETICS = [
   // Titres (affichés sous ton pseudo)

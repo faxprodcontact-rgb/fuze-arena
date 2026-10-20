@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -14,6 +14,7 @@ import { hashStr, makeRng } from './rng.js?v=20261019191031';
 import { APP_VERSION } from './version.js?v=20261019191031';
 import { PATCH_NOTES } from './patchnotes.js?v=20261019191031';
 import * as NET from './net.js?v=20261019191031';
+import * as AUC from './encheres.js?v=20261019191031';
 import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261019191031';
 
 // ------------------------------ Sauvegarde ------------------------------
@@ -3199,7 +3200,7 @@ function attackTower() {
 
 // ------------------------------ Boutique ------------------------------
 let shopKind = 'skin';
-const SHOP_TABS = [['skin', 'Skins'], ['title', 'Titres'], ['color', 'Pseudo'], ['victory', 'Victoire']];
+const SHOP_TABS = [['skin', 'Skins'], ['title', 'Titres'], ['color', 'Pseudo'], ['auction', 'Enchères']];
 
 function viewShop() {
   const owned = new Set(acc.cosmetics.owned);
@@ -3224,12 +3225,12 @@ function viewShop() {
     chips: [
       mchip('<canvas class="px" data-clat></canvas>', 'Ton Flouze', fmtNum(acc.clat), 'hot'),
       mchip('<canvas class="px" data-key></canvas>', `Clefs ${CLASSES[hero.classId].name}`, hero.keys),
-      mchip(ico('bag'), 'Objets du jour', `${left} / ${SHOP_DAILY.count}`),
+      mchip(ico('bag'), 'Objets du marchand', `${left} / ${SHOP_DAILY.count}`),
     ],
-    info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Objets du jour</b> : 3 objets au hasard, du Commun à l’Épique (${SHOP_DAILY.prices.join(' / ')} Flouze selon la rareté), un seul exemplaire de chaque, renouvelés à minuit. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
+    info: `<b>Clef</b> : ouvre 1 coffre de ton perso actif. <b>Marchand</b> : 3 objets au hasard, du Commun à l’Épique (${SHOP_DAILY.prices.join(' / ')} Flouze selon la rareté), un seul exemplaire de chaque, renouvelés toutes les ${SHOP_DAILY.everyH} h. <b>Enchères</b> : 1 objet en vente à la fois pendant 24 h ; il part au plus offrant. Ton offre est bloquée, et rendue si quelqu’un met plus. <b>Apparences</b> : pour frimer, aucun effet sur la force. Les skins vont à ton perso actif (change-le en haut de l’onglet Combats).`,
   }) + `
     <section class="card hx merchant" style="--hc:#ffd45a">
-      ${secHead(ico('star'), 'Le marchand', `Nouveaux objets dans <span data-timer="day3">${fmt(msToMidnight())}</span>`)}
+      ${secHead(ico('star'), 'Le marchand', `Nouveaux objets dans <span data-timer="shop">${fmt(E.msToNextShop())}</span>`)}
       <div class="key-deal">
         <span class="kd-art"><canvas class="px" data-key></canvas></span>
         <div class="o-body"><b>Clef</b><small>Ouvre 1 coffre de ton ${CLASSES[hero.classId].name} · tu en as ${hero.keys}</small></div>
@@ -3247,9 +3248,10 @@ function viewShop() {
       </div>
     </section>
     <section class="card hx" style="--hc:#b05cff">
-      ${secHead(ico('magic'), 'Apparences', shopKind === 'skin' ? `Skins de ton ${CLASSES[hero.classId].name}` : 'Pour frimer : aucun effet sur la force')}
+      ${shopKind === 'auction' ? secHead(ico('star'), 'Enchères', '1 objet en vente à la fois · 24 h · au plus offrant')
+        : secHead(ico('magic'), 'Apparences', shopKind === 'skin' ? `Skins de ton ${CLASSES[hero.classId].name}` : 'Pour frimer : aucun effet sur la force')}
       <div class="seg seg4">${SHOP_TABS.map(([k, n]) => `<button class="${shopKind === k ? 'on' : ''}" data-act="shopKind" data-k="${k}">${n}</button>`).join('')}</div>
-      <div class="shop ${shopKind === 'skin' ? 'skins' : ''}">
+      ${shopKind === 'auction' ? viewAuction() : `<div class="shop ${shopKind === 'skin' ? 'skins' : ''}">
         ${list.map(c => `
           <div class="shop-item ${isOn(c) ? 'on' : ''} ${owned.has(c.id) ? 'owned' : ''}">
             <div class="sh-prev">${preview(c)}</div>
@@ -3259,8 +3261,91 @@ function viewShop() {
               ? `<button class="btn small ${isOn(c) ? '' : 'primary'}" data-act="equipCos" data-id="${c.id}">${isOn(c) ? 'Retirer' : 'Porter'}</button>`
               : `<button class="btn small green" data-act="buyCos" data-id="${c.id}" ${acc.clat < c.price ? 'disabled' : ''}>${c.price}<canvas class="px" data-clat></canvas></button>`}
           </div>`).join('')}
-      </div>
+      </div>`}
     </section>`;
+}
+
+// ------------------------------ Enchères ------------------------------
+// Chaque joueur met 1 objet en vente à la fois, pendant 24 h ; il part au plus offrant.
+// Le Flouze misé est retiré tout de suite et rendu si quelqu'un met plus ; le jeu de chaque joueur règle ce qui lui revient.
+let auc = { auctions: [], bids: [], at: 0, loading: false };
+
+/** Recharge les ventes et règle ce qui revient au joueur (Flouze, objets) */
+async function loadAuc(quiet = false) {
+  if (auc.loading) return;
+  auc.loading = true;
+  try {
+    const d = await AUC.load();
+    auc = { ...d, at: Date.now(), loading: false };
+    const out = E.aucSettle(acc, AUC.myId(), d.auctions, d.bids);
+    if (out.length) { save(); aucNews(out); }
+  } catch (e) {
+    auc.loading = false;
+    if (!quiet) toast(e.message);
+  }
+}
+function aucNews(out) {
+  const nm = (a) => `${ITEMS[a.item_id].name} (${RARITIES[a.rarity].name})`;
+  for (const o of out) {
+    if (o.type === 'sold') toast(`Vendu ! ${nm(o.a)} part chez ${o.top.pseudo} pour ${fmtNum(o.top.amount)} Flouze.`);
+    if (o.type === 'unsold') toast(`Personne n’a enchéri sur ${nm(o.a)} : il revient dans ton sac.`);
+    if (o.type === 'won') toast(`Enchère gagnée ! ${nm(o.a)} est dans le sac de ton ${CLASSES[E.activeHero(acc).classId].name}.`);
+  }
+  const back = out.filter(o => o.type === 'back');
+  if (back.length) toast(`On a mis plus que toi : ${fmtNum(back.reduce((n, o) => n + o.b.amount, 0))} Flouze te sont rendus.`);
+  if (out.some(o => o.type !== 'back')) SFX.loot(3);
+}
+
+const aucItemHead = (itemId, rarity) => `
+  <div class="pick-row auc-head" style="--rc:${RARITIES[rarity].color}">
+    <span class="it r${rarity} pick-ic" style="--rc:${RARITIES[rarity].color}"><canvas class="px" data-icon="${itemId}"></canvas></span>
+    <span class="pick-txt"><b>${esc(ITEMS[itemId].name)}</b><small style="color:${RARITIES[rarity].color}">${RARITIES[rarity].name} · ${SLOTS[ITEMS[itemId].slot].name}</small><small class="pick-st">${statChips(itemId, rarity)}</small></span>
+  </div>`;
+
+function aucCard(a, me, now) {
+  const it = ITEMS[a.item_id], R = RARITIES[a.rarity];
+  const top = E.aucTop(auc.bids, a.id), end = E.aucEnd(a);
+  const mine = a.seller_id === me, lead = !!top && top.user_id === me;
+  const price = top
+    ? `<b>${fmtNum(top.amount)}<canvas class="px ico" data-clat></canvas></b><small>${lead ? 'ton offre' : esc(top.pseudo)}</small>`
+    : `<b>${fmtNum(a.min_price)}<canvas class="px ico" data-clat></canvas></b><small>prix de départ</small>`;
+  return `
+    <div class="auc ${mine ? 'mine' : ''} ${lead ? 'lead' : ''}" style="--rc:${R.color}">
+      <div class="it r${a.rarity} auc-ico" style="--rc:${R.color}"><canvas class="px" data-icon="${a.item_id}"></canvas></div>
+      <div class="auc-body">
+        <b>${esc(it.name)}</b>
+        <small><span style="color:${R.color}">${R.name}</span>${mine ? '' : ` · ${esc(a.pseudo)}`}</small>
+        <small class="dl-st">${statChips(a.item_id, a.rarity, 2)}</small>
+        <span class="auc-time">${ico('clock')} <span data-countdown="${end}">${fmt(Math.max(0, end - now))}</span></span>
+      </div>
+      <div class="auc-side">
+        <div class="auc-price">${price}</div>
+        ${mine ? '' : lead ? '<span class="auc-lead">Tu mènes</span>' : `<button class="btn small green" data-act="aucBid" data-id="${a.id}">Enchérir</button>`}
+      </div>
+    </div>`;
+}
+
+function viewAuction() {
+  // on recharge les ventes en arrivant, puis toutes les 30 s (et à la fin d'une vente, voir la minuterie)
+  if (!auc.loading && Date.now() - auc.at > 30000) setTimeout(() => loadAuc(true).then(() => { if (tab === 'shop' && shopKind === 'auction' && !modalRoot.innerHTML) softRender(); }), 0);
+  const me = AUC.myId(), now = Date.now();
+  const ok = auc.auctions.filter(a => ITEMS[a.item_id]);
+  const live = ok.filter(a => now < E.aucEnd(a));
+  const mine = live.find(a => a.seller_id === me);
+  const others = live.filter(a => a.seller_id !== me).sort((a, b) => E.aucEnd(a) - E.aucEnd(b));
+  const ended = ok.filter(a => now >= E.aucEnd(a)).slice(0, 6);
+  return `
+    <div class="sub">TA VENTE</div>
+    ${mine ? aucCard(mine, me, now) : `<button class="btn primary block auc-sell" data-act="aucSell">${ico('bag')} Mettre un objet en vente</button>`}
+    <div class="sub">EN VENTE${others.length ? ` · ${others.length}` : ''}</div>
+    ${others.length ? `<div class="auc-list">${others.map(a => aucCard(a, me, now)).join('')}</div>`
+      : `<p class="hint">${auc.at ? 'Aucun objet en vente pour le moment.' : 'Chargement…'}</p>`}
+    ${ended.length ? `<div class="sub">TERMINÉES</div>
+      <div class="auc-done">${ended.map(a => {
+        const top = E.aucTop(auc.bids, a.id);
+        return `<div><span style="color:${RARITIES[a.rarity].color}">${esc(ITEMS[a.item_id].name)}</span><small>${a.seller_id === me ? 'toi' : esc(a.pseudo)}</small>
+          <b>${top ? `${fmtNum(top.amount)} → ${top.user_id === me ? 'toi' : esc(top.pseudo)}` : 'pas vendu'}</b></div>`;
+      }).join('')}</div>` : ''}`;
 }
 
 // ------------------------------ En direct ------------------------------
@@ -3289,7 +3374,7 @@ function onLive(kind, row) {
 
 async function initLive() {
   if (!NET.online) return;
-  await Promise.all([loadJournal(), refreshBets()]);
+  await Promise.all([loadJournal(), refreshBets(), loadAuc(true)]);
   try { await NET.subscribeLive(onLive); } catch (e) { /* le direct est optionnel */ }
 }
 
@@ -3651,6 +3736,7 @@ function openSettings() {
       <button class="btn small" data-act="cheat" data-c="lvl">+5 niveaux</button>
       <button class="btn small" data-act="cheat" data-c="weekEnd">Finir la guerre</button>
       <button class="btn small" data-act="cheat" data-c="clat">+100 Flouze</button>
+      <button class="btn small" data-act="cheat" data-c="auc">Finir les enchères</button>
     </div>`}
     <div class="sub">SON</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -3979,6 +4065,82 @@ const ACTIONS = {
   claimRaid: (d) => claimRaid(d.week),
   attackTower: () => attackTower(),
   shopKind: (d) => { shopKind = d.k; render(); },
+  aucSell: () => {
+    const list = stacks().filter(st => st.items.length > (st.equipped ? 1 : 0));
+    if (!list.length) { toast('Rien à vendre : les objets équipés ne se vendent pas.'); return; }
+    openModal(`
+      <h3>Quel objet vendre ?</h3>
+      <p class="hint" style="margin-top:4px">Le sac de ton ${CLASSES[hero.classId].name}, sans les objets qu'il porte.</p>
+      <div class="pick-list">${list.map(st => `
+        <button class="pick-row" style="--rc:${RARITIES[st.rarity].color}" data-act="aucPick" data-id="${st.itemId}" data-r="${st.rarity}">
+          <span class="it r${st.rarity} pick-ic" style="--rc:${RARITIES[st.rarity].color}"><canvas class="px" data-icon="${st.itemId}"></canvas>${st.items.length > 1 ? `<span class="n">x${st.items.length}</span>` : ''}</span>
+          <span class="pick-txt"><b>${esc(ITEMS[st.itemId].name)}</b><small style="color:${RARITIES[st.rarity].color}">${RARITIES[st.rarity].name} · ${SLOTS[ITEMS[st.itemId].slot].name}</small><small class="pick-st">${statChips(st.itemId, st.rarity)}</small></span>
+        </button>`).join('')}</div>
+      <div class="close-row"><button class="btn" data-act="closeModal">Fermer</button></div>`);
+  },
+  aucPick: (d) => {
+    const r = +d.r;
+    openModal(`
+      <h3>Mettre en vente</h3>
+      ${aucItemHead(d.id, r)}
+      <label class="field" style="margin-top:12px">Prix de départ (Flouze)
+        <input id="auc-min" type="number" inputmode="numeric" min="1" max="${AUCTION.maxPrice}" value="${SELL_PRICE[r] * 2}">
+      </label>
+      <p class="hint" style="margin-top:8px">24 h, puis il part au plus offrant. Sans offre, il revient dans ton sac.</p>
+      <div class="close-row"><button class="btn" data-act="aucSell">Retour</button><button class="btn primary" data-act="aucCreate" data-id="${d.id}" data-r="${r}">Mettre en vente</button></div>`, { center: true });
+  },
+  aucCreate: async (d) => {
+    const r = +d.r;
+    const min = Math.floor(+document.getElementById('auc-min').value || 0);
+    if (min < 1 || min > AUCTION.maxPrice) { toast(`Prix de départ entre 1 et ${fmtNum(AUCTION.maxPrice)} Flouze.`); return; }
+    const me = AUC.myId(), now = Date.now();
+    if (auc.auctions.some(a => a.seller_id === me && now < E.aucEnd(a))) { toast('Tu as déjà un objet en vente.'); return; }
+    const it = E.aucSellable(hero).find(i => i.itemId === d.id && i.rarity === r);
+    if (!it) return;
+    hero.inventory = hero.inventory.filter(i => i !== it);
+    save();
+    try {
+      await AUC.create({ pseudo: acc.pseudo, hero_id: hero.id, item_id: d.id, rarity: r, min_price: min });
+      SFX.click();
+      toast(`${ITEMS[d.id].name} est en vente pour 24 h !`);
+    } catch (e) { hero.inventory.push(it); save(); toast(e.message); }
+    closeModal();
+    await loadAuc(true);
+    render();
+  },
+  aucBid: (d) => {
+    const a = auc.auctions.find(x => String(x.id) === d.id);
+    if (!a) return;
+    const top = E.aucTop(auc.bids, a.id), next = E.aucNext(a, top);
+    openModal(`
+      <h3>Enchérir</h3>
+      ${aucItemHead(a.item_id, a.rarity)}
+      <div class="auc-now">${top ? `Meilleure offre : <b>${fmtNum(top.amount)}</b> (${esc(top.pseudo)})` : `Prix de départ : <b>${fmtNum(a.min_price)}</b>`} · vendu par ${esc(a.pseudo)}</div>
+      <label class="field" style="margin-top:12px">Ton offre (au moins ${fmtNum(next)})
+        <input id="auc-bid" type="number" inputmode="numeric" min="${next}" value="${next}">
+      </label>
+      <p class="hint" style="margin-top:8px">Tu as ${fmtNum(acc.clat)} Flouze. Ton offre est bloquée, et rendue si quelqu’un met plus.</p>
+      <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn primary" data-act="aucBidGo" data-id="${a.id}">Enchérir</button></div>`, { center: true });
+  },
+  aucBidGo: async (d) => {
+    const amount = Math.floor(+document.getElementById('auc-bid').value || 0);
+    await loadAuc(true);   // la meilleure offre a pu changer entre-temps
+    const a = auc.auctions.find(x => String(x.id) === d.id);
+    if (!a || Date.now() >= E.aucEnd(a)) { toast('Cette vente est finie.'); closeModal(); render(); return; }
+    const next = E.aucNext(a, E.aucTop(auc.bids, a.id));
+    if (amount < next) { toast(`Il faut au moins ${fmtNum(next)} Flouze.`); return; }
+    if (amount > acc.clat) { toast('Pas assez de Flouze.'); return; }
+    acc.clat -= amount;
+    save();
+    try {
+      await AUC.bid(a.id, acc.pseudo, amount);
+      SFX.click();
+      toast(`Offre de ${fmtNum(amount)} Flouze : tu mènes !`);
+    } catch (e) { acc.clat += amount; save(); toast(e.message); }
+    closeModal();
+    await loadAuc(true);
+    render();
+  },
   buyCos: (d) => {
     const c = COSMETIC[d.id];
     if (!E.buyCosmetic(acc, d.id)) { toast('Pas assez de Flouze.'); return; }
@@ -4126,6 +4288,7 @@ const ACTIONS = {
     if (d.c === 'combat') acc.combatChests += 2;
     if (d.c === 'fights') { acc.fights.done = {}; acc.fights.clat = {}; hero.runs = null; hero.horde = {}; acc.war.done = {}; acc.raid.ch = {}; }
     if (d.c === 'clat') acc.clat += 100;
+    if (d.c === 'auc') { AUC.finishAllLocal(); auc.at = 0; }
     if (d.c === 'weekEnd' && acc.war.section) {
       const cur = E.warWeek(acc);
       acc.war.weeks['2000-01-03'] = { ...cur, attacks: Math.max(cur.attacks, WAR.minAttacks) };
@@ -4169,12 +4332,16 @@ setInterval(() => {
   const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';
   if (hero.chest.stored !== before) { save(); if (!busy) render(); return; }
   if ((acc.fights.day !== E.dayKey() || acc.missions.day !== E.halfKey() || E.dungeonRuns(hero).day !== E.dayKey()) && !busy) { render(); return; }
+  // enchères : une vente vient de finir sous nos yeux → on règle et on réaffiche
+  if (!busy && tab === 'shop' && shopKind === 'auction' && [...document.querySelectorAll('.auc [data-countdown]')].some(el => +el.dataset.countdown <= Date.now())) { auc.at = 0; render(); return; }
   // une charge (donjon, Horde, gros boss) vient de revenir : on réaffiche
   if (!busy && [...document.querySelectorAll('[data-charge]')].some(el => +el.dataset.charge <= Date.now())) { render(); return; }
   const t = document.querySelector('[data-timer="chest"]');
   if (t && hero.chest.stored < CHEST_MAX) t.innerHTML = `Prochain coffre dans <b>${fmt(E.nextChestIn(hero))}</b>`;
   const d = document.querySelector('[data-timer="day"]');
   if (d) d.textContent = `Nouveaux combats dans ${fmt(msToMidnight())}`;
+  const sh = document.querySelector('[data-timer="shop"]');
+  if (sh) { if (acc.shop && acc.shop.day !== E.shopSlot() && !busy) { render(); return; } sh.textContent = fmt(E.msToNextShop()); }
   const d3 = document.querySelector('[data-timer="day3"]');
   if (d3) d3.textContent = fmt(msToMidnight());
   document.querySelectorAll('[data-timer="half"]').forEach(el => { el.textContent = el.textContent.replace(/\d\d:\d\d:\d\d/, fmt(E.msToNextHalf())); });

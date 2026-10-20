@@ -2000,3 +2000,31 @@ canvas[data-hero] { translate: -10.4% 0; }
 /* Caractéristiques : la Vie en grand, au milieu de sa case */
 .stat-sum > .sum-hp { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .stat-sum > .sum-hp b { font-size: 24px; line-height: 1; }
+
+/* ---------- Enchères (boutique) ---------- */
+.auc-sell { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.auc-list { display: flex; flex-direction: column; gap: 8px; }
+.auc { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #19124b, #0e0a2b);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--rc) 35%, transparent), 0 3px 0 rgba(0,0,0,.35); }
+.auc.mine { box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(255,216,74,.2); }
+.auc.lead { box-shadow: inset 0 0 0 2px #4cd964, 0 0 12px rgba(76,217,100,.2); }
+.auc-ico { width: 56px; height: 56px; flex-shrink: 0; aspect-ratio: auto; }
+.auc-ico canvas { width: 40px; height: 40px; }
+.auc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.auc-body > b { font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.auc-body > small { font-size: 11px; font-weight: 700; color: var(--muted); }
+.auc-body .dl-st { margin-top: 2px; }
+.auc-time { display: inline-flex; align-items: center; gap: 4px; font-family: var(--pixel); font-size: 11px; color: #ffcf6a; margin-top: 2px; }
+.auc-time canvas.ico { width: 12px; height: 12px; }
+.auc-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.auc-price b { display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-family: var(--pixel); font-weight: 400; font-size: 17px; color: var(--gold); line-height: 1; }
+.auc-price b canvas.ico { width: 14px; height: 14px; }
+.auc-price small { display: block; font-size: 10px; font-weight: 800; color: var(--muted); margin-top: 2px; }
+.auc-lead { font-family: var(--pixel); font-size: 11px; color: #7bf09a; padding: 5px 8px; border-radius: 8px; background: rgba(76,217,100,.12); }
+.auc-done { display: flex; flex-direction: column; gap: 4px; }
+.auc-done > div { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.04); font-size: 12px; font-weight: 800; }
+.auc-done small { color: var(--muted); font-size: 10.5px; }
+.auc-done b { margin-left: auto; font-family: var(--pixel); font-weight: 400; font-size: 11.5px; color: var(--gold); white-space: nowrap; }
+.auc-head { pointer-events: none; }
+.auc-now { margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: center; }
+.auc-now b { color: var(--gold); }

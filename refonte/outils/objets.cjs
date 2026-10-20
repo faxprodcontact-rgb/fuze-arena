@@ -654,7 +654,8 @@ const BADGE = {
     if (it.slot === 'pet') {
       const f = PETS[it.icon]; if (!f) { missing.push(it.icon); continue; }
       f(I, m, a, it.eye || '#1b1530');
-      out.familiers[id] = I.svg(it.name || id, 'objets.cjs');
+      // marge autour du dessin : oreilles, queues et pattes dépassent parfois du carré 64×64 (le jeu recadre ensuite sur le dessin)
+      out.familiers[id] = I.svg(it.name || id, 'objets.cjs').replace('viewBox="0 0 64 64"', 'viewBox="-10 -10 84 84"');
     } else {
       const f = SHAPES[it.icon]; if (!f) { missing.push(it.icon); continue; }
       f(I, m, a, it);
