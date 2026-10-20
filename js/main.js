@@ -1170,18 +1170,44 @@ function podium(list, scoreOf, { bubbles = false } = {}) {
   const top = list.slice(0, 3);
   if (!top.length) return '';
   const order = [1, 0, 2].filter(i => top[i]);
-  return `<div class="podium ${bubbles ? 'big' : ''}">${order.map(i => {
-    const e = top[i], msg = bubbles ? podMsg(e) : '';
+  if (bubbles) return podiumStage(top, order, scoreOf);
+  return `<div class="podium">${order.map(i => {
+    const e = top[i];
     return `
     <button class="pod p${i + 1} ${e.me ? 'me' : ''}" ${e.id ? `data-act="playerCard" data-id="${e.id}"` : ''}>
-      ${msg ? `<span class="pod-bubble">${esc(msg)}</span>` : ''}
       ${i === 0 ? `<span class="pod-crown">${ico('crown')}</span>` : ''}
-      <div class="pod-av">${bubbles ? `<canvas class="px" data-hero="${e.classId}" data-pet="${e.pet || ''}" data-dye="${e.dye || ''}"></canvas>` : `<canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas>`}</div>
+      <div class="pod-av"><canvas class="px" data-portrait="${e.classId}" data-dye="${e.dye || ''}"></canvas></div>
       <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
       <div class="pod-score">${scoreOf(e)}</div>
       <div class="pod-step"><span>${ico(['medal1', 'medal2', 'medal3'][i])}</span><b>${i + 1}</b></div>
     </button>`;
   }).join('')}</div>`;
+}
+
+/** Le podium du Social : une remise des prix sur scène (rideaux, projecteurs, confettis), les héros debout sur les marches */
+function podiumStage(top, order, scoreOf) {
+  const conf = Array.from({ length: 16 }, (_, k) => `<i style="--x:${(k * 37) % 100}%;--d:${(k * 0.53) % 4}s;--c:${['#ffd84a', '#ff5d6c', '#4cd964', '#3d9bff', '#c58bff'][k % 5]};--r:${(k * 47) % 360}deg"></i>`).join('');
+  return `
+    <div class="pstage">
+      <img class="dg2-bg" src="art/decors/meeting.svg" alt=""><i class="ps-shade"></i>
+      <i class="ps-beam b2"></i><i class="ps-beam b1"></i><i class="ps-beam b3"></i>
+      <div class="ps-confetti">${conf}</div>
+      <div class="podium big">${order.map(i => {
+        const e = top[i], msg = podMsg(e);
+        return `
+        <button class="pod p${i + 1} ${e.me ? 'me' : ''}" ${e.id ? `data-act="playerCard" data-id="${e.id}"` : ''}>
+          ${msg ? `<span class="pod-bubble">${esc(msg)}</span>` : ''}
+          ${i === 0 ? `<span class="pod-crown">${ico('crown')}</span>` : ''}
+          <div class="pod-av"><canvas class="px" data-hero="${e.classId}" data-pet="${e.pet || ''}" data-dye="${e.dye || ''}"></canvas></div>
+          <div class="pod-step">
+            <b class="ps-rank">${i + 1}</b>
+            <span class="ps-medal">${ico(['medal1', 'medal2', 'medal3'][i])}</span>
+            <div class="pod-name">${dotHtml(e.id)}${nameHtml(e.name, e.data)}</div>
+            <div class="pod-score">${scoreOf(e)}</div>
+          </div>
+        </button>`;
+      }).join('')}</div>
+    </div>`;
 }
 
 // ------------------------------ Vue Guerre ------------------------------
