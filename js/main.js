@@ -554,7 +554,7 @@ function startSpellDemo(id) {
   spellDemoStop = playTraining(cv, () => {
     const me = { ...mySnap(), spells: [id] }, foe = dummySnap(hero.level);
     return { me, foe, result: E.createFight(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 24, timeoutWinner: false, demo: id }) };
-  }, { speed: 1.2, onEntry: (e) => {
+  }, { speed: 1.2, hud: 'corner', onEntry: (e) => {
     if (e.type !== 'action' || e.actor !== 0 || e.pet) return;
     const out = document.getElementById('sd-out');
     if (!out) return;
@@ -2256,10 +2256,12 @@ function runMelee({ teamA, teamB, fight, title, finish }) {
   ov.innerHTML = `
     <div class="battle-vs">${title}</div>
     <div class="battle-wrap"><canvas id="arena"></canvas></div>
-    <div class="battle-ctrl">
-      <div class="ctrl-row">
-        <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
+    <div class="battle-ctrl nobar">
+      <div class="dock">
+        <div class="dock-side">
+          <button class="dock-btn" data-act="speed" id="speed-btn">x1</button>
+          <button class="dock-btn" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
+        </div>
       </div>
     </div>
     <div class="battle-after" id="result-slot"></div>`;
@@ -3249,16 +3251,18 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
   ov.innerHTML = `
     <div class="battle-vs">${title}</div>
     <div class="battle-wrap"><canvas id="arena"></canvas></div>
-    <div class="battle-ctrl">
-      ${spells.length ? `<div class="spellbar" id="spellbar">
-        ${spells.map((id, i) => `<button class="sb ready" data-act="cast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
-        ${fight ? `<button class="sb-mode ${fight.manual ? 'man' : ''}" data-act="toggleManual" id="mode-btn">${fight.manual ? 'MANUEL' : 'AUTO'}</button>`
-          : `<span class="sb-mode lock">AUTO ${ico('lock')}</span>`}
-      </div>` : ''}
-      <div class="ctrl-row">
-        <button class="btn small" data-act="speed" id="speed-btn">Vitesse x1</button>
-        ${skip ? `<button class="btn small" data-act="skip">Passer ${ico('skip')}</button>` : ''}
-        <button class="btn small" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
+    <div class="battle-ctrl ${spells.length ? '' : 'nobar'}">
+      ${skip ? `<button class="dock-skip" data-act="skip">Passer ${ico('skip')}</button>` : ''}
+      <div class="dock">
+        ${spells.length ? (fight ? `<button class="dock-mode ${fight.manual ? 'man' : ''}" data-act="toggleManual" id="mode-btn"><small>Sorts</small><b>${fight.manual ? 'MANUEL' : 'AUTO'}</b></button>`
+          : `<span class="dock-mode lock"><small>Sorts</small><b>AUTO</b>${ico('lock')}</span>`) : ''}
+        ${spells.length ? `<div class="spellbar" id="spellbar">
+          ${spells.map((id, i) => `<button class="sb ready" data-act="cast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
+        </div>` : ''}
+        <div class="dock-side">
+          <button class="dock-btn" data-act="speed" id="speed-btn">x1</button>
+          <button class="dock-btn" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
+        </div>
       </div>
     </div>
     <div class="battle-after" id="result-slot"></div>`;
@@ -3679,7 +3683,7 @@ const ACTIONS = {
     f.setManual(!f.manual);
     setManualPref(f.manual);
     const btn = document.getElementById('mode-btn');
-    if (btn) { btn.textContent = f.manual ? 'MANUEL' : 'AUTO'; btn.classList.toggle('man', f.manual); }
+    if (btn) { btn.querySelector('b').textContent = f.manual ? 'MANUEL' : 'AUTO'; btn.classList.toggle('man', f.manual); }
     document.querySelectorAll('.sb.queued').forEach(x => x.classList.remove('queued'));
     toast(f.manual ? 'Mode manuel : touche un sort prêt pour le lancer.' : 'Mode auto : ton héros lance ses sorts tout seul.');
   },
@@ -3866,7 +3870,9 @@ const ACTIONS = {
     const speeds = [1, 2, 3];
     battleCtl.speedIdx = (battleCtl.speedIdx + 1) % speeds.length;
     battleCtl.setSpeed(speeds[battleCtl.speedIdx]);
-    document.getElementById('speed-btn').textContent = `Vitesse x${speeds[battleCtl.speedIdx]}`;
+    const sb = document.getElementById('speed-btn');
+    sb.textContent = `x${speeds[battleCtl.speedIdx]}`;
+    sb.classList.toggle('on', battleCtl.speedIdx > 0);
   },
   skip: () => { if (battleFight) battleFight.setManual(false); if (battleCtl) battleCtl.skip(); },
   waveNext: () => {

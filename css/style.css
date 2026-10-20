@@ -666,6 +666,8 @@ i.sl-base { background: #b8afe6; } i.sl-pts { background: var(--green); } i.sl-e
 .hb-class { font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 3px; }
 .hb-class b { color: var(--gold); }
 .hb-lvl { position: relative; flex-shrink: 0; width: 66px; height: 74px; margin: 4px 6px 14px 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--lbt); }
+.hb-lvl.t6, .hb-lvl.t7, .hb-lvl.t8 { margin-right: 22px; }
+.hb-lvl.t9, .hb-lvl.t10 { margin-right: 30px; margin-left: 30px; }
 .hb-lvl svg { position: absolute; left: 50%; top: 50%; width: 202%; transform: translate(-50%, -54%); overflow: visible; filter: drop-shadow(0 3px 0 rgba(0,0,0,.45)); pointer-events: none; }
 .hb-lvl small, .hb-lvl b { position: relative; font-family: var(--pixel); font-weight: 400; }
 .hb-lvl small { font-size: 9px; margin-top: -6px; opacity: .85; }
@@ -1680,3 +1682,35 @@ button.bk-m:active { transform: scale(.96); }
 .sd-out em { font-style: normal; color: #ff8a3d; }
 .sd-out.pop { animation: sdPop .35s ease-out; }
 @keyframes sdPop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+
+/* ---------- Combat : panneau du bas (mode des sorts, gros sorts, vitesse, son) et titre ---------- */
+.battle-vs { top: calc(var(--safe-top) + 8px); left: 50%; right: auto; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 4px 14px 5px; border-radius: 999px;
+  font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(rgba(44,35,128,.88), rgba(23,16,90,.88)); box-shadow: 0 0 0 1.5px rgba(242,193,78,.7), 0 4px 10px rgba(0,0,0,.4); }
+.battle-ctrl { left: 0; right: 0; bottom: 0; gap: 6px; padding: 26px 10px calc(var(--safe-bot) + 10px);
+  background: linear-gradient(to top, rgba(8,6,24,.96) 0, rgba(8,6,24,.85) 62%, rgba(8,6,24,0) 100%); pointer-events: none; }
+.battle-ctrl > * { pointer-events: auto; }
+.dock { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 420px; }
+.battle-ctrl.nobar .dock { justify-content: flex-end; }
+.battle-ctrl.nobar .dock-side { flex-direction: row; }
+.spellbar { flex: 0 1 auto; gap: 7px; padding: 6px; border-radius: 16px; background: linear-gradient(rgba(40,30,110,.9), rgba(20,14,60,.9)); box-shadow: 0 0 0 2px #0d0926, inset 0 0 0 1.5px rgba(242,193,78,.45); }
+.sb, .sb canvas { width: 56px; height: 56px; }
+.sb { border-radius: 12px; }
+.sb .cd { font-size: 22px; }
+.dock-mode { flex-shrink: 0; width: 50px; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 12px; padding: 0;
+  background: linear-gradient(#3a2e8e, #221a66); box-shadow: 0 0 0 2px #0d0926, inset 0 2px 0 rgba(255,255,255,.15), 0 3px 0 #0d0926; color: #c9c3ff; }
+.dock-mode small { font-size: 8.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; opacity: .8; }
+.dock-mode b { font-family: var(--pixel); font-weight: 400; font-size: 11px; letter-spacing: .3px; }
+.dock-mode.man { background: linear-gradient(#ffcf3f, #f0a325); color: #3a2208; box-shadow: 0 0 0 2px #0d0926, inset 0 2px 0 rgba(255,255,255,.4), 0 3px 0 #6b3d07, 0 0 12px rgba(255,200,60,.5); }
+.dock-mode.lock { opacity: .75; }
+.dock-mode canvas.ico { width: 11px; height: 11px; }
+.dock-side { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
+.dock-btn { width: 44px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-family: var(--pixel); font-size: 13px; color: #fff; text-shadow: 0 1px 0 #000;
+  background: linear-gradient(#4a3c96, #2a2066); box-shadow: 0 0 0 2px #0d0926, inset 0 2px 0 rgba(255,255,255,.15), 0 2px 0 #0d0926; }
+.dock-btn.on { background: linear-gradient(#ffcf3f, #f0a325); color: #3a2208; text-shadow: none; }
+.dock-btn canvas.ico { width: 18px; height: 18px; }
+.battle-ctrl.nobar .dock-btn { width: 52px; height: 40px; }
+.dock-skip { align-self: flex-end; margin-right: 4px; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; font-family: var(--pixel); font-size: 12px; color: #fff;
+  background: linear-gradient(#4a3c96, #2a2066); box-shadow: 0 0 0 2px #0d0926, inset 0 0 0 1.5px rgba(242,193,78,.5); }
+.dock-skip canvas.ico { width: 14px; height: 14px; }
+.spell-demo { height: 190px; }

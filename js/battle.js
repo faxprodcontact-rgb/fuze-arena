@@ -353,11 +353,12 @@ const NO_SFX = new Proxy({}, { get: () => () => {} });
  * Joue un combat dans le canvas.
  * training = entraînement silencieux (pas de musique ni de bruitages) ; onEntry = appelé à chaque étape.
  */
-export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null, onBegin = null, spellBar = false } = {}) {
+export function playBattle(canvas, A, B, result, { theme = 'arena', victory = null, training = false, onEntry = null, onBegin = null, spellBar = false, hud = null } = {}) {
+  // hud = 'corner' : seulement la barre de vie du héros, petite, en bas à droite (aperçu d'un sort)
   // Taille « logique » de la scène, recalculée selon l'écran (propre à chaque combat).
   // Téléphone en hauteur : scène étroite et haute (persos plus gros), sinon format large.
   let W = 480, H = 270, GROUND = 228, PORTRAIT = false;
-  let SAFE_TOP = 0, SAFE_BOT = 0;
+  let SAFE_TOP = 0, SAFE_BOT = 0, CTRL_TOP = 0;   // CTRL_TOP : haut des boutons du bas (sorts, vitesse), en unités de la scène
   const sfx = training ? NO_SFX : SFX;
   const ctx = canvas.getContext('2d');
   let k = 1, speed = 1, alive = true, last = performance.now(), time = 0, shake = 0;
@@ -383,7 +384,11 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     SAFE_TOP = (parseFloat(cs.paddingTop) || 0) * W / r.width;
     SAFE_BOT = (parseFloat(cs.paddingBottom) || 0) * W / r.width;
     probe.remove();
-    GROUND = PORTRAIT ? Math.round(H * 0.62) : H - 42;
+    // le sol est placé pour qu'il reste la place de la barre de vie du héros entre ses pieds et les boutons du bas
+    const ctrl = canvas.closest('.battle')?.querySelector('.battle-ctrl');
+    const cr = ctrl && ctrl.getBoundingClientRect();
+    CTRL_TOP = cr && cr.height ? (cr.top - r.top) * W / r.width : H - SAFE_BOT;
+    GROUND = PORTRAIT ? Math.round(Math.min(H * 0.7, CTRL_TOP - 54)) : H - 42;
     F.forEach(f => { f.baseX = baseXOf(f.i, f.sw); });
   }
   // Position de départ ; un gros boss est décalé pour rester entièrement à l'écran
@@ -1143,11 +1148,13 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
   function drawHud() {
     F.forEach((f, i) => {
       if (training && i === 1) return;
-      const left = PORTRAIT || i === 0;
-      const bw = PORTRAIT ? W - 24 : 190, bh = PORTRAIT ? 14 : 12;
-      const x = PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
-      const y = PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : H - SAFE_BOT - (spellBar ? 150 : 112)) : 18;
-      ctx.font = PXF(PORTRAIT ? 9 : 8); ctx.textBaseline = 'alphabetic';
+      const corner = hud === 'corner';
+      const left = !corner && (PORTRAIT || i === 0);
+      const bw = corner ? 150 : PORTRAIT ? W - 24 : 190, bh = corner ? 11 : PORTRAIT ? 14 : 12;
+      const x = corner ? W - 14 - bw : PORTRAIT ? 12 : (i === 0 ? 12 : W - 12 - bw);
+      // téléphone : l'ennemi en haut, le héros juste sous ses pieds (au-dessus des boutons), jamais sur lui
+      const y = corner ? H - bh - 12 : PORTRAIT ? (i === 1 ? SAFE_TOP + 46 : Math.round(Math.max(GROUND + 26, Math.min(GROUND + 44, CTRL_TOP - bh - 12)))) : 18;
+      ctx.font = PXF(corner ? 8 : PORTRAIT ? 9 : 8); ctx.textBaseline = 'alphabetic';
       ctx.textAlign = left ? 'left' : 'right';
       ctx.lineWidth = 3; ctx.strokeStyle = INK;
       const label = `${f.snap.name}  Nv.${f.snap.level}`;
@@ -1360,12 +1367,12 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
  * Entraînement en boucle (écran Héros) : mkFight() fabrique un nouveau combat à chaque manche.
  * Renvoie une fonction pour tout arrêter.
  */
-export function playTraining(canvas, mkFight, { onEntry = null, speed = 1.3 } = {}) {
+export function playTraining(canvas, mkFight, { onEntry = null, speed = 1.3, hud = null } = {}) {
   let ctl = null, stopped = false;
   const next = () => {
     if (stopped || !canvas.isConnected) return;
     const { me, foe, result } = mkFight();
-    ctl = playBattle(canvas, me, foe, result, { theme: 'training', training: true, onEntry });
+    ctl = playBattle(canvas, me, foe, result, { theme: 'training', training: true, onEntry, hud });
     ctl.setSpeed(speed);
     ctl.promise.then(() => { if (ctl) ctl.destroy(); next(); });
   };
