@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION, REMATCH_CLAT,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -1004,7 +1004,7 @@ function viewFights() {
       mchip(ico('clock'), 'Remise à zéro', `<span data-timer="day3">${fmt(msToMidnight())}</span>`),
     ],
     info: `<b>${ico('swords')} Combat classé</b> : bats chacun de tes potes une fois par jour. Tant que tu ne l’as pas battu, tu peux le réattaquer autant que tu veux (une défaite ne rapporte rien). Chaque victoire avance ton coffre de combat (${WINS_PER_COMBAT_CHEST} victoires = 1 coffre). Tout repart à zéro à minuit. L’Arène ne rapporte pas d’XP.<br><br>
-      <b>↻ Revanche</b> : une fois le combat classé fait, rejoue autant que tu veux, pour le fun. La 1ʳᵉ revanche gagnée contre chaque pote rapporte <b>1 Flouze</b> par jour.<br><br>
+      <b>↻ Revanche</b> : une fois le combat classé fait, rejoue autant que tu veux, pour le fun. La 1ʳᵉ revanche gagnée contre chaque pote rapporte <b>${REMATCH_CLAT} Flouze</b> par jour.<br><br>
       <b>Costaud · Serré · Facile</b> : sa puissance comparée à la tienne.`,
   }) + `
     <section class="card hx" style="--hc:#ff5d6c">
@@ -1022,7 +1022,7 @@ function viewFights() {
       ${done.map(o => {
         return `
         <div class="foe win">${foeAv(o)}<span class="foe-res">GAGNÉ</span>${foeInfo(o)}
-          <button class="foe-btn re" data-act="friendly" data-id="${o.id}"><i>↻</i>Revanche<small>${clatGot[o.id] ? 'pour le fun' : '+1 Flouze'}</small></button>
+          <button class="foe-btn re" data-act="friendly" data-id="${o.id}"><i>↻</i>Revanche<small>${clatGot[o.id] ? 'pour le fun' : `+${REMATCH_CLAT} Flouze`}</small></button>
         </div>`;
       }).join('')}
     </section>` : ''}`;
@@ -3612,7 +3612,7 @@ function startFight(foeId) {
   });
 }
 
-/** Revanche ou vengeance : autant qu'on veut, pour le fun (1 Flouze par adversaire et par jour) */
+/** Revanche ou vengeance : autant qu'on veut, pour le fun (5 Flouze par adversaire et par jour) */
 function startFriendly(foeId, revenge = false) {
   ensureDay();
   if (!revenge && !acc.fights.done[foeId]) return;
@@ -3632,7 +3632,7 @@ function startFriendly(foeId, revenge = false) {
       save();
       return {
         rewardsHtml: rw.clat
-          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+1 Flouze (${acc.clat})</span></div>`
+          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Flouze (${acc.clat})</span></div>`
           : `<p style="color:var(--muted);margin:0">${won ? 'Flouze déjà gagné contre lui aujourd’hui.' : 'C’était pour le fun : rien de perdu !'}</p>`,
       };
     },

@@ -5,7 +5,7 @@
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
-  CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID, REMATCH_CLAT,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP, AUCTION,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -1406,12 +1406,12 @@ export function fightRewards(acc, hero, foeLevel, won) {
   return { xp, chest, ...lv };
 }
 
-/** Combat amical (revanche, vengeance) : ni XP ni points. 1 Flouze par adversaire et par jour si on gagne. */
+/** Combat amical (revanche, vengeance) : ni XP ni points. 5 Flouze par adversaire et par jour si on gagne (REMATCH_CLAT). */
 export function friendlyRewards(acc, won, foeId) {
   if (!acc.fights.clat) acc.fights.clat = {};
   const give = won && !acc.fights.clat[foeId];
-  if (give) { acc.clat++; acc.fights.clat[foeId] = true; }
-  return { clat: give ? 1 : 0 };
+  if (give) { acc.clat += REMATCH_CLAT; acc.fights.clat[foeId] = true; }
+  return { clat: give ? REMATCH_CLAT : 0 };
 }
 
 // ------------------------------ Donjons --------------------------------

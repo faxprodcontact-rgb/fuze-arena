@@ -19,6 +19,7 @@ export const SELL_PRICE = [1, 3, 7, 16, 40, 100, 250];   // revente d'un objet s
 // Enchères (boutique) : 1 objet en vente à la fois par joueur, pendant 24 h, vendu au plus offrant.
 // Chaque offre doit dépasser la meilleure d'au moins 5 % (1 Flouze minimum). Le Flouze misé est bloqué, et rendu si quelqu'un met plus.
 export const AUCTION = { hours: 24, step: 0.05, maxPrice: 100000 };
+export const REMATCH_CLAT = 5;     // 1ʳᵉ revanche gagnée contre chaque pote, par jour : 5 Flouze
 export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
 export const RESET_ID = '2026-10-18-maj';

@@ -33,6 +33,7 @@ export const PATCH_NOTES = [
         'Nouveau : le mode Histoire (dans PVM). 5 zones de 10 combats avec petit boss et boss, puis l’Enfer et le Chaotique. Gagne des étoiles pour des coffres, et de l’XP à chaque première victoire.',
         'Le gros boss ne donne plus d’XP : c’est l’Histoire qui la remplace.',
         'Arène : tu peux retenter un pote tant que tu ne l’as pas battu (une défaite ne coûte rien).',
+        'Revanches : 5 Flouze (au lieu de 1) pour la 1ʳᵉ revanche gagnée contre chaque pote, chaque jour.',
         'Donjons, Horde et gros boss : plus de remise à zéro à minuit et à midi. Chaque essai utilisé revient au bout de 4 h (3 en réserve), donc tu peux rejouer plusieurs fois dans la journée. Les clefs de donjon : 10 par jour.',
         'La Horde se compte par perso, et chaque nouveau perso arrive avec 5 coffres.',
         'Le blason de niveau change tous les 10 niveaux, jusqu’au blason Légende du niveau 100.',
