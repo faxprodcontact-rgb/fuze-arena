@@ -512,7 +512,7 @@ export const FRIENDS = [
 // =====================================================================
 // XP pour passer un niveau : round((base + per × niveau) × growth^niveau × mult)
 export const XP_CURVE = { base: 50, per: 15, growth: 1.04, mult: 0.65 };   // rapide au début, lent à la fin : niveau 100 en ~45 jours pour un joueur à fond
-export const XP_CATCHUP = { perLevel: 0.05, max: 1 };   // +5 % par niveau de retard sur le perso le plus haut du jeu, max +100 %
+export const XP_CATCHUP = { perLevel: 0.05, max: 0.5 };   // +5 % par niveau de retard sur le perso le plus haut du jeu, max +50 %
 export const ALT_XP_MULT = 1;      // persos secondaires : plus de bonus (avant ×2) ; seule l'aide aux retardataires reste
 // clefs gagnées à chaque niveau : 1, puis 2 dès le niveau 30, 3 dès le 50, 4 dès le 70, 5 dès le 90 (et toujours 5 aux niveaux 10, 20, 30…)
 export const LEVEL_KEYS = { each: 1, tiers: [[90, 5], [70, 4], [50, 3], [30, 2]], every10: 5 };
