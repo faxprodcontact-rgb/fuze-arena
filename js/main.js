@@ -145,7 +145,7 @@ function render() {
       <button class="tb-gear ${tab === 'chat' ? 'on' : ''}" data-act="tab" data-id="chat" aria-label="Tchat">${ico('chat')}<span class="badge" id="chat-badge" ${chatUnread ? '' : 'hidden'}>${chatUnread}</span></button>
       <button class="tb-gear" data-act="settings" aria-label="Réglages">${ico('gear')}</button>
     </header>
-    <main id="view" class="${tab === 'chat' ? 'is-chat' : ''}">${PARENT[tab] ? `<button class="backbar" data-act="tab" data-id="${PARENT[tab]}">‹ ${PARENT_NAME[PARENT[tab]]}</button>` : ''}${VIEWS[tab]()}</main>
+    <main id="view" class="${tab === 'chat' ? 'is-chat' : ''}">${PARENT[tab] ? `<button class="backbar" data-act="tab" data-back="1" data-id="${PARENT[tab]}">‹ ${PARENT_NAME[PARENT[tab]]}</button>` : ''}${VIEWS[tab]()}</main>
     <nav class="tabs">
       ${tabBtn('hero', 'Héros', pts)}
       ${tabBtn('chests', 'Coffres', chests)}
@@ -3892,8 +3892,14 @@ function openNewHero() {
 const ACTIONS = {
   tab: (d) => {
     SFX.click();
+    const from = tab;
     tab = d.id; render(); window.scrollTo(0, 0);
-    if (d.id === 'champ' || d.id === 'combat' || d.id === 'hub_pvp') (NET.online ? refreshPlayers() : Promise.resolve()).then(loadChamp).then(() => { if (tab === d.id) softRender(); });
+    // retour depuis PVP, COOP ou PVM : on revient devant les 3 tuiles, en bas de la page Combats
+    const toHubs = d.back && d.id === 'combat' && HUBS[from]
+      ? () => setTimeout(() => { if (tab === 'combat') window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); }, 0)
+      : () => {};
+    toHubs();
+    if (d.id === 'champ' || d.id === 'combat' || d.id === 'hub_pvp') (NET.online ? refreshPlayers() : Promise.resolve()).then(loadChamp).then(() => { if (tab === d.id) { softRender(); toHubs(); } });
     if (NET.online && ['fights', 'war', 'ranking', 'bets', 'tower', 'horde', 'pvp', 'combat', 'hub_pvp', 'hub_coop', 'hub_pvm', 'players', 'social'].includes(d.id)) refreshPlayers().then(() => { if (tab === d.id) softRender(); });
     if (d.id === 'journal') loadJournal().then(() => { if (tab === 'journal') { markJournalSeen(); softRender(); } });
     if (d.id === 'bets' || d.id === 'pvp') refreshBets().then(() => { if (tab === d.id) softRender(); });
