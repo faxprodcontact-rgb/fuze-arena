@@ -1870,8 +1870,9 @@ export function raidBoss(level, totalHp, remaining, tag = RAID.tag) {
   return m;
 }
 
-/** Dégâts moyens d'un assaut de 40 actions selon le niveau (barème mesuré par simulation) */
-const RAID_DMG = [[1, 252], [5, 316], [10, 448], [20, 626], [30, 709], [50, 753], [70, 1155], [100, 2518]];
+/** Dégâts moyens d'un assaut de 40 actions selon le niveau (barème mesuré par simulation ; relevé le 2026-10-20 après la refonte
+ *  de l'équipement : les héros font +13 à +50 % de dégâts au gros boss, ses PV suivent pour qu'il ne tombe pas plus vite) */
+const RAID_DMG = [[1, 378], [5, 474], [10, 672], [20, 889], [30, 950], [50, 964], [70, 1305], [100, 3273]];
 export function raidExpectedDamage(lvl) {
   for (let i = 1; i < RAID_DMG.length; i++) {
     const [l1, d1] = RAID_DMG[i - 1], [l2, d2] = RAID_DMG[i];
