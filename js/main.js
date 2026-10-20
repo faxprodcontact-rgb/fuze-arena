@@ -232,9 +232,9 @@ function onTrainingEntry(e) {
   }
 }
 
-// Sorts de l'entraînement : les sorts de combat du perso, sous l'épouvantail. Toucher un sort le fait lancer
-// par le héros à sa prochaine action (combat en direct), et affiche ce qu'il a fait.
-let trainFight = null, trainCast = null;
+// Sorts de l'entraînement : les sorts de combat du perso, sous l'épouvantail. Le héros ne fait que des attaques simples ;
+// toucher un sort le fait lancer à sa prochaine action (combat en direct), et affiche ce qu'il a fait.
+let trainFight = null, trainCast = null, trainWait = 0;
 const trainSpellList = () => hero.spells.filter(id => SPELLS[id] && SPELLS[id].lvl <= hero.level).slice(0, MAX_ACTIVE_SPELLS);
 function trainSpellsHtml() {
   const list = trainSpellList();
@@ -252,8 +252,8 @@ function onTrainSpells(e) {
     b.querySelector('.cd').textContent = left || '';
   });
   if (e.type !== 'action' || e.actor !== 0 || e.pet || !trainCast) return;
-  // le héros vient d'agir : on repasse en automatique
-  if (trainFight) trainFight.setManual(false);
+  // l'action qui suit le toucher est parfois déjà décidée : on laisse au sort une action de plus pour partir
+  if (e.id !== trainCast && ++trainWait < 2) return;
   const asked = trainCast;
   trainCast = null;
   if (box) box.querySelectorAll('.tsp.queued').forEach(b => b.classList.remove('queued'));
@@ -276,7 +276,7 @@ function startTraining() {
     const me = mySnap();
     const foe = dummySnap(hero.level);
     trainCast = null;
-    trainFight = E.createFight(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false });
+    trainFight = E.createFight(me, foe, (Math.random() * 2 ** 31) | 0, { maxActions: 30, timeoutWinner: false, manual: true });   // attaques simples : un sort part seulement quand on le touche
     return { me, foe, result: trainFight };
   }, { onEntry: onTrainingEntry }));
 }
@@ -3824,8 +3824,7 @@ const ACTIONS = {
     const b = document.querySelector(`.tsp[data-i="${d.i}"]`);
     if (!trainFight || !b) return;
     if (b.classList.contains('wait')) { toast(`${SPELLS[d.id].name} se recharge encore.`); return; }
-    trainCast = d.id;
-    trainFight.setManual(true);
+    trainCast = d.id; trainWait = 0;
     trainFight.queue(d.id);
     document.querySelectorAll('.tsp.queued').forEach(x => x.classList.remove('queued'));
     b.classList.add('queued');

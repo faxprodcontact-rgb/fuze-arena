@@ -25,7 +25,7 @@ export const PATCH_NOTES = [
         'Critique et esquive : sur toutes les pièces, à partir de Légendaire, et plus fort en Mythique et Chaotique.',
         '4 nouvelles panoplies : Brasier, Givre, Aube et Néant, dans tous les coffres comme les autres.',
         'Nouveaux skins élémentaires dans la boutique : Feu et Glace (200 Flouze), Lumière et Ténèbres (280 Flouze), pour chaque classe. Un tout nouveau look, une arme assortie et une aura en combat.',
-        'Entraînement : touche un de tes sorts pour que ton héros le lance et voir ses dégâts.',
+        'Entraînement : ton héros ne fait que des attaques simples ; touche un de tes sorts pour qu’il le lance et voir ses dégâts.',
         'Combat auto : en grand en haut de l’onglet Combats, et il donne un peu d’XP.',
         'Nouveau : le Championnat, un tournoi à 8 chaque semaine, combats à 19 h 30, avec son tableau dessiné.',
         'Les modes de combat sont rangés en 3 parties : PVP, COOP et PVM.',
