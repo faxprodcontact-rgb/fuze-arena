@@ -135,7 +135,7 @@ function render() {
 
   app.innerHTML = `
     <header class="topbar cls-${hero.classId}">
-      <button class="tb-portrait" data-act="tab" data-id="hero" aria-label="Héros"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas><span class="tb-lvl t${lvlTier(hero.level)}">${hero.level}</span></button>
+      <button class="tb-portrait" data-act="myCard" aria-label="Ma fiche"><canvas class="px" data-portrait="${hero.classId}" data-dye="${hero.dye || ''}"></canvas><span class="tb-lvl t${lvlTier(hero.level)}">${hero.level}</span></button>
       <div class="tb-info">
         <div class="tb-name">${nameHtml(acc.pseudo, acc)}</div>
         <div class="tb-sub"><span class="tb-cls">${CLASSES[hero.classId].name}</span><span class="tb-flouze"><canvas class="px" data-clat></canvas>${fmtNum(acc.clat)}</span></div>
@@ -3806,6 +3806,7 @@ const ACTIONS = {
     toast(`+${giftLabel(n.gift)}, cadeau !`);
   },
   playerCard: (d) => openPlayerCard(d.id, d.h !== undefined ? +d.h : null),
+  myCard: () => openPlayerCard(myId(), acc.active),   // ma propre fiche, comme les autres la voient (perso sélectionné)
   podiumMsg: () => openPodiumMsg(),
   throneFight: (d) => startThrone(d.id),
   claimThrone: () => claimThroneReward(),
