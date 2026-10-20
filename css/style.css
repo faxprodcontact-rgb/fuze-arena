@@ -665,12 +665,12 @@ i.sl-base { background: #b8afe6; } i.sl-pts { background: var(--green); } i.sl-e
 .hb-title { font-style: italic; font-weight: 800; color: var(--gold); font-size: 13px; margin-top: 4px; }
 .hb-class { font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 3px; }
 .hb-class b { color: var(--gold); }
-.hb-lvl { position: relative; flex-shrink: 0; width: 66px; height: 74px; margin: 4px 6px 14px 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--lbt); }
+.hb-lvl { position: relative; flex-shrink: 0; width: 66px; height: 74px; padding-top: 9px; margin: 4px 6px 14px 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--lbt); }
 .hb-lvl.t6, .hb-lvl.t7, .hb-lvl.t8 { margin-right: 22px; }
 .hb-lvl.t9, .hb-lvl.t10 { margin-right: 30px; margin-left: 30px; }
 .hb-lvl svg { position: absolute; left: 50%; top: 50%; width: 202%; transform: translate(-50%, -54%); overflow: visible; filter: drop-shadow(0 3px 0 rgba(0,0,0,.45)); pointer-events: none; }
 .hb-lvl small, .hb-lvl b { position: relative; font-family: var(--pixel); font-weight: 400; }
-.hb-lvl small { font-size: 9px; margin-top: -6px; opacity: .85; }
+.hb-lvl small { font-size: 9px; margin-bottom: -1px; opacity: .85; }
 .hb-lvl b { font-size: 26px; line-height: 1.05; }
 .hb-lvl.t6 b, .hb-lvl.t7 b, .hb-lvl.t8 b, .hb-lvl.t10 b { text-shadow: 0 2px 0 rgba(0,0,0,.55); }
 .hb-lvl em { position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase;
