@@ -501,10 +501,11 @@ export const ITEM_LIST = [
 
 export const ITEMS = Object.fromEntries(ITEM_LIST.map(i => [i.id, i]));
 
-// Bonus de panoplie : +8 % (3 pièces) puis +15 % (5 pièces) dans chacune des 2 spécialités
+// Bonus de panoplie, dans chacune des 2 spécialités : +5 % à 2 pièces, +10 % à 3 pièces, +15 % à 5 pièces (le meilleur palier compte).
+// On peut donc mélanger 2 panoplies (3 + 2 pièces) pour booster 4 stats.
+export const SET_TIERS = [[2, 0.05], [3, 0.10], [5, 0.15]];
 for (const set of Object.values(SETS)) {
-  set.bonus3 = Object.fromEntries(set.spec.map(k => [k, 0.08]));
-  set.bonus5 = Object.fromEntries(set.spec.map(k => [k, 0.15]));
+  set.bonus = Object.fromEntries(SET_TIERS.map(([n, p]) => [n, Object.fromEntries(set.spec.map(k => [k, p]))]));
 }
 
 // ---------------------------------------------------------------------

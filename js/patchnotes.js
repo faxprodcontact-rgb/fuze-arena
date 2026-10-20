@@ -21,6 +21,7 @@ export const PATCH_NOTES = [
         'Fusion : il faut 3 Mythiques identiques pour 1 Chaotique.',
         'Le marchand vend des objets de toutes les raretés, du Commun à l’Épique.',
         'Équipement revu : chapeau, armure et amulette donnent toujours de la Vie ; arme, bottes et familier de l’Attaque ou de la Magie. Chaque panoplie ajoute ses 2 spécialités (17 panoplies, toutes différentes).',
+        'Bonus de panoplie sur ses 2 spécialités : +5 % à 2 pièces, +10 % à 3 pièces, +15 % à 5 pièces. Mélange 2 panoplies (3 + 2) pour booster 4 stats !',
         'Critique et esquive : sur toutes les pièces, à partir de Légendaire, et plus fort en Mythique et Chaotique.',
         '4 nouvelles panoplies : Brasier, Givre, Aube et Néant, dans tous les coffres comme les autres.',
         'Nouveaux skins élémentaires dans la boutique : Feu et Glace (200 Flouze), Lumière et Ténèbres (280 Flouze), pour chaque classe. Un tout nouveau look, une arme assortie et une aura en combat.',

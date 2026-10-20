@@ -1941,3 +1941,5 @@ button.bk-m:active { transform: scale(.96); }
 .schip b { font-family: var(--pixel); font-weight: 400; font-size: 11px; color: #fff; }
 .pick-go { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .pick-go .gain { font-size: 10.5px; padding: 1px 6px; }
+.sc-bonus.past { color: #a8a0d8; opacity: .55; }
+.sc-tip { margin-top: 6px; font-size: 10.5px; font-weight: 700; color: #8f86c8; font-style: italic; }

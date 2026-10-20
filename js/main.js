@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, ELEMENTS, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -394,13 +394,13 @@ function setBox(setId) {
   const set = SETS[setId];
   const active = E.activeSets(hero).find(a => a.setId === setId);
   const n = active ? active.count : 0;
-  const pct = (b) => Object.values(b)[0] * 100;
   return `
     <div class="setcard">
-      <div class="sc-top"><b>${set.name}</b><span class="sc-pips">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''} ${i === 3 || i === 5 ? 'step' : ''}"></i>`).join('')}</span></div>
+      <div class="sc-top"><b>${set.name}</b><span class="sc-pips">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''} ${SET_TIERS.some(([k]) => k === i) ? 'step' : ''}"></i>`).join('')}</span></div>
       <div class="sc-spec">${set.spec.map(k => `<span style="--sc:${STATS[k].color}">${ico(STAT_ICON[k])}${STATS[k].name}</span>`).join('')}<span class="voie" style="--sc:${STATS[set.voie].color}">arme et bottes : ${STATS[set.voie].name}</span></div>
-      <div class="sc-bonus ${n >= 3 ? 'on' : ''}"><em>3 pièces</em>+${pct(set.bonus3)} % ${set.spec.map(k => STATS[k].name).join(' et ')}${n >= 3 ? ` ${ico('check')}` : ''}</div>
-      <div class="sc-bonus ${n >= 5 ? 'on' : ''}"><em>5 pièces</em>+${pct(set.bonus5)} % ${set.spec.map(k => STATS[k].name).join(' et ')}${n >= 5 ? ` ${ico('check')}` : ''}</div>
+      ${SET_TIERS.map(([k, p], i) => { const on = n >= k && !(SET_TIERS[i + 1] && n >= SET_TIERS[i + 1][0]);
+        return `<div class="sc-bonus ${on ? 'on' : n >= k ? 'past' : ''}"><em>${k} pièces</em>+${Math.round(p * 100)} % ${set.spec.map(s => STATS[s].name).join(' et ')}${on ? ` ${ico('check')}` : ''}</div>`; }).join('')}
+      <div class="sc-tip">Astuce : 3 pièces d’une panoplie + 2 d’une autre = 4 stats boostées</div>
     </div>`;
 }
 
@@ -784,7 +784,7 @@ function viewBag() {
       const slots = new Set(list.map(s => ITEMS[s.itemId].slot));
       const worn = (E.activeSets(hero).find(a => a.setId === g) || {}).count || 0;
       return `<div class="bag-head set"><span>${SETS[g].name}</span><small>${STATS[SETS[g].spec[0]].name} + ${STATS[SETS[g].spec[1]].name} · ${slots.size}/5 pièces · ${worn} portée${worn > 1 ? 's' : ''}</small></div>
-        <div class="set-mini"><span class="${worn >= 3 ? 'on' : ''}">3 : ${bonusText(SETS[g].bonus3)}</span><span class="${worn >= 5 ? 'on' : ''}">5 : ${bonusText(SETS[g].bonus5)}</span></div>
+        <div class="set-mini">${SET_TIERS.map(([k, p]) => `<span class="${worn >= k ? 'on' : ''}">${k} : +${Math.round(p * 100)} %</span>`).join('')}</div>
         ${invGrid(list.sort((a, b) => SLOT_ORDER.indexOf(ITEMS[a.itemId].slot) - SLOT_ORDER.indexOf(ITEMS[b.itemId].slot) || b.rarity - a.rarity))}`;
     }).join('');
   }

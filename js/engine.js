@@ -5,7 +5,7 @@
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
-  CHAMP, STORY, RECHARGE, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -139,7 +139,7 @@ export function petSpell(pet) {
   };
 }
 
-/** Panoplies portées : [{ setId, count, bonus }] (bonus = null si moins de 3 pièces) */
+/** Panoplies portées : [{ setId, count, bonus }] (bonus = null si moins de 2 pièces ; sinon le meilleur palier atteint) */
 export function activeSets(hero) {
   const eq = equippedItems(hero);
   const counts = {};
@@ -149,7 +149,7 @@ export function activeSets(hero) {
   }
   return Object.entries(counts).map(([setId, count]) => ({
     setId, count,
-    bonus: count >= 5 ? SETS[setId].bonus5 : count >= 3 ? SETS[setId].bonus3 : null,
+    bonus: SETS[setId].bonus[[...SET_TIERS].reverse().find(([n]) => count >= n)?.[0]] || null,
   }));
 }
 
