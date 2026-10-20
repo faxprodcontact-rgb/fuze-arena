@@ -1997,3 +1997,6 @@ canvas[data-hero] { translate: -10.4% 0; }
 /* Marchand : stats et prix alignés en bas des 3 cartes, même si un nom passe sur 2 lignes */
 .dl .dl-st { margin-top: auto; }
 .dl .btn, .dl .dl-sold { margin-top: 2px; }
+/* Caractéristiques : la Vie en grand, au milieu de sa case */
+.stat-sum > .sum-hp { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.stat-sum > .sum-hp b { font-size: 24px; line-height: 1; }

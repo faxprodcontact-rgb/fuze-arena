@@ -451,7 +451,7 @@ function viewHero() {
     </section>
 
     <section class="card train hx hx-gold">
-      <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Entraînement</h2><small>Tes stats en action contre l’épouvantail</small></div></div>
+      <div class="hx-head"><span class="hx-ico">${ico('swords')}</span><div><h2>Entraînement</h2></div></div>
       <div class="train-wrap framed"><canvas id="train-cv"></canvas><div class="train-rec" id="train-rec">${trainRecHtml()}</div><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
       <div class="hero-switch">
         ${byLevel(acc.heroes).map(([h, i]) => `
@@ -464,11 +464,11 @@ function viewHero() {
     </section>
 
     <section class="card hx hx-blue stats-card">
-      <div class="hx-head"><span class="hx-ico">${ico('sparkle')}</span><div><h2>Caractéristiques</h2><small>${pts > 0 ? 'Touche + pour rendre ton héros plus fort' : 'Tu gagnes 3 points à chaque niveau'}</small></div></div>
+      <div class="hx-head"><span class="hx-ico">${ico('sparkle')}</span><div><h2>Caractéristiques</h2>${pts > 0 ? '<small>Touche + pour rendre ton héros plus fort</small>' : ''}</div></div>
       ${pts > 0 ? `<div class="pts-bar"><b>${pts}</b><span>point${pts > 1 ? 's' : ''} à placer</span>
         ${pts >= 5 ? `<div class="pts-step">${[1, 5].map(n => `<button class="${statStep === n ? 'on' : ''}" data-act="statStep" data-n="${n}">+${n}</button>`).join('')}</div>` : ''}</div>` : ''}
       <div class="stat-sum">
-        <div><small>${ico('heart')} Vie</small><b>${fmtNum(hp)}</b></div>
+        <div class="sum-hp"><small>${ico('heart')} Vie</small><b>${fmtNum(hp)}</b></div>
         <div><small>${ico('boom')} Critique</small><b>${Math.round(E.finalCrit(st.lck, gx.crit) * 100)} %</b><i>${gx.crit ? `dont +${pctTxt(gx.crit)} objets` : 'max 40 %'}</i></div>
         <div><small>${ico('wind')} Esquive</small><b>${Math.round(E.finalDodge(st.lck, gx.dodge) * 100)} %</b><i>${gx.dodge ? `dont +${pctTxt(gx.dodge)} objets` : 'max 25 %'}</i></div>
       </div>
@@ -480,7 +480,6 @@ function viewHero() {
           <span class="sr-ico">${ico(STAT_ICON[k])}</span>
           <div class="sr-txt">
             <b>${STATS[k].name}${reco ? '<em>conseillé</em>' : ''}</b>
-            <small>${STATS[k].desc}</small>
             <span class="sr-from">${raw[k]} de base${mine ? ` <i class="p">+${mine} tes points</i>` : ''}${gear > 0 ? ` <i class="g">+${gear} objets</i>` : ''}</span>
           </div>
           <span class="sr-val">${fmtNum(st[k])}</span>
