@@ -1859,6 +1859,7 @@ function maybeShowGift() {
 /** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
 const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : '',
   g.warChests ? `${g.warChests} coffre${g.warChests > 1 ? 's' : ''} de guerre` : '',
+  g.title && COSMETIC[g.title] ? `le titre « ${COSMETIC[g.title].name} »` : '',
   g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : ''].filter(Boolean).join(' + ');
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }
@@ -3382,12 +3383,12 @@ function viewShop() {
   const owned = new Set(acc.cosmetics.owned);
   const daily = E.dailyShop(acc);
   const left = daily.filter(d => !d.bought).length;
-  let list = COSMETICS.filter(c => c.kind === shopKind);
+  let list = COSMETICS.filter(c => c.kind === shopKind && (!c.unique || owned.has(c.id)));   // titre unique : seulement s'il l'a
   if (shopKind === 'skin') {
     list = [...list.filter(c => c.cls === hero.classId), ...COSMETICS.filter(c => c.kind === 'dye' && owned.has(c.id))];
     list.filter(c => c.art).forEach(c => prepareSkin(hero.classId, c.id));
   }
-  list.sort((a, b) => (a.kind === 'dye') - (b.kind === 'dye') || a.price - b.price);
+  list.sort((a, b) => !!b.unique - !!a.unique || (a.kind === 'dye') - (b.kind === 'dye') || a.price - b.price);
   const isOn = (c) => (c.kind === 'dye' || c.kind === 'skin' ? hero.dye === c.id : acc.cosmetics[c.kind] === c.id);
   const preview = (c) => {
     if (c.kind === 'title') return `<span class="ptitle big">« ${esc(c.name)} »</span>`;
@@ -3429,11 +3430,11 @@ function viewShop() {
       <div class="seg seg4">${SHOP_TABS.map(([k, n]) => `<button class="${shopKind === k ? 'on' : ''}" data-act="shopKind" data-k="${k}">${n}</button>`).join('')}</div>
       ${shopKind === 'auction' ? viewAuction() : `<div class="shop ${shopKind === 'skin' ? 'skins' : ''}">
         ${list.map(c => `
-          <div class="shop-item ${isOn(c) ? 'on' : ''} ${owned.has(c.id) ? 'owned' : ''}">
+          <div class="shop-item ${isOn(c) ? 'on' : ''} ${owned.has(c.id) ? 'owned' : ''} ${c.unique ? 'unique' : ''}">
             <div class="sh-prev">${preview(c)}</div>
             <div class="sh-name">${esc(c.name)}${c.kind === 'dye' ? '<small>ancienne teinture</small>' : ''}</div>
             ${owned.has(c.id)
-              ? `<button class="btn small ${isOn(c) ? '' : 'primary'}" data-act="equipCos" data-id="${c.id}">${isOn(c) ? 'Retirer' : 'Porter'}</button>`
+              ? (c.unique && isOn(c) ? '<span class="dl-sold">Porté</span>' : `<button class="btn small ${isOn(c) ? '' : 'primary'}" data-act="equipCos" data-id="${c.id}">${isOn(c) ? 'Retirer' : 'Porter'}</button>`)
               : `<button class="btn small green" data-act="buyCos" data-id="${c.id}" ${acc.clat < c.price ? 'disabled' : ''}>${c.price}<canvas class="px" data-clat></canvas></button>`}
           </div>`).join('')}
       </div>`}

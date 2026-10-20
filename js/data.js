@@ -794,6 +794,10 @@ export const COSMETICS = [
   T('tacticien', 'Tacticien', 25), T('clefs', 'Maître des clefs', 30), T('donjon', 'Roi du donjon', 35), T('fantome', 'Le Fantôme', 35),
   T('horde', 'Survivant de la Horde', 45), T('mecene', 'Mécène', 60), T('melenchon', 'Chasseur de Mélenchon', 70),
   T('seigneur', 'Seigneur de guerre', 90), T('legende', 'Légende vivante', 180), T('immortel', 'Immortel', 300),
+  // Titres uniques : offerts (podium de l'ancien Fuze Arena), jamais en vente
+  { ...T('champion_1ed', 'Champion - 1ère Édition', 0), unique: true },
+  { ...T('rival_1ed', 'Rival - 1ère Édition', 0), unique: true },
+  { ...T('bronze_1ed', 'Bronze - 1ère Édition', 0), unique: true },
   // Couleurs de pseudo
   C('vert', 'Pseudo vert', 15, '#4cd964'), C('bleu', 'Pseudo bleu', 15, '#3d9bff'), C('rouge', 'Pseudo rouge', 15, '#ff5d6c'),
   C('cyan', 'Pseudo cyan', 20, '#48dbfb'), C('rose', 'Pseudo rose', 25, '#ff8fc7'), C('violet', 'Pseudo violet', 30, '#b05cff'),

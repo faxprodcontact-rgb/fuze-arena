@@ -2341,3 +2341,7 @@ canvas[data-hero] { translate: -10.4% 0; }
 .era-wait #era-play { max-width: 280px; font-size: 22px; }
 .era-wait #era-play:disabled { filter: grayscale(1) brightness(.75); opacity: .8; }
 @keyframes era-pulse { 50% { transform: scale(1.06); } }
+
+/* Titre unique (podium de l'ancien Fuze Arena) : doré, jamais en vente */
+.hx .shop-item.unique { background: linear-gradient(160deg, rgba(255, 212, 90, .22), rgba(255, 154, 61, .08) 60%), var(--card2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 2px rgba(255, 212, 90, .7), 0 0 16px rgba(255, 212, 90, .25), 0 3px 0 rgba(0,0,0,.35); }
+.hx .shop-item.unique .ptitle { color: #ffd45a; }

@@ -10,11 +10,12 @@ const OLD_RANKING = [
   ['Fuuuuze', 2539], ['AlexDcr', 2517], ['Kush', 2182], ['Tchomb', 2160],
   ['Simon', 2117], ['Didztasoeur', 2010], ['Le Stein', 1496], ['guillaumkar', 100],
 ];
+// le podium reçoit un titre unique, porté tout de suite
 const RANK_GIFTS = [
-  { chests: 30, warChests: 5, amount: 300 }, { chests: 25, warChests: 4, amount: 250 },
-  { chests: 20, warChests: 3, amount: 200 }, { chests: 15, warChests: 2, amount: 150 },
-  { chests: 12, warChests: 2, amount: 120 }, { chests: 10, warChests: 1, amount: 100 },
-  { chests: 8, warChests: 1, amount: 80 }, { chests: 5, warChests: 1, amount: 50 },
+  { chests: 20, amount: 150, title: 't_champion_1ed' },
+  { chests: 18, amount: 150, title: 't_rival_1ed' },
+  { chests: 16, amount: 150, title: 't_bronze_1ed' },
+  { chests: 15, amount: 150 }, { chests: 15, amount: 150 }, { chests: 15, amount: 150 }, { chests: 15, amount: 150 }, { chests: 15, amount: 150 },
 ];
 
 export const PATCH_NOTES = [

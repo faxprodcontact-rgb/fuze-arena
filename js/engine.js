@@ -2062,7 +2062,7 @@ export function claimMission(acc, id) {
 // ------------------------------ Boutique -------------------------------
 export function buyCosmetic(acc, id) {
   const c = COSMETIC[id];
-  if (!c || acc.cosmetics.owned.includes(id) || acc.clat < c.price) return false;
+  if (!c || c.unique || acc.cosmetics.owned.includes(id) || acc.clat < c.price) return false;   // un titre unique ne s'achète pas
   acc.clat -= c.price;
   acc.cosmetics.owned.push(id);
   return true;
@@ -2072,6 +2072,7 @@ export function buyCosmetic(acc, id) {
 export function equipCosmetic(acc, hero, id) {
   const c = COSMETIC[id];
   if (!c || !acc.cosmetics.owned.includes(id)) return;
+  if (c.unique && acc.cosmetics[c.kind] === id) return;   // titre unique : il ne s'enlève qu'en portant un autre titre
   if (c.kind === 'dye' || c.kind === 'skin') {
     if (c.cls && c.cls !== hero.classId) return;   // un skin ne va qu'à sa classe
     hero.dye = hero.dye === id ? null : id;
@@ -2093,7 +2094,11 @@ export function claimGift(acc, gift, hero = null) {
   acc.legendaryChests = (acc.legendaryChests || 0) + (gift.legendaryChests || 0);   // coffres Légendaires
   const h = hero || acc.heroes[0];
   if (gift.chests) { refreshChests(h); h.chest.stored += gift.chests; }   // coffres normaux : pour le perso actif
-  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
+  if (gift.title && COSMETIC[gift.title]) {   // titre offert : porté tout de suite
+    if (!acc.cosmetics.owned.includes(gift.title)) acc.cosmetics.owned.push(gift.title);
+    acc.cosmetics.title = gift.title;
+  }
+  return (gift.title ? 1 : 0) + (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
 }
 
 // ------------------------------ Remise à zéro exceptionnelle ------------------------------
