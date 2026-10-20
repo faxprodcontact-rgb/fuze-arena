@@ -2,7 +2,7 @@
 // node refonte/simulations/progression.mjs [classe]
 // Hypothèses (joueur assidu qui rate presque rien et gagne ses combats) :
 // - Coffres : 1 toutes les 30 min, stock de 5 ; réveillé 16 h, il les ouvre régulièrement → 37 coffres/jour (+ toutes ses clefs).
-// - Donjons : tous les donjons débloqués, 3 vagues toutes les 12 h (6 par jour) ; les 2 plus durs joués (XP pleine),
+// - Donjons : tous les donjons débloqués, 6 vagues par jour (charges : 1 toutes les 4 h, 3 en réserve = 6 par 24 h) ; les 2 plus durs joués (XP pleine),
 //   les autres passés avec le bouton (moitié de l'XP). Il gagne toutes ses vagues. Clefs de donjon : 5 par 12 h.
 // - Horde : 6 essais par jour (vrais combats simulés). Le raid ne donne plus d'XP. Tour : il monte tant qu'il gagne (vrais combats).
 // - Histoire : chaque combat gagné dès que le héros a le niveau prévu (XP à la première victoire seulement).
@@ -41,7 +41,7 @@ function run(catchup) {
   };
   for (let day = 1; day <= 400 && hero.level < MAX_LEVEL; day++) {
     const snap = () => E.snapshot(E.buildBot({ id: 'sim', name: 'Sim', classId: cls }, hero.level, 'j' + day));
-    // deux demi-journées (remises à zéro à minuit et à midi)
+    // la journée en deux moitiés : 3 charges par moitié (1 toutes les 4 h = 6 par 24 h)
     for (let half = 0; half < 2; half++) {
       // donjons : les 2 plus durs en vrai, les autres passés (moitié de l'XP)
       const open = DUNGEONS.filter(d => d.lvl <= hero.level).sort((a, b) => b.lvl - a.lvl);
@@ -100,3 +100,4 @@ for (const l of [10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100]) console.log(Strin
 const tot = (s) => Object.values(s).reduce((a, b) => a + b, 0);
 console.log('\nPart de chaque source (A) :', Object.entries(A.src).map(([k, v]) => `${k} ${Math.round(100 * v / tot(A.src))} %`).join(', '));
 console.log('JSON', JSON.stringify({ A: A.days.map(d => d.level), B: B.days.map(d => d.level) }));
+if (process.env.TOUR) console.log("TOUR", JSON.stringify(A.days.map(d => d.tower)));

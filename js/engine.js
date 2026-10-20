@@ -5,7 +5,7 @@
 import {
   SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
-  CHAMP, STORY, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
+  CHAMP, STORY, RECHARGE, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
 } from './data.js?v=20261019191031';
@@ -917,13 +917,37 @@ export function hordeState(acc) {
   acc.horde ||= { best: 0 };
   return acc.horde;
 }
-/** Essais de la horde : par personnage, remis à zéro à minuit et à midi */
-export function hordeRuns(hero) {
-  const k = halfKey();
-  if (!hero.horde || hero.horde.half !== k) hero.horde = { half: k, used: 0 };
-  return hero.horde;
+// ------------------------------ Charges (recharge une par une) ------------------------------
+// st = { n: charges en réserve, t: début du chrono de la prochaine charge }. Pleine réserve : le chrono attend
+// (il démarre quand on utilise une charge). Toutes les RECHARGE.ms, une charge revient, jusqu'au maximum.
+export function charge(st, max = RECHARGE.max, now = Date.now()) {
+  if (typeof st.n !== 'number' || !(st.t > 0)) { st.n = max; st.t = now; }
+  if (st.n >= max) { st.n = max; st.t = now; return st; }
+  const k = Math.floor((now - st.t) / RECHARGE.ms);
+  if (k > 0) { st.n = Math.min(max, st.n + k); st.t = st.n >= max ? now : st.t + k * RECHARGE.ms; }
+  return st;
 }
-export const hordeRunsLeft = (hero) => Math.max(0, HORDE.runsPerHalf - hordeRuns(hero).used);
+/** Utilise une charge (false s'il n'y en a plus) */
+export function useCharge(st, max = RECHARGE.max, now = Date.now()) {
+  charge(st, max, now);
+  if (st.n <= 0) return false;
+  st.n--;
+  return true;
+}
+/** Temps avant la prochaine charge (0 si la réserve est pleine) */
+export function chargeIn(st, max = RECHARGE.max, now = Date.now()) {
+  charge(st, max, now);
+  return st.n >= max ? 0 : Math.max(0, st.t + RECHARGE.ms - now);
+}
+
+/** Charges de la horde : par personnage */
+export function hordeRuns(hero) {
+  if (!hero.horde || hero.horde.half !== undefined) hero.horde = {};
+  return charge(hero.horde, HORDE.runsPerHalf);
+}
+export const hordeRunsLeft = (hero) => hordeRuns(hero).n;
+export const useHordeRun = (hero) => { hordeRuns(hero); return useCharge(hero.horde, HORDE.runsPerHalf); };
+export const hordeNextIn = (hero) => { hordeRuns(hero); return chargeIn(hero.horde, HORDE.runsPerHalf); };
 /** Fin d'un essai : Flouze selon les monstres battus, et record du compte */
 export function hordeResult(acc, kills, hero = null) {
   const st = hordeState(acc);
@@ -1196,7 +1220,7 @@ export function newHero(name, classId, id = 'h1') {
     stats: { wins: 0, losses: 0, dungeons: 0 },
     dungeonClears: {},
     chest: { stored: 5, last: Date.now() },   // un nouveau perso démarre avec 5 coffres
-    runs: { half: '', used: {} },   // combats de donjon faits sur la demi-journée
+    runs: null,                     // donjons : clefs du jour et charges de chaque donjon (voir dungeonRuns)
     keys: 0,                        // clefs : 1 clef = 1 coffre (propres à ce perso)
     tower: { best: 0 },
     dye: null,
@@ -1288,7 +1312,6 @@ export function migrate(save) {
   acc.heroes.forEach(h => {
     if (!h.tower) h.tower = { best: 0 };
     if (h.dye === undefined) h.dye = null;
-    if (!h.runs) h.runs = { half: '', used: {} };
     if (h.keys === undefined) h.keys = 0;
     delete h.dungeon;
   });
@@ -1313,9 +1336,9 @@ export function migrate(save) {
     acc.resetId = RESET_ID;
     acc.fights = { day: '', done: {}, lvl: acc.fights.lvl || 1 };
     acc.war.done = {}; acc.war.day = '';
-    acc.raid.day = ''; acc.raid.used = 0;
+    acc.raid.ch = {};
     acc.missions = { day: '', progress: {}, claimed: {}, bonus: false };
-    acc.heroes.forEach(h => { h.chest = { stored: CHEST_MAX, last: Date.now() }; h.runs = { half: '', used: {} }; });
+    acc.heroes.forEach(h => { h.chest = { stored: CHEST_MAX, last: Date.now() }; h.runs = null; h.horde = {}; });
   }
   return acc;
 }
@@ -1544,13 +1567,16 @@ export function storyClaimable(hero) {
   return n;
 }
 
-/** Combats de donjon de la demi-journée (remis à zéro à minuit et à midi) */
+/** Clefs de donjon du jour (remise à zéro à minuit) ; hero.runs.dch = les charges de chaque donjon */
 export function dungeonRuns(hero) {
-  const k = halfKey();
-  if (hero.runs.half !== k) hero.runs = { half: k, used: {}, keys: 0 };
+  const k = dayKey();
+  if (!hero.runs || hero.runs.day !== k) hero.runs = { day: k, keys: 0, dch: (hero.runs && hero.runs.dch) || {} };
   return hero.runs;
 }
-/** Clefs encore gagnables en donjon d'ici la prochaine remise à zéro (minuit ou midi) */
+/** Charges d'un donjon (par perso) */
+const dungeonCharge = (hero, d) => { const r = dungeonRuns(hero); r.dch[d.id] ||= {}; return charge(r.dch[d.id], DUNGEON_RUNS); };
+export const dungeonNextIn = (hero, d) => { dungeonCharge(hero, d); return chargeIn(dungeonRuns(hero).dch[d.id], DUNGEON_RUNS); };
+/** Clefs encore gagnables en donjon aujourd'hui */
 export const keysEarned = (hero) => dungeonRuns(hero).keys || 0;
 export const keysLeftToEarn = (hero) => Math.max(0, DUNGEON_KEYS_MAX - keysEarned(hero));
 /** Les donjons débloqués, sauf les 2 plus durs, peuvent être passés */
@@ -1559,7 +1585,7 @@ export function canSkipDungeon(hero, d) {
   const i = open.findIndex(x => x.id === d.id);
   return i >= 0 && i < open.length - DUNGEON_SKIP_KEEP;
 }
-export const runsLeft = (hero, d) => Math.max(0, DUNGEON_RUNS - (dungeonRuns(hero).used[d.id] || 0));
+export const runsLeft = (hero, d) => dungeonCharge(hero, d).n;
 /** Combats encore possibles dans tous les donjons débloqués */
 export const totalRunsLeft = (hero) => DUNGEONS.filter(d => hero.level >= d.lvl).reduce((t, d) => t + runsLeft(hero, d), 0);
 
@@ -1573,14 +1599,12 @@ export function pickDungeonFoe(d, rng = Math.random) {
 
 /** Consomme un combat dans ce donjon. Renvoie false s'il n'y en a plus. */
 export function useDungeonRun(hero, d) {
-  if (runsLeft(hero, d) <= 0) return false;
-  const r = dungeonRuns(hero);
-  r.used[d.id] = (r.used[d.id] || 0) + 1;
-  return true;
+  dungeonCharge(hero, d);
+  return useCharge(dungeonRuns(hero).dch[d.id], DUNGEON_RUNS);
 }
 
 /** Récompenses de donjon : XP selon le niveau du donjon + 1 clef si victoire */
-/** Récompenses d'une vague de donjon : XP (boss + monstres battus) + 1 clef si le boss tombe (5 clefs max toutes les 12 h) */
+/** Récompenses d'une vague de donjon : XP (boss + monstres battus) + 1 clef si le boss tombe (DUNGEON_KEYS_MAX clefs par jour) */
 export function dungeonRewards(hero, d, won, minionsBeaten = 0) {
   const xp = (won ? dungeonXp(d) : Math.round(dungeonXp(d) * 0.4)) + Math.round(dungeonXp(d) * MINION_XP * minionsBeaten);
   const lv = gainXp(hero, xp);
@@ -1869,13 +1893,16 @@ export function damageDealt(result, startHp) {
   return Math.max(0, startHp - endHp);
 }
 
-/** Assauts de la demi-journée (3 par compte, remis à zéro à minuit et à midi) */
+/** Assauts du gros boss : charges du compte (1 toutes les 4 h, 3 au maximum) */
 export function raidState(acc) {
   const r = acc.raid;
-  const k = halfKey();
-  if (r.day !== k) { r.day = k; r.used = 0; }
+  r.ch ||= {};
+  charge(r.ch, RAID.attemptsPerHalf);
   return r;
 }
+export const raidLeft = (acc) => raidState(acc).ch.n;
+export const useRaidAssault = (acc) => { raidState(acc); return useCharge(acc.raid.ch, RAID.attemptsPerHalf); };
+export const raidNextIn = (acc) => { raidState(acc); return chargeIn(acc.raid.ch, RAID.attemptsPerHalf); };
 
 /** Récompense de raid d'une semaine (une seule fois) */
 export function raidReward(acc, week, killed, isMvp, participated) {
@@ -1987,11 +2014,11 @@ export function applySpecialReset(acc, now = Date.now()) {
   acc.specialReset = R.id;
   acc.fights = { day: '', done: {}, lvl: acc.fights.lvl || 1 };
   acc.war.done = {}; acc.war.day = '';
-  acc.raid.day = ''; acc.raid.used = 0;
+  acc.raid.ch = {};
   acc.missions = { day: '', progress: {}, claimed: {}, bonus: false, seen: {} };
   acc.heroes.forEach(h => {
     h.chest = { stored: CHEST_MAX, last: now };
-    h.runs = { half: '', used: {}, keys: 0 };
+    h.runs = null; h.horde = {};   // toutes les charges reviennent
   });
   return true;
 }

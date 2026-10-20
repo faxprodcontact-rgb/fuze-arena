@@ -8,8 +8,11 @@ export const CHEST_INTERVAL_MS = 30 * 60 * 1000;     // un coffre toutes les 30 
 export const CHEST_MAX = 5;                          // cumulables jusqu'à 5
 export const WINS_PER_COMBAT_CHEST = 3;              // 3 victoires = 1 coffre de combat
 export const MAX_ACTIVE_SPELLS = 4;
-export const DUNGEON_RUNS = 3;      // chaque donjon : 3 combats toutes les 12 h (remise à zéro à minuit et à midi), par personnage
-export const DUNGEON_KEYS_MAX = 5;  // clefs gagnées au maximum en donjon toutes les 12 h, par personnage (ensuite : XP seulement)
+// Recharges : chaque donjon (par perso), la Horde (par perso) et le gros boss (par compte) ont des charges qui reviennent
+// une par une : 1 toutes les 4 h, 3 au maximum. Le chrono démarre quand on utilise une charge. Même total qu'avant (6 par jour).
+export const RECHARGE = { ms: 4 * 3600 * 1000, max: 3 };
+export const DUNGEON_RUNS = 3;      // charges d'un donjon (le maximum en réserve)
+export const DUNGEON_KEYS_MAX = 10; // clefs gagnées au maximum en donjon par jour (remise à minuit), par personnage (ensuite : XP seulement)
 export const DUNGEON_SKIP_KEEP = 2; // les 2 donjons débloqués les plus durs se font en vrai ; les autres peuvent être passés (XP divisée par 2)
 export const KEY_PRICE = 70;       // une clef coûte 70 Flouze à la boutique (1 clef = 1 coffre)
 export const SELL_PRICE = [1, 3, 7, 16, 40, 100, 250];   // revente d'un objet selon sa rareté (en Flouze)
@@ -529,7 +532,7 @@ export const LEVEL_FIXES = [
 //  3 essais par compte toutes les 12 h (minuit et midi).
 // =====================================================================
 export const HORDE = {
-  runsPerHalf: 3,
+  runsPerHalf: 3,                 // charges de la Horde (le maximum en réserve, voir RECHARGE)
   step: 4,        // niveau du monstre n = 1 + step × (n − 1)
   power: 1,       // stats des monstres par rapport à un boss de donjon du même niveau
   hp: 0.6,        // et leurs PV
@@ -571,7 +574,7 @@ SPELL_LIST.forEach(s => { SPELLS[s.id] = s; });
 
 export const RAID = {
   tag: 'melenchon:v3',            // nom du raid Mélenchon en cours (les suivants s'appellent « hollande:c0 », « sarkozy:c0 »…)
-  attemptsPerHalf: 3,             // 3 assauts par compte toutes les 12 h (remise à zéro à minuit et à midi)
+  attemptsPerHalf: 3,             // 3 charges d'assaut par compte, 1 de plus toutes les 4 h (voir RECHARGE)
   maxActions: 40,                 // un assaut dure au plus 40 actions (on ne peut pas le tuer d'un coup)
   minHp: 20000,                   // le boss a toujours au moins 20 000 PV
   participation: 0.5,             // PV calculés pour qu'il tombe si chacun fait ~3 assauts par jour

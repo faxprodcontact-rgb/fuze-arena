@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST,
 } from './data.js?v=20261019191031';
 import * as E from './engine.js?v=20261019191031';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261019191031';
@@ -990,6 +990,10 @@ function viewFights() {
     </section>` : ''}`;
 }
 
+// Charges qui reviennent une par une : petit chrono « +1 dans 2:13:05 » (mis à jour chaque seconde)
+const chargeLine = (ms) => ms > 0 ? `<span class="charge-in">+1 dans <b data-charge="${Date.now() + ms}">${fmt(ms)}</b></span>` : '';
+const chargeText = (n, ms, where) => `${n ? `Encore ${n} charge${n > 1 ? 's' : ''} ${where}` : `Plus de charge ${where}`}${ms > 0 ? ` · la prochaine revient dans ${fmt(ms)}` : ''}.`;
+
 // ------------------------------ Vue Donjons ------------------------------
 function viewDungeons() {
   const left = E.totalRunsLeft(hero);
@@ -998,12 +1002,12 @@ function viewDungeons() {
     title: 'Donjons', sub: 'Bats les boss pour gagner des clefs',
     chips: [
       mchip(ico('swords'), 'Combats dispo', left, left ? 'hot' : ''),
-      mchip('<canvas class="px" data-key></canvas>', 'Clefs gagnées', `${E.keysEarned(hero)} / ${DUNGEON_KEYS_MAX}`, E.keysLeftToEarn(hero) ? '' : 'full'),
-      mchip(ico('clock'), 'Remise à zéro', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+      mchip('<canvas class="px" data-key></canvas>', 'Clefs du jour', `${E.keysEarned(hero)} / ${DUNGEON_KEYS_MAX}`, E.keysLeftToEarn(hero) ? '' : 'full'),
+      mchip(ico('clock'), 'Recharge', `1 toutes les ${RECHARGE.ms / 3600000} h`),
     ],
     info: `Chaque entrée est une <b>vague</b> : 2 monstres différents d’affilée, puis le boss. Tes PV ne remontent presque pas entre deux combats : si tu tombes, la vague s’arrête. Chaque donjon a <b>2 boss possibles</b>, tirés au hasard.<br><br>
-      Chaque donjon se fait <b>${DUNGEON_RUNS} fois toutes les 12 h</b> (minuit et midi), pour chacun de tes persos.<br><br>
-      Bats le boss : de l’XP et <b>1 clef</b> (1 clef = 1 coffre), jusqu’à <b>${DUNGEON_KEYS_MAX} clefs toutes les 12 h</b>. Ensuite, tu gagnes seulement l’XP. Chaque monstre battu rapporte un peu d’XP en plus, et même en cas de défaite tu gagnes un peu d’XP.<br><br>
+      Chaque donjon a <b>${DUNGEON_RUNS} charges</b>, pour chacun de tes persos. Une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b> (le chrono démarre quand tu entres) : reviens plusieurs fois dans la journée !<br><br>
+      Bats le boss : de l’XP et <b>1 clef</b> (1 clef = 1 coffre), jusqu’à <b>${DUNGEON_KEYS_MAX} clefs par jour</b> (remise à minuit). Ensuite, tu gagnes seulement l’XP. Chaque monstre battu rapporte un peu d’XP en plus, et même en cas de défaite tu gagnes un peu d’XP.<br><br>
       <b>${ico('skip')} Passer</b> : tes ${DUNGEON_SKIP_KEEP} donjons débloqués les plus durs se font en vrai. Les autres peuvent être passés d’un coup : tu reçois les récompenses de tes vagues restantes, mais avec <b>la moitié de l’XP</b>.`,
   }) + `
     <section class="card hx" style="--hc:#4cd964">
@@ -1022,9 +1026,10 @@ function viewDungeons() {
           </div>
           ${locked ? '' : `
           <div class="dgn-go">
-            <button class="foe-btn fight" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}><i class="emo"><canvas class="px" data-emblem="skull"></canvas></i>${n > 0 ? 'Entrer' : 'Fini'}</button>
+            <button class="foe-btn fight" data-act="dungeon" data-id="${d.id}" ${n > 0 ? '' : 'disabled'}><i class="emo"><canvas class="px" data-emblem="skull"></canvas></i>${n > 0 ? 'Entrer' : 'Recharge'}</button>
             ${skip ? `<button class="btn small blue skip-btn" data-act="skipDungeon" data-id="${d.id}">${ico('skip')} Passer ×${n}<small>½ XP</small></button>`
               : `<span class="runs">${'<i class="on"></i>'.repeat(n)}${'<i></i>'.repeat(DUNGEON_RUNS - n)}</span>`}
+            ${n < DUNGEON_RUNS ? chargeLine(E.dungeonNextIn(hero, d)) : ''}
           </div>`}
         </div>`;
       }).join('')}
@@ -1483,7 +1488,7 @@ function charsCard() {
 // ------------------------------ Hub Combats ------------------------------
 function combatTiles() {
   const fightsLeft = opponents().filter(o => !o.done).length;
-  const raidLeft = RAID.attemptsPerHalf - E.raidState(acc).used;
+  const raidLeft = E.raidLeft(acc);
   const warLeft = acc.war.section ? opponents().filter(o => o.section === E.otherSide(acc.war.section) && !acc.war.done[o.id]).length : 0;
   const runs = E.totalRunsLeft(hero);
   const on = players.filter(p => isOnline(p.id)).length;
@@ -2926,7 +2931,7 @@ function viewRaid() {
   }
   const me = myId();
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
-  const left = RAID.attemptsPerHalf - E.raidState(acc).used;
+  const left = E.raidLeft(acc);
   const mine = S.board.find(b => b.id === me);
   const isMvp = S.board[0] && S.board[0].id === me;
   const canClaim = S.killed && mine && !acc.raid.claimed[raidInfo.week];
@@ -2951,10 +2956,10 @@ function viewRaid() {
     title: `Raid : ${B.name}`, sub: B.cycle ? `Tour ${B.cycle + 1} : il revient plus fort !` : 'Tout le groupe tape le même boss',
     chips: [
       mchip(ico('swords'), 'Tes assauts', `${left} / ${RAID.attemptsPerHalf}`, left && !S.killed ? 'hot' : ''),
-      mchip(ico('clock'), 'Nouveaux assauts', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+      mchip(ico('clock'), 'Prochaine charge', E.raidNextIn(acc) ? `<span data-charge="${Date.now() + E.raidNextIn(acc)}">${fmt(E.raidNextIn(acc))}</span>` : 'Pleine'),
       mchip(ico('hourglass'), 'Fin du raid', `<span data-endlong="${raidInfo.endsAt}">${fmtLong(raidInfo.endsAt - Date.now())}</span>`),
     ],
-    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} assauts</b> par compte toutes les 12 h (minuit et midi). Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br>Le gros boss ne rapporte pas d’XP : on vient pour les coffres et le Flouze.`,
+    info: `Tout le groupe tape le même boss. <b>${RAID.attemptsPerHalf} charges d’assaut</b> par compte : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Le raid dure 7 jours.<br><br>S’il tombe avant la fin : <b>${R.killChests} coffre de guerre + ${R.killClat} Flouze</b> pour chaque participant, et un coffre de guerre en plus pour celui qui a fait le plus de dégâts. Sinon, ${R.failClat} Flouze de consolation.<br><br>Le gros boss ne rapporte pas d’XP : on vient pour les coffres et le Flouze.`,
   }) + `
     <section class="card hx boss-stage raid-stage" style="--hc:#ff8a3d">
       <div class="bs-tag">BOSS · Nv.${raidInfo.raid.level}</div>
@@ -2975,14 +2980,13 @@ function viewRaid() {
 }
 
 function attackRaid() {
-  const st = E.raidState(acc);
-  if (st.used >= RAID.attemptsPerHalf || !raidInfo.raid) return;
+  if (E.raidLeft(acc) <= 0 || !raidInfo.raid) return;
   const S = raidSummary(raidInfo.raid, raidInfo.hits);
   if (S.killed) return;
   const me = mySnap();
   const B = curRaid();
   const boss = E.raidBoss(raidInfo.raid.level, raidInfo.raid.hp, S.remaining, B.tag);
-  st.used++;
+  if (!E.useRaidAssault(acc)) return;
   E.missionEvent(acc, 'raid');
   save();
   const week = raidInfo.week;
@@ -3028,12 +3032,12 @@ function viewHorde() {
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
     title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
     chips: [
-      mchip(ico('swords'), 'Essais', `${left} / ${HORDE.runsPerHalf}`, left ? 'hot' : ''),
+      mchip(ico('swords'), 'Charges', `${left} / ${HORDE.runsPerHalf}`, left ? 'hot' : ''),
       mchip(ico('trophy'), 'Ton record', `${st.best || 0}`),
-      mchip(ico('clock'), 'Nouveaux essais', `<span data-timer="half">${fmt(E.msToNextHalf())}</span>`),
+      mchip(ico('clock'), 'Prochaine charge', E.hordeNextIn(hero) ? `<span data-charge="${Date.now() + E.hordeNextIn(hero)}">${fmt(E.hordeNextIn(hero))}</span>` : 'Pleine'),
     ],
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
-      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} essais toutes les 12 h</b> (minuit et midi) <b>pour chaque perso</b> : change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
+      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
     <section class="card hx horde-stage" style="--hc:#ff3d6e">
       ${secHead(ico('flag'), 'Combien tu gagnes', 'Flouze selon les monstres battus')}
@@ -3060,8 +3064,7 @@ function hordeBoard() {
 }
 
 function startHorde() {
-  if (E.hordeRunsLeft(hero) <= 0) { toast(`Plus d’essai pour ton ${CLASSES[hero.classId].name} : change de perso, ou reviens à minuit ou à midi.`); return; }
-  E.hordeRuns(hero).used++;
+  if (!E.useHordeRun(hero)) { toast(`Plus de charge pour ton ${CLASSES[hero.classId].name} : la prochaine revient dans ${fmt(E.hordeNextIn(hero))} (ou change de perso).`); return; }
   save();
   const me = mySnap();
   const seed = (Math.random() * 2 ** 31) | 0;
@@ -3084,7 +3087,7 @@ function startHorde() {
         headline: `${result.kills} MONSTRE${result.kills > 1 ? 'S' : ''}`, headClass: result.kills ? 'win' : 'lose',
         rewardsHtml: `
           <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${xpPills(rw)}${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
-          <p style="color:var(--muted);margin:0">Encore ${E.hordeRunsLeft(h)} essai${E.hordeRunsLeft(h) > 1 ? 's' : ''} pour ce perso d’ici ${fmt(E.msToNextHalf())}.</p>`,
+          <p style="color:var(--muted);margin:0">${chargeText(E.hordeRunsLeft(h), E.hordeNextIn(h), 'pour ce perso')}</p>`,
       };
     },
   });
@@ -3502,7 +3505,7 @@ function startFriendly(foeId, revenge = false) {
 function startDungeon(id) {
   const d = DUNGEONS.find(x => x.id === id);
   if (!d || hero.level < d.lvl) return;
-  if (!E.useDungeonRun(hero, d)) { toast('Plus de combat dans ce donjon. Reviens à minuit ou à midi !'); return; }
+  if (!E.useDungeonRun(hero, d)) { toast(`Plus de charge dans ce donjon : la prochaine revient dans ${fmt(E.dungeonNextIn(hero, d))}.`); return; }
   E.missionEvent(acc, 'dungeon');
   save();
   const h = hero;
@@ -3540,9 +3543,9 @@ function startDungeon(id) {
               <canvas class="px" data-key></canvas>
               <div class="ln">+1 clef</div>
               <div class="ls">Tu en as ${h.keys} : 1 clef = 1 coffre</div>
-            </div>` : rw.keyCapped ? `<p style="color:var(--muted);margin:0">Tu as déjà gagné tes ${DUNGEON_KEYS_MAX} clefs : nouvelles clefs à minuit ou à midi.</p>`
+            </div>` : rw.keyCapped ? `<p style="color:var(--muted);margin:0">Tu as déjà gagné tes ${DUNGEON_KEYS_MAX} clefs du jour : nouvelles clefs à minuit.</p>`
             : `<p style="color:var(--muted);margin:0">${i === last ? 'Le boss était trop fort…' : `${esc(wave[i].name)} t’a arrêté avant le boss…`} Améliore ton héros et reviens !</p>`}
-          <p style="color:var(--muted);margin:0">Encore ${E.runsLeft(h, d)} vague${E.runsLeft(h, d) > 1 ? 's' : ''} dans ce donjon d’ici ${fmt(E.msToNextHalf())}.</p>`,
+          <p style="color:var(--muted);margin:0">${chargeText(E.runsLeft(h, d), E.dungeonNextIn(h, d), 'dans ce donjon')}</p>`,
       };
     },
   });
@@ -4069,7 +4072,7 @@ const ACTIONS = {
     if (NET.online) return;
     if (d.c === 'chests') hero.chest.stored = CHEST_MAX;
     if (d.c === 'combat') acc.combatChests += 2;
-    if (d.c === 'fights') { acc.fights.done = {}; acc.fights.clat = {}; hero.runs = { half: '', used: {} }; acc.war.done = {}; acc.raid.used = 0; }
+    if (d.c === 'fights') { acc.fights.done = {}; acc.fights.clat = {}; hero.runs = null; hero.horde = {}; acc.war.done = {}; acc.raid.ch = {}; }
     if (d.c === 'clat') acc.clat += 100;
     if (d.c === 'weekEnd' && acc.war.section) {
       const cur = E.warWeek(acc);
@@ -4113,7 +4116,9 @@ setInterval(() => {
   E.refreshChests(hero);
   const busy = modalRoot.innerHTML || document.querySelector('.battle') || tab === 'chat';
   if (hero.chest.stored !== before) { save(); if (!busy) render(); return; }
-  if ((acc.fights.day !== E.dayKey() || acc.missions.day !== E.halfKey() || hero.runs.half !== E.halfKey()) && !busy) { render(); return; }
+  if ((acc.fights.day !== E.dayKey() || acc.missions.day !== E.halfKey() || E.dungeonRuns(hero).day !== E.dayKey()) && !busy) { render(); return; }
+  // une charge (donjon, Horde, gros boss) vient de revenir : on réaffiche
+  if (!busy && [...document.querySelectorAll('[data-charge]')].some(el => +el.dataset.charge <= Date.now())) { render(); return; }
   const t = document.querySelector('[data-timer="chest"]');
   if (t && hero.chest.stored < CHEST_MAX) t.innerHTML = `Prochain coffre dans <b>${fmt(E.nextChestIn(hero))}</b>`;
   const d = document.querySelector('[data-timer="day"]');
@@ -4122,6 +4127,7 @@ setInterval(() => {
   if (d3) d3.textContent = fmt(msToMidnight());
   document.querySelectorAll('[data-timer="half"]').forEach(el => { el.textContent = el.textContent.replace(/\d\d:\d\d:\d\d/, fmt(E.msToNextHalf())); });
   document.querySelectorAll('[data-countdown]').forEach(el => { el.textContent = fmt(+el.dataset.countdown - Date.now()); });
+  document.querySelectorAll('[data-charge]').forEach(el => { el.textContent = fmt(Math.max(0, +el.dataset.charge - Date.now())); });
   document.querySelectorAll('[data-endlong]').forEach(el => { el.textContent = fmtLong(Math.max(0, +el.dataset.endlong - Date.now())); });
   const wk = document.querySelector('[data-timer="week"]');
   if (wk) wk.textContent = `Fin dans ${fmtLong(E.msToWeekEnd())}`;

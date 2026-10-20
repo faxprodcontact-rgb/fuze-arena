@@ -1854,3 +1854,4 @@ button.bk-m:active { transform: scale(.96); }
 @keyframes starPop { from { transform: scale(0) rotate(-30deg); opacity: 0; } }
 .st-unlock { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 12px; border-radius: 999px; font-weight: 900; font-size: 13px; color: #3a2208; background: linear-gradient(#ffe27a, #f2a91e); }
 .st-unlock canvas.ico { width: 16px; height: 16px; }
+.dgn-go .charge-in { font-size: 11px; } .dgn-go .charge-in b { font-size: 12px; }
