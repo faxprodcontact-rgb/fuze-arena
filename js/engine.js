@@ -1809,7 +1809,10 @@ export function towerMonster(floor) {
   const d = pool[(floor - 1) % pool.length];
   const lvl = Math.min(MAX_LEVEL, Math.max(1, Math.round(floor * 1.5)));
   const beyond = floor > 66 ? Math.pow(1.035, floor - 66) : 1;   // au-delà : ça ne s'arrête jamais
-  const ramp = Math.min(1.1, 0.6 + 0.02 * floor);                // premiers étages plus doux
+  const [r0, rStep, rMax] = TOWER.ramp;
+  const [eK, eEnd] = TOWER.early || [0, 1];
+  // premiers étages plus doux (TOWER.ramp), puis un renfort qui s'efface vers l'étage eEnd (TOWER.early)
+  const ramp = Math.min(rMax, r0 + rStep * floor) * (1 + eK * Math.max(0, 1 - floor / eEnd));
   const m = buildMonster({ ...d, lvl });
   for (const k in m.stats) m.stats[k] = Math.max(1, Math.round(m.stats[k] * ramp * beyond));
   m.maxHp = Math.round(m.maxHp * beyond);
@@ -1872,7 +1875,7 @@ export function raidBoss(level, totalHp, remaining, tag = RAID.tag) {
 
 /** Dégâts moyens d'un assaut de 40 actions selon le niveau (barème mesuré par simulation ; relevé le 2026-10-20 après la refonte
  *  de l'équipement : les héros font +13 à +50 % de dégâts au gros boss, ses PV suivent pour qu'il ne tombe pas plus vite) */
-const RAID_DMG = [[1, 378], [5, 474], [10, 672], [20, 889], [30, 950], [50, 964], [70, 1305], [100, 3273]];
+const RAID_DMG = [[1, 279], [5, 443], [10, 804], [20, 888], [30, 936], [50, 955], [70, 1302], [100, 3200]];
 export function raidExpectedDamage(lvl) {
   for (let i = 1; i < RAID_DMG.length; i++) {
     const [l1, d1] = RAID_DMG[i - 1], [l2, d2] = RAID_DMG[i];
