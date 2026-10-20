@@ -1180,6 +1180,27 @@ function podium(list, scoreOf, { bubbles = false } = {}) {
   }).join('')}</div>`;
 }
 
+/** La couronne du podium posée juste au-dessus de la tête du 1er (on cherche le haut de son dessin, quelle que soit sa classe), la bulle au-dessus */
+function placeCrown() {
+  const pod = document.querySelector('.pstage .pod.p1');
+  const cv = pod && pod.querySelector('.pod-av canvas'), cr = pod && pod.querySelector('.pod-crown');
+  if (!cv || !cr || !cv.width) return;
+  const x0 = Math.round(cv.width * 0.42), x1 = Math.round(cv.width * 0.78), w = x1 - x0;
+  let data;
+  try { data = cv.getContext('2d').getImageData(x0, 0, w, cv.height).data; } catch (e) { return; }
+  let top = -1;
+  for (let y = 0; y < cv.height && top < 0; y++) {
+    let n = 0;   // une vraie ligne du dessin, pas une étincelle d'aura
+    for (let i = 0; i < w; i++) if (data[(y * w + i) * 4 + 3] > 80 && ++n >= 6) { top = y; break; }
+  }
+  if (top < 0) return;
+  const r = cv.getBoundingClientRect(), p = pod.getBoundingClientRect();
+  const crownTop = Math.round(r.top - p.top + top * r.height / cv.height - cr.offsetHeight + 8);
+  cr.style.top = crownTop + 'px';
+  const b = pod.querySelector('.pod-bubble');
+  if (b) b.style.bottom = Math.round(p.height - crownTop + 4) + 'px';
+}
+
 /** Le podium du Social : une remise des prix sur scène (rideaux, projecteurs, confettis), les héros debout sur les marches */
 function podiumStage(top, order, scoreOf) {
   const conf = Array.from({ length: 16 }, (_, k) => `<i style="--x:${(k * 37) % 100}%;--d:${(k * 0.53) % 4}s;--c:${['#ffd84a', '#ff5d6c', '#4cd964', '#3d9bff', '#c58bff'][k % 5]};--r:${(k * 47) % 360}deg"></i>`).join('');
@@ -1636,6 +1657,7 @@ function viewSocial() {
   ];
   const list = rankingEntries('power');
   const meTop = list.slice(0, 3).some(e => e.me);
+  [250, 900].forEach(ms => setTimeout(placeCrown, ms));   // une fois le héros dessiné
   const myMsg = (acc.podiumMsg && acc.podiumMsg.text) || '';
   return `
     <section class="modes slim">
