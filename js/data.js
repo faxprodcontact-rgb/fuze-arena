@@ -579,8 +579,9 @@ export const HORDE = {
   step: 4,        // niveau du monstre n = 1 + step × (n − 1)
   power: 1,       // stats des monstres par rapport à un boss de donjon du même niveau
   hp: 0.6,        // et leurs PV
-  // PVM = des clefs (pour le perso qui a joué) : [monstres battus, clefs], du plus haut au plus bas
-  keys: [[30, 5], [20, 3], [10, 2], [3, 1]],
+  // PVM = des clefs (pour le perso qui a joué) : [monstres battus, clefs], du plus haut au plus bas.
+  // Réglé pour garder le tout Chaotique vers le jour 40 (avec 3/10/20/30 → 1/2/3/5, c'était le jour 31)
+  keys: [[30, 1]],
 };
 export const TOWER = { keysEvery10: 5, keysFrom50: 10,   // PVM = des clefs : tous les 10 étages, 5 clefs (10 à partir de l'étage 50) pour le perso qui monte
   xpMult: 0.3, ramp: [0.6, 0.02, 1.1], early: [0.4, 50] };   // ramp : force des monstres = départ + pas × étage, plafonnée ; early : +40 % au départ, effacé à l'étage 50 (réglé après la refonte de l'équipement)   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné ; XP par étage = 30 % de l'XP d'un boss du même niveau

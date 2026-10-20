@@ -37,7 +37,7 @@ export const PATCH_NOTES = [
         'Récompenses : le PVP rapporte du Flouze, le PVM des clefs, la COOP les deux.',
         'Trône : une manche tous les 3 jours. 100 Flouze au roi, 50 au 2ᵉ, 25 à tous les autres.',
         'Championnat : 100 Flouze au champion, 50 au finaliste, 25 à tous les autres.',
-        'Horde : des clefs pour ton perso (3 monstres → 1 clef, 10 → 2, 20 → 3, 30 → 5).',
+        'Horde : une clef pour ton perso si tu bats 30 monstres.',
         'Tour infinie : 5 clefs tous les 10 étages, 10 clefs à partir de l’étage 50.',
         'Gros boss : 1 coffre de guerre et 25 Flouze pour chaque participant quand il tombe.',
         'Guerre : chaque semaine, tout le monde rechoisit son camp. La section perdante reçoit 1 coffre de combat.',

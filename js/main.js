@@ -3065,7 +3065,7 @@ function claimRaid(week) {
 function viewHorde() {
   const st = E.hordeState(acc);
   const left = E.hordeRunsLeft(hero);
-  const ex = [3, 10, 20, 30].map(k => `<span><b>${k}</b> monstres <i>→</i> <b>${E.hordeKeys(k)}</b><canvas class="px" data-key></canvas></span>`).join('');
+  const ex = [...HORDE.keys].reverse().map(([k, n]) => `<span><b>${k}</b> monstres <i>→</i> <b>${n}</b><canvas class="px" data-key></canvas></span>`).join('');
   return modeHead({
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
     title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
@@ -3075,7 +3075,7 @@ function viewHorde() {
       mchip(ico('clock'), 'Prochaine charge', E.hordeNextIn(hero) ? `<span data-charge="${Date.now() + E.hordeNextIn(hero)}">${fmt(E.hordeNextIn(hero))}</span>` : 'Pleine'),
     ],
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
-      Tu gagnes des <b>clefs</b> pour ton perso selon le nombre de monstres battus (3 → 1, 10 → 2, 20 → 3, 30 → 5). <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
+      Tu gagnes des <b>clefs</b> pour ton perso selon le nombre de monstres battus (${[...HORDE.keys].reverse().map(([k, n]) => `${k} monstres → ${n} clef${n > 1 ? 's' : ''}`).join(', ')}). <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
     <section class="card hx horde-stage" style="--hc:#ff3d6e">
       ${secHead(ico('flag'), 'Combien tu gagnes', 'Clefs pour ton perso selon les monstres battus')}

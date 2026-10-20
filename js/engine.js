@@ -882,7 +882,7 @@ export function hordeMonster(seed, n) {
   return m;
 }
 /** Flouze gagné selon le nombre de monstres battus */
-/** Clefs gagnées selon les monstres battus (3 → 1, 10 → 2, 20 → 3, 30 → 5) */
+/** Clefs gagnées selon les monstres battus (voir HORDE.keys) */
 export const hordeKeys = (kills) => (HORDE.keys.find(([k]) => kills >= k) || [0, 0])[1];
 
 /**
