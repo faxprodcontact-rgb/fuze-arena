@@ -1376,6 +1376,8 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   const pet = petItemId ? petCanvas(petItemId) : null;
   const sc = sprite.smooth ? 10 : 4;   // héros vectoriels : plus de résolution, lissés
   const Wc = (HERO_W + 26) * sc, Hc = (HERO_H + 4) * sc;
+  // familier collé au héros (à sa gauche, posé au sol), quelle que soit sa largeur
+  const petX = pet ? Math.max(0, (18 + 5 - lw(pet) * 0.75) * sc) : 0;
   canvas.width = Wc; canvas.height = Hc;
   canvas.style.imageRendering = sprite.smooth ? 'auto' : '';
   const hand = handOf('idle', classId);
@@ -1392,7 +1394,7 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.globalAlpha = 0.25; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(ox + HERO_W * sc / 2, (HERO_H + 2.5) * sc, 9 * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    if (pet) { ctx.imageSmoothingEnabled = !!pet.smooth; ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
+    if (pet) { ctx.imageSmoothingEnabled = !!pet.smooth; ctx.drawImage(pet, petX, (HERO_H + 2.5) * sc - lh(pet) * sc * 0.75 + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
     ctx.drawImage(sprite, ...heroBox(sprite, ox, oy, HERO_W * sc, HERO_H * sc));
     ctx.save();
     ctx.translate(ox + hand.x * sc, oy + hand.y * sc);
