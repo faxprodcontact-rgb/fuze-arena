@@ -397,6 +397,7 @@ function setBox(setId) {
   return `
     <div class="set-box">
       <div class="row"><b>${set.name}</b><span class="spacer"></span><span class="pill ${n >= 3 ? 'gold' : ''}">${n} / 5 portées</span></div>
+      <div class="set-spec">Spécialités : <b style="color:${STATS[set.spec[0]].color}">${STATS[set.spec[0]].name}</b> et <b style="color:${STATS[set.spec[1]].color}">${STATS[set.spec[1]].name}</b> · arme et bottes en <b>${STATS[set.voie].name}</b></div>
       <div class="set-line ${n >= 3 ? 'on' : ''}">3 pièces : ${bonusText(set.bonus3)}</div>
       <div class="set-line ${n >= 5 ? 'on' : ''}">5 pièces : ${bonusText(set.bonus5)}</div>
     </div>`;
@@ -782,7 +783,7 @@ function viewBag() {
       if (g === 'pet') return `<div class="bag-head set"><span>Familiers</span><small>affinité + attaque en combat</small></div>${invGrid(list)}`;
       const slots = new Set(list.map(s => ITEMS[s.itemId].slot));
       const worn = (E.activeSets(hero).find(a => a.setId === g) || {}).count || 0;
-      return `<div class="bag-head set"><span>${SETS[g].name}</span><small>${slots.size}/5 pièces trouvées · ${worn} portée${worn > 1 ? 's' : ''}</small></div>
+      return `<div class="bag-head set"><span>${SETS[g].name}</span><small>${STATS[SETS[g].spec[0]].name} + ${STATS[SETS[g].spec[1]].name} · ${slots.size}/5 pièces · ${worn} portée${worn > 1 ? 's' : ''}</small></div>
         <div class="set-mini"><span class="${worn >= 3 ? 'on' : ''}">3 : ${bonusText(SETS[g].bonus3)}</span><span class="${worn >= 5 ? 'on' : ''}">5 : ${bonusText(SETS[g].bonus5)}</span></div>
         ${invGrid(list.sort((a, b) => SLOT_ORDER.indexOf(ITEMS[a.itemId].slot) - SLOT_ORDER.indexOf(ITEMS[b.itemId].slot) || b.rarity - a.rarity))}`;
     }).join('');
@@ -848,7 +849,7 @@ function statLines(stats, compare = null) {
 }
 
 const pctTxt = (v) => `${Math.round(v * 1000) / 10} %`;
-/** Lignes « Critique » / « Esquive » d'un objet (armes et bottes), comparées à l'objet porté */
+/** Lignes « Critique » / « Esquive » d'un objet (toutes les pièces, à partir de Légendaire), comparées à l'objet porté */
 function extraLines(itemId, rarity, cur) {
   const x = E.itemExtras(itemId, rarity);
   const c = cur ? E.itemExtras(cur.itemId, cur.rarity) : null;
@@ -856,6 +857,7 @@ function extraLines(itemId, rarity, cur) {
     const d = c ? Math.round((v - old) * 1000) / 10 : 0;
     return `<div class="st-line"><span style="color:${color}">${name}</span><span>+${pctTxt(v)}${d ? ` <span class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d} %)</span>` : ''}</span></div>`;
   };
+  if (!x.crit && !x.dodge) return ITEMS[itemId].slot !== 'pet' && rarity < 4 ? '<div class="st-line hint-line"><span>Critique et esquive à partir de Légendaire</span></div>' : '';
   return (x.crit ? line('Coups critiques', '#ffd45a', x.crit, c ? c.crit : 0) : '') + (x.dodge ? line('Esquive', '#7fd6ff', x.dodge, c ? c.dodge : 0) : '');
 }
 

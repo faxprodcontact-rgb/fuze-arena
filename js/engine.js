@@ -969,7 +969,7 @@ export function simulate(A, B, seed, opts = {}) {
 }
 
 
-const STAT_SHORT = { vit: 'VIT', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT+', lck: 'CHA' };
+const STAT_SHORT = { vit: 'VIE', atk: 'ATQ', mag: 'MAG', def: 'DÉF', spd: 'VIT', lck: 'CHA' };
 
 // ------------------------------- Coffres -------------------------------
 /** Recharge un stock (coffres, entrées de donjon) selon le temps écoulé. */
