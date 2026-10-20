@@ -1858,6 +1858,7 @@ function maybeShowGift() {
 }
 /** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
 const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : '',
+  g.warChests ? `${g.warChests} coffre${g.warChests > 1 ? 's' : ''} de guerre` : '',
   g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : ''].filter(Boolean).join(' + ');
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }

@@ -2088,11 +2088,12 @@ export function claimGift(acc, gift, hero = null) {
   acc.gifts[gift.id] = true;
   acc.clat += gift.amount || 0;
   acc.combatChests += gift.combatChests || 0;   // cadeau en coffres de combat
+  acc.warChests = (acc.warChests || 0) + (gift.warChests || 0);   // coffres de guerre
   acc.epicChests = (acc.epicChests || 0) + (gift.epicChests || 0);           // coffres Épiques
   acc.legendaryChests = (acc.legendaryChests || 0) + (gift.legendaryChests || 0);   // coffres Légendaires
   const h = hero || acc.heroes[0];
   if (gift.chests) { refreshChests(h); h.chest.stored += gift.chests; }   // coffres normaux : pour le perso actif
-  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
+  return (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
 }
 
 // ------------------------------ Remise à zéro exceptionnelle ------------------------------
