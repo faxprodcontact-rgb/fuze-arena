@@ -1233,7 +1233,7 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .idc-name { font-family: var(--pixel); font-size: 19.5px; line-height: 1.4; }
 .idc-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 4px; }
 .idc-msg { margin-top: 8px; font-size: 12.5px; font-style: italic; font-weight: 700; color: var(--gold); }
-.idc-doll { display: grid; grid-template-columns: 62px 1fr 62px; gap: 8px; align-items: center; margin-top: 12px; }
+.idc-doll { display: grid; grid-template-columns: 62px minmax(0, 1fr) 62px; gap: 8px; align-items: center; margin-top: 12px; }
 .idc-col { display: flex; flex-direction: column; gap: 8px; }
 .idc-slot { aspect-ratio: auto; height: 62px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; }
 .idc-slot canvas { width: 34px; height: 34px; object-fit: contain; }
@@ -1241,8 +1241,8 @@ button.pod { text-align: center; background: none; padding: 0; position: relativ
 .idc-slot.empty { background: rgba(0,0,0,.3); box-shadow: inset 0 0 0 2px rgba(255,255,255,.07); }
 .idc-slot.empty .sl-ghost { opacity: .25; filter: grayscale(1); }
 .idc-slot.empty .sl-ghost canvas.ico { width: 22px; height: 22px; }
-.idc-hero { display: grid; place-items: end center; height: 200px; border-radius: 14px; background: radial-gradient(ellipse 70% 22% at 50% 88%, color-mix(in srgb, var(--cc) 40%, transparent), transparent 70%); }
-.idc-hero canvas { width: 100%; max-width: 150px; height: auto; }
+.idc-hero { display: grid; place-items: end center; height: 210px; border-radius: 14px; background: radial-gradient(ellipse 70% 22% at 50% 88%, color-mix(in srgb, var(--cc) 40%, transparent), transparent 70%); }
+.idc-hero canvas { width: 215px; max-width: none; height: auto; margin-bottom: -6px; }   /* plus grand que sa colonne : déborde un peu entre les objets */
 .idc-power { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .idc-power div, .idc-stats div { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 12px; background: linear-gradient(180deg, #181147, #0e0a2b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
 .idc-power small, .idc-stats small { font-size: 10.5px; font-weight: 800; color: var(--muted); }
