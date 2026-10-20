@@ -5,9 +5,9 @@
 //  for = liste de pseudos : la note (et son cadeau) n'est visible que par ces comptes.
 //  Fuze Arena 2.0 : les anciennes notes ont été retirées, tout le monde repart de zéro.
 // =====================================================================
-// Classement final de l'ancien Fuze Arena (puissance de toute l'équipe, relevée le 20/10/2026) et cadeau de chaque place
+// Classement final de l'ancien Fuze Arena (puissance de toute l'équipe, relevée le 20/10/2026 à 17 h 57) et cadeau de chaque place
 const OLD_RANKING = [
-  ['Fuuuuze', 2539], ['AlexDcr', 2517], ['Kush', 2182], ['Tchomb', 2160],
+  ['Fuuuuze', 2539], ['AlexDcr', 2514], ['Kush', 2182], ['Tchomb', 2181],
   ['Simon', 2117], ['Didztasoeur', 2010], ['Le Stein', 1496], ['guillaumkar', 100],
 ];
 // le podium reçoit un titre unique, porté tout de suite
