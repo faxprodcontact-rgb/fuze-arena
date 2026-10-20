@@ -24,7 +24,7 @@ export const STAT_RESET_COST = 20;  // replacer ses points coûte 20 Flouze
 // Remise à zéro générale (tous les compteurs) : changer ce code la relance pour tout le monde
 export const RESET_ID = '2026-10-18-maj';
 // Fuze Arena 2.0 : chaque compte en ligne repart de zéro une seule fois (il choisit un nouveau héros).
-// open : mise en ligne, l'appli affiche le compte à rebours (seul le propriétaire peut entrer pour tester).
+// open : mise en ligne, l'appli affiche le compte à rebours jusqu'à start (personne n'entre avant).
 // start : ouverture à tous. Ce qui a été joué en ligne avant (trône, raid, journal, enchères, comptes d'essai) ne compte plus.
 export const ERA = { id: '2.0', open: [2026, 9, 20, 17, 30], start: [2026, 9, 20, 19, 0] };   // 20/10/2026 à 19 h
 

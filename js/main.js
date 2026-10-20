@@ -340,12 +340,11 @@ function renderCreate() {
 }
 
 /** Fuze Arena 2.0 : de la mise en ligne à 19 h, le logo et le compte à rebours ; « Jouer » s'allume à 19 h */
-const EARLY = 'fuze-early';   // le propriétaire entre avant 19 h pour tester : 5 touches sur le logo
-let countdownTimer = null, logoTaps = 0;
+let countdownTimer = null;
 function renderCountdown() {
   app.innerHTML = `
     <div class="create era-wait">
-      <img class="logo-img" src="icons/icon.svg?v=2" alt="" data-act="eraLogo"><h1 class="logo">FUZE<span>ARENA</span></h1>
+      <img class="logo-img" src="icons/icon.svg?v=2" alt=""><h1 class="logo">FUZE<span>ARENA</span></h1>
       <div class="era-v">2.0</div>
       <div class="era-timer" id="era-timer"></div>
       <button class="btn primary block" id="era-play" data-act="eraPlay" disabled>Jouer</button>
@@ -4051,11 +4050,6 @@ const ACTIONS = {
     pickedClass = d.id;
     document.querySelectorAll('.class-card').forEach(c => c.classList.toggle('sel', c.dataset.id === d.id));
   },
-  eraLogo: () => {
-    if (++logoTaps < 5) return;
-    try { localStorage.setItem(EARLY, '1'); } catch (e) { /* stockage indisponible */ }
-    clearInterval(countdownTimer); start();
-  },
   eraPlay: (d, el) => {
     if (!E.eraLive()) return;
     el.disabled = true; SFX.click();
@@ -4570,9 +4564,8 @@ let artReady = null;
 async function boot() {
   // dessins vectoriels des héros (refonte) : chargés une fois avant le premier affichage
   artReady = Promise.all([loadHeroArt().catch(() => {}), loadMonsterArt().catch(() => {}), loadDecorArt().catch(() => {}), loadIconArt().catch(() => {}), loadItemArt().catch(() => {})]);
-  let early = false;
-  try { early = localStorage.getItem(EARLY) === '1'; } catch (e) { /* stockage indisponible */ }
-  if (NET.online && !E.eraLive() && !early) { renderCountdown(); return; }   // Fuze Arena 2.0 : on attend 19 h (les dessins chargent derrière)
+  try { localStorage.removeItem('fuze-early'); } catch (e) { /* stockage indisponible */ }   // l'ancienne entrée d'essai du propriétaire
+  if (NET.online && !E.eraLive()) { renderCountdown(); return; }   // Fuze Arena 2.0 : on attend 19 h (les dessins chargent derrière)
   await start();
 }
 async function start() {
