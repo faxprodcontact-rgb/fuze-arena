@@ -255,6 +255,7 @@ const VR = 10;                                    // résolution : pixels par un
 // Poses : le haut du corps se penche (rotation autour des pieds) en attaque et en course
 const VPOSE = { idle: [0, 0, 0], atk: [8, 7, 0], run1: [6, 4, -3], run2: [6, 4, 1] };
 const FEET = [120, 292];
+export const HERO_PAD = [4, 5, 4, 2];                    // marge autour du dessin des héros (gauche, haut, droite, bas), en unités logiques
 
 function vecParse(txt) {
   const i0 = txt.indexOf('<!-- ===== OMBRE AU SOL');
@@ -317,11 +318,16 @@ async function vecBuild(classId, dyeId) {
   const look = lookOf(classId, dyeId);
   const head = recolor(A.p.head, classId, look), body = recolor(A.p.body, classId, look), weapon = recolor(A.p.weapon, classId, look);
   const key = `${classId}:${look ? dyeId : ''}`;
-  const vb = `${VBX} 0 ${HERO_W * VK} 300`;
+  // cadre agrandi tout autour (HERO_PAD) : le plumet, le chapeau ou les pieds ne sont plus coupés quand le héros se penche ou court.
+  // Le dessin garde la même place : les combats tiennent compte de canvas.pad pour le poser (heroBox dans battle.js).
+  const [pl, pt, pr, pb] = HERO_PAD;
+  const vb = `${VBX - pl * VK} ${-pt * VK} ${(HERO_W + pl + pr) * VK} ${(HERO_H + pt + pb) * VK}`;
   for (const pose of Object.keys(VPOSE)) {
     const [a, dx, dy] = VPOSE[pose];
     const img = await svgImage(svgDoc(vb, `${head}<g transform="translate(${dx} ${dy}) rotate(${a} ${FEET[0]} ${FEET[1]})">${body}</g></g>`));
-    VEC_IMG.set(`${key}:${pose}`, toCanvasImg(img, HERO_W * VR, HERO_H * VR, HERO_W, HERO_H));
+    const c = toCanvasImg(img, (HERO_W + pl + pr) * VR, (HERO_H + pt + pb) * VR, HERO_W + pl + pr, HERO_H + pt + pb);
+    c.pad = HERO_PAD;
+    VEC_IMG.set(`${key}:${pose}`, c);
   }
   // portrait : le dessin complet avec son arme, centré dans un cadre 32 × 28 (comme avant)
   const full = await svgImage(svgDoc('0 0 240 300', `${head}${body}${weapon}</g>`));

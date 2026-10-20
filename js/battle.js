@@ -12,6 +12,13 @@ const INK = '#1b1530';
 // taille de police : l'ancienne police pixel était plus grosse, on garde la même hauteur de lettres
 const PXF = (px) => `${Math.round(px * 1.3 * 10) / 10}px ${FONT}`;
 // rectangle arrondi
+/** Place d'un dessin de héros dans sa case (x, y, w, h) : les héros vectoriels ont une marge autour (canvas.pad), on l'ajoute */
+function heroBox(img, x, y, w, h) {
+  const p = img && img.pad;
+  if (!p) return [x, y, w, h];
+  const kx = w / (img.lw - p[0] - p[2]), ky = h / (img.lh - p[1] - p[3]);
+  return [x - p[0] * kx, y - p[1] * ky, w + (p[0] + p[2]) * kx, h + (p[1] + p[3]) * ky];
+}
 function rrect(ctx, x, y, w, h, r) {
   r = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -866,7 +873,7 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     if (f.glow > 0.01) {
       ctx.globalAlpha = f.glow * 0.6 * f.alpha;
       const wsp = whiteOf(f.sprite);
-      for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(tint(wsp, f.glowColor), sx + dx, sy + dy, SW, SH);
+      for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(tint(wsp, f.glowColor), ...heroBox(f.sprite, sx + dx, sy + dy, SW, SH));
       ctx.globalAlpha = f.alpha;
     }
     // en course : 2 images de foulée qui alternent ; au moment du coup : la fente d'attaque
@@ -874,8 +881,8 @@ export function playBattle(canvas, A, B, result, { theme = 'arena', victory = nu
     const bodyPose = runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' && f.spriteAtk ? f.spriteAtk : f.sprite;
     ctx.imageSmoothingEnabled = !!body.smooth;   // héros vectoriels : lissés
-    ctx.drawImage(body, sx, sy, SW, SH);
-    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), sx, sy, SW, SH); ctx.globalAlpha = f.alpha; }
+    ctx.drawImage(body, ...heroBox(body, sx, sy, SW, SH));
+    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), ...heroBox(body, sx, sy, SW, SH)); ctx.globalAlpha = f.alpha; }
     if (!f.wSprite) { ctx.restore(); drawAfter(f); return; }
     // arme (dans la main, qui bouge en pose d'attaque)
     const H = handOf(bodyPose, f.snap.classId), WS = S * f.k;
@@ -1351,7 +1358,7 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.beginPath(); ctx.ellipse(ox + HERO_W * sc / 2, (HERO_H + 2.5) * sc, 9 * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
     if (pet) { ctx.imageSmoothingEnabled = !!pet.smooth; ctx.drawImage(pet, 2 * sc, 6 * sc + Math.sin(t * 4) * 6, lw(pet) * sc * 0.75, lh(pet) * sc * 0.75); ctx.imageSmoothingEnabled = !!sprite.smooth; }
-    ctx.drawImage(sprite, ox, oy, HERO_W * sc, HERO_H * sc);
+    ctx.drawImage(sprite, ...heroBox(sprite, ox, oy, HERO_W * sc, HERO_H * sc));
     ctx.save();
     ctx.translate(ox + hand.x * sc, oy + hand.y * sc);
     ctx.rotate(((IDLE_ANGLE[weapon] + Math.sin(t * 3) * 3) * Math.PI) / 180);
@@ -1534,8 +1541,8 @@ export function playSkirmish(canvas, blue, red, { colors = ['#3d9bff', '#ff5d6c'
     const runF = f.running ? Math.floor(time * 9) % 2 : -1;
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
     ctx.imageSmoothingEnabled = !!body.smooth;
-    ctx.drawImage(body, -SW / 2, -SH, SW, SH);
-    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
+    ctx.drawImage(body, ...heroBox(body, -SW / 2, -SH, SW, SH));
+    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), ...heroBox(body, -SW / 2, -SH, SW, SH)); ctx.globalAlpha = f.alpha; }
     const H = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose, f.classId);
     ctx.translate(-SW / 2 + H.x * SC, -SH + H.y * SC);
     ctx.rotate((f.wAng * Math.PI) / 180);
@@ -1827,9 +1834,9 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
     const body = runF >= 0 ? f.spriteRun[runF] : f.pose === 'atk' ? f.spriteAtk : f.sprite;
     if (f.glow > 0.01) { ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 12 * f.glow; }
     ctx.imageSmoothingEnabled = !!body.smooth;
-    ctx.drawImage(body, -SW / 2, -SH, SW, SH);
+    ctx.drawImage(body, ...heroBox(body, -SW / 2, -SH, SW, SH));
     ctx.shadowBlur = 0;
-    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), -SW / 2, -SH, SW, SH); ctx.globalAlpha = f.alpha; }
+    if (f.flash > 0.01) { ctx.globalAlpha = f.flash * f.alpha; ctx.drawImage(whiteOf(body), ...heroBox(body, -SW / 2, -SH, SW, SH)); ctx.globalAlpha = f.alpha; }
     if (f.weapon) {
       const Hd = handOf(runF >= 0 ? (runF ? 'run2' : 'run1') : f.pose, f.s && f.s.classId);
       ctx.translate(-SW / 2 + Hd.x * SC, -SH + Hd.y * SC);
@@ -1972,7 +1979,7 @@ export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
     ctx.globalAlpha = 1;
     // héros + arme
     const oy = feet - H + bob;
-    ctx.drawImage(pose === 'atk' ? atk : idle, ox, oy, W, H);
+    ctx.drawImage(pose === 'atk' ? atk : idle, ...heroBox(idle, ox, oy, W, H));
     const hand = handOf(pose, classId);
     const swing = inAtk ? Math.sin(((cyc - 3.2) / 0.65) * Math.PI) : 0;
     const ang = IDLE_ANGLE[weapon] + Math.sin(t * 2.6) * 3 + swing * (weapon === 'bow' ? -20 : 70);
