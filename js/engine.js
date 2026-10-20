@@ -717,15 +717,26 @@ export function throneRanking(startOrder, fights, ids) {
   }
   return order;
 }
-/** Clefs de fin de semaine selon la place (0 = le roi), pour chaque perso */
-export const throneKeys = (rank) => (rank < THRONE.keys.length ? THRONE.keys[rank] : THRONE.keysRest);
-/** Donne les clefs de la semaine finie à chaque perso du compte (une seule fois) */
-export function claimThrone(acc, week, rank) {
+/** Les manches du trône : tous les THRONE.days jours à 0 h, depuis THRONE.start. Clé (« 2026-10-19 ») et début de la manche */
+function throneStartOf(d = new Date()) {
+  const s = new Date(THRONE.start[0], THRONE.start[1], THRONE.start[2]);
+  const m = new Date(d); m.setHours(0, 0, 0, 0);
+  const days = Math.round((m - s) / 86400000);   // arrondi : les changements d'heure ne décalent rien
+  s.setDate(s.getDate() + Math.floor(days / THRONE.days) * THRONE.days);
+  return s;
+}
+export const throneRound = (d = new Date()) => dayKey(throneStartOf(d));
+export const throneRoundStart = (d = new Date()) => throneStartOf(d).getTime();
+export const msToNextThrone = (d = new Date()) => { const n = throneStartOf(d); n.setDate(n.getDate() + THRONE.days); return n - d; };
+/** Flouze de fin de manche selon la place (0 = le roi) */
+export const throneFlouze = (rank) => (rank < THRONE.flouze.length ? THRONE.flouze[rank] : THRONE.flouzeRest);
+/** Donne le Flouze de la manche finie (une seule fois) */
+export function claimThrone(acc, round, rank) {
   acc.throne ||= { claimed: {} };
-  if (acc.throne.claimed[week] !== undefined) return 0;
-  const n = throneKeys(rank);
-  acc.throne.claimed[week] = rank;
-  for (const h of acc.heroes) h.keys = (h.keys || 0) + n;
+  if (acc.throne.claimed[round] !== undefined) return 0;
+  const n = throneFlouze(rank);
+  acc.throne.claimed[round] = rank;
+  acc.clat += n;
   return n;
 }
 
@@ -843,11 +854,11 @@ export function champPlace(tree, id) {
   if (fin.a === id || fin.b === id) return 'second';
   return 'other';
 }
-/** Récompense : coffre de guerre au champion, coffre de combat au finaliste, 1 coffre normal (perso actif) aux autres */
+/** Récompense (PVP = du Flouze) : 100 au champion, 50 au finaliste, 25 aux autres */
 export function champReward(acc, hero, place) {
-  if (place === 'win') acc.warChests++;
-  else if (place === 'second') acc.combatChests++;
-  else { refreshChests(hero); hero.chest.stored++; }
+  const n = CHAMP.flouze[place] || 0;
+  acc.clat += n;
+  return n;
 }
 
 // ------------------------------ La Horde ------------------------------
@@ -871,7 +882,8 @@ export function hordeMonster(seed, n) {
   return m;
 }
 /** Flouze gagné selon le nombre de monstres battus */
-export const hordeFlouze = (kills) => (kills > 0 ? Math.round(HORDE.flouzeBase + kills * HORDE.flouzePer) : 0);
+/** Clefs gagnées selon les monstres battus (3 → 1, 10 → 2, 20 → 3, 30 → 5) */
+export const hordeKeys = (kills) => (HORDE.keys.find(([k]) => kills >= k) || [0, 0])[1];
 
 /**
  * Combat de la horde : même interface qu'un combat normal (next, queue, manual, result),
@@ -900,7 +912,7 @@ export function createHorde(A, seed, { manual = false } = {}) {
     cur = createFight({ ...A, hp, ...r.carry[0] }, foe, seed + n * 101, { manual: manualMode });   // aucun soin : PV, recharges et bouclier gardés
     if (q) cur.queue(q);
     pending.push({ type: 'nextFoe', foe, n: n + 1, kills });
-    return { type: 'kill', kills, flouze: hordeFlouze(kills), s: e.s };
+    return { type: 'kill', kills, keys: hordeKeys(kills), s: e.s };
   };
   const api = {
     next() { const e = pull(); if (e) log.push(e); return e; },
@@ -948,16 +960,17 @@ export function hordeRuns(hero) {
 export const hordeRunsLeft = (hero) => hordeRuns(hero).n;
 export const useHordeRun = (hero) => { hordeRuns(hero); return useCharge(hero.horde, HORDE.runsPerHalf); };
 export const hordeNextIn = (hero) => { hordeRuns(hero); return chargeIn(hero.horde, HORDE.runsPerHalf); };
-/** Fin d'un essai : Flouze selon les monstres battus, et record du compte */
+/** Fin d'un essai : clefs (pour le perso qui a joué) selon les monstres battus, et record du compte */
 export function hordeResult(acc, kills, hero = null) {
   const st = hordeState(acc);
-  const flouze = hordeFlouze(kills);
-  acc.clat += flouze;
+  const keys = hordeKeys(kills);
+  const kh = hero || activeHero(acc);
+  kh.keys = (kh.keys || 0) + keys;
   const record = kills > (st.best || 0);
   if (record) st.best = kills;
   // XP à chaque essai : plus tu bats de monstres, plus tu en gagnes
   const lv = hero ? gainXp(hero, Math.round((25 + 5 * hero.level) * (0.4 + 0.1 * kills))) : { levels: 0, newSpells: [], xp: 0, lvlKeys: 0 };
-  return { flouze, record, ...lv };
+  return { keys, record, ...lv };
 }
 
 /**
@@ -1711,9 +1724,16 @@ export function warWeek(acc, week = weekKey()) {
   return acc.war.weeks[week];
 }
 
+/** Camp d'un compte pour une guerre (chaque semaine, on rechoisit) : celui noté dans la semaine, sinon celui choisi cette semaine-là */
+export function warSide(w, week = weekKey()) {
+  if (!w) return null;
+  const st = w.weeks && w.weeks[week];
+  return (st && st.section) || (w.section && w.sectionWeek === week ? w.section : null);
+}
+
 /** Membres de chaque section (online : les vrais joueurs ; local : des bots) */
 export function sectionCount(acc, section, others) {
-  if (others) return others.filter(p => p.data.war && p.data.war.section === section).length;
+  if (others) return others.filter(p => warSide(p.data.war) === section).length;
   return Object.values(acc.war.sides).filter(s => s === section).length;
 }
 
@@ -1732,15 +1752,13 @@ export function joinSection(acc, section, others = null) {
     ids.forEach((id, i) => { war.sides[id] = i < enemies ? otherSide(section) : section; });
   }
   war.section = section;
+  war.sectionWeek = weekKey();
   war.joinedAt = Date.now();
   war.lastWeek = weekKey();
+  warWeek(acc).section = section;   // le camp de cette semaine (sert au résultat, même après le changement de semaine)
   return true;
 }
 
-export function canChangeSection(acc, now = Date.now()) {
-  const wait = acc.war.joinedAt + WAR.changeCooldownDays * 86400000 - now;
-  return { ok: wait <= 0, wait: Math.max(0, wait) };
-}
 
 /** Points des bots sur la semaine (simulés jour par jour, toujours les mêmes) */
 function botWarWeek(acc, week, days) {
@@ -1772,19 +1790,20 @@ export function warStandings(acc, week = weekKey(), others = null) {
   const res = others ? { members: [], score: { rouge: 0, bleue: 0 } } : botWarWeek(acc, week, done);
   if (others) {
     for (const p of others) {
-      const w = p.data.war;
-      if (!w || !w.section) continue;
+      const w = p.data.war, side = warSide(w, week);
+      if (!side) continue;
       const st = weekStats(w, week) || { points: 0, enemyBonus: 0 };
-      res.score[w.section] += st.points;
-      res.score[otherSide(w.section)] += st.enemyBonus;
+      res.score[side] += st.points;
+      res.score[otherSide(side)] += st.enemyBonus;
       const h = strongestHero(p.data);
-      res.members.push({ id: p.id, name: p.pseudo, classId: h.classId, section: w.section, points: st.points, data: p.data });
+      res.members.push({ id: p.id, name: p.pseudo, classId: h.classId, section: side, points: st.points, data: p.data });
     }
   }
-  if (acc.war.section) {
+  const mySide = warSide(acc.war, week);
+  if (mySide) {
     const mine = acc.war.weeks[week] || { points: 0, enemyBonus: 0 };
-    res.score[acc.war.section] += mine.points;
-    res.score[otherSide(acc.war.section)] += mine.enemyBonus;
+    res.score[mySide] += mine.points;
+    res.score[otherSide(mySide)] += mine.enemyBonus;
   }
   return res;
 }
@@ -1795,12 +1814,14 @@ export function ensureWar(acc, others = null) {
   const today = dayKey();
   if (war.day !== today) { war.day = today; war.done = {}; }
   const w = weekKey();
-  if (!war.section || war.lastWeek === w) return;
-  if (war.lastWeek) {
-    const prev = war.lastWeek;
+  // un camp choisi une autre semaine (ou avant cette règle) ne compte plus : on rechoisit
+  if (war.section && war.lastWeek === w && !warSide(war, w)) war.section = null;
+  if (war.lastWeek === w) return;
+  const prev = war.lastWeek, prevSide = prev ? warSide(war, prev) : null;
+  if (prevSide) {
     const st = warStandings(acc, prev, others);
     const me = war.weeks[prev] || { points: 0, enemyBonus: 0, attacks: 0 };
-    const mine = st.score[war.section], theirs = st.score[otherSide(war.section)];
+    const mine = st.score[prevSide], theirs = st.score[otherSide(prevSide)];
     const outcome = mine > theirs ? 'win' : mine < theirs ? 'loss' : 'tie';
     const eligible = me.attacks >= WAR.minAttacks;
     const mvp = me.points > 0 && me.points >= Math.max(0, ...st.members.map(m => m.points));
@@ -1812,6 +1833,8 @@ export function ensureWar(acc, others = null) {
   }
   war.lastWeek = w;
   war.log = [];
+  war.section = null;          // nouvelle guerre : tout le monde rechoisit son camp
+  war.sectionWeek = null;
   // On garde seulement les 4 dernières semaines
   const keep = Object.keys(war.weeks).sort().slice(-4);
   for (const k of Object.keys(war.weeks)) if (!keep.includes(k)) delete war.weeks[k];
@@ -1872,19 +1895,21 @@ export function towerMonster(floor) {
 
 export const towerState = (hero) => hero.tower;
 
+/** Clefs d'un étage : 5 tous les 10 étages, 10 à partir de l'étage 50 */
+export const towerKeys = (floor) => (floor % 10 ? 0 : floor >= 50 ? TOWER.keysFrom50 : TOWER.keysEvery10);
 /** Résultat d'une tentative (illimitées) : si victoire, on monte d'un étage et on gagne du Flouze ; sinon on reste bloqué */
 export function towerResult(acc, hero, won, foeLevel = hero.level) {
   const t = towerState(hero);
-  let clat = 0, xp = 0;
+  let keys = 0, xp = 0;
   const base = Math.round((25 + 5 * Math.min(foeLevel, hero.level + 10)) * TOWER.xpMult);
   if (won) {
     t.best++;
-    clat = TOWER.clatPerFloor + (t.best % 10 === 0 ? TOWER.clatEvery10 : 0);
-    acc.clat += clat;
+    keys = towerKeys(t.best);
+    hero.keys = (hero.keys || 0) + keys;
     xp = base;
   }   // défaite : on reste à l'étage, sans XP (impossible de farmer)
   const lv = xp ? gainXp(hero, xp) : { levels: 0, newSpells: [], xp: 0, lvlKeys: 0 };
-  return { floor: t.best, clat, ...lv };
+  return { floor: t.best, keys, ...lv };
 }
 
 // ------------------------------ Raid -----------------------------------

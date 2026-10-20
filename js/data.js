@@ -75,7 +75,7 @@ export const WAR = {
   },
   start: [2026, 9, 17],    // début de la 1re guerre (année, mois - 1, jour) : ensuite une toutes les 7 jours
   minAttacks: 5,           // attaques minimum dans la semaine pour toucher la récompense
-  changeCooldownDays: 30,  // on ne peut changer de section qu'une fois par mois
+  // chaque guerre dure 1 semaine ; à la suivante, tout le monde rechoisit son camp (on ne change pas en cours de semaine)
   maxPerSection: 4,        // 8 joueurs max dans le jeu = 4 par section
   warChestItems: 3,        // objets dans un coffre de guerre
 };
@@ -579,10 +579,11 @@ export const HORDE = {
   step: 4,        // niveau du monstre n = 1 + step × (n − 1)
   power: 1,       // stats des monstres par rapport à un boss de donjon du même niveau
   hp: 0.6,        // et leurs PV
-  flouzeBase: 3,   // Flouze = 3 + 0.22 par monstre battu (arrondi), dès le 1er monstre battu
-  flouzePer: 0.22,
+  // PVM = des clefs (pour le perso qui a joué) : [monstres battus, clefs], du plus haut au plus bas
+  keys: [[30, 5], [20, 3], [10, 2], [3, 1]],
 };
-export const TOWER = { clatPerFloor: 1, clatEvery10: 10, xpMult: 0.3, ramp: [0.6, 0.02, 1.1], early: [0.4, 50] };   // ramp : force des monstres = départ + pas × étage, plafonnée ; early : +40 % au départ, effacé à l'étage 50 (réglé après la refonte de l'équipement)   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné ; XP par étage = 30 % de l'XP d'un boss du même niveau
+export const TOWER = { keysEvery10: 5, keysFrom50: 10,   // PVM = des clefs : tous les 10 étages, 5 clefs (10 à partir de l'étage 50) pour le perso qui monte
+  xpMult: 0.3, ramp: [0.6, 0.02, 1.1], early: [0.4, 50] };   // ramp : force des monstres = départ + pas × étage, plafonnée ; early : +40 % au départ, effacé à l'étage 50 (réglé après la refonte de l'équipement)   // tentatives illimitées : on reste bloqué à l'étage tant qu'on ne l'a pas gagné ; XP par étage = 30 % de l'XP d'un boss du même niveau
 
 // =====================================================================
 //  RAID DE LA SEMAINE — un boss commun à tout le groupe
@@ -621,7 +622,7 @@ export const RAID = {
   maxActions: 40,                 // un assaut dure au plus 40 actions (on ne peut pas le tuer d'un coup)
   minHp: 20000,                   // le boss a toujours au moins 20 000 PV
   participation: 0.5,             // PV calculés pour qu'il tombe si chacun fait ~3 assauts par jour
-  rewards: { killChests: 1, killClat: 10, mvpChests: 1, failClat: 3 },
+  rewards: { killChests: 1, killClat: 25, mvpChests: 1, failClat: 3 },   // COOP = coffre + Flouze
   cycleBoost: { power: 1.08, hp: 1.3 },   // après Macron, la rotation recommence : à chaque tour, stats ×1,08 et PV ×1,3
 };
 // Les boss du raid, un par raid de 7 jours, dans cet ordre et de plus en plus forts
@@ -712,7 +713,8 @@ const K = (cls, id, name, price, look) => ({ id: 'k_' + cls + '_' + id, kind: 's
 export const PVP = { reward: 10, rewardsPerDay: 5, expireMs: 3 * 60 * 1000 };
 // Le trône : classement de la semaine (lundi 0 h), défis illimités contre ceux au-dessus de soi (échange de places)
 // clefs de fin de semaine pour CHAQUE perso du compte : roi 5, 2e 3, 3e 2, tous les autres 1
-export const THRONE = { keys: [5, 3, 2], keysRest: 1, team: 4 };
+// Le trône (PVP = du Flouze) : une manche tous les 3 jours, à 0 h ; 100 Flouze au roi, 50 au 2ᵉ, 25 à tous les autres
+export const THRONE = { flouze: [100, 50], flouzeRest: 25, days: 3, start: [2026, 9, 19], team: 4 };
 // Combat auto : 10 difficultés de 100 paliers, joués à la suite par tes 4 persos, tout seuls (même jeu fermé, 8 h max)
 // À l'écran, les combats s'enchaînent sans pause ; ailleurs (autre écran, jeu fermé) : un palier toutes les 10 s (la durée d'un combat). Tous les 10 paliers : 1 coffre normal (en réserve, pour le perso actif), pas de clef. Défaite : retour au palier x1.
 export const AUTO = {
@@ -764,7 +766,7 @@ export const STORY = {
   xpMult: 1.3,                // XP d'un combat = (25 + 5 × niveau) × ce nombre (× 1,5 petit boss, × 2 boss) : remplace l'XP du raid (niveau 100 vers le 46e jour)
 };
 
-export const CHAMP = { size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3, roundNames: ['Quarts de finale', 'Demi-finales', 'Finale'] };
+export const CHAMP = { flouze: { win: 100, second: 50, other: 25 }, size: 8, days: [0, 1, 2], hour: 19, minute: 30, bestOf: 3, roundNames: ['Quarts de finale', 'Demi-finales', 'Finale'] };
 
 // odds = chances de chaque rareté (en %), prices = prix en Flouze selon la rareté.
 // Le marchand : 3 objets au hasard, renouvelés toutes les 4 h (0 h, 4 h, 8 h, 12 h, 16 h, 20 h)

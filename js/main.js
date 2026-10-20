@@ -1163,8 +1163,8 @@ const secTag = (sec) => `<b style="color:${WAR.sections[sec].color}">${WAR.secti
 const WAR_RULES = () => `<details class="rules"><summary>Règles de la guerre</summary>${WAR_RULES_UL()}</details>`;
 const WAR_RULES_UL = () => `
     <ul class="rules-ul">
-      <li>2 camps de ${WAR.maxPerSection} joueurs maximum : les <b style="color:${WAR.sections.rouge.color}">Assassins</b> et les <b style="color:${WAR.sections.bleue.color}">Templiers</b>. Chacun choisit le sien. Un changement possible par mois.</li>
-      <li>Une guerre dure 7 jours complets, puis la suivante commence aussitôt.</li>
+      <li>2 camps de ${WAR.maxPerSection} joueurs maximum : les <b style="color:${WAR.sections.rouge.color}">Assassins</b> et les <b style="color:${WAR.sections.bleue.color}">Templiers</b>. Chacun choisit le sien pour la semaine.</li>
+      <li>Une guerre dure 7 jours complets, puis la suivante commence aussitôt : <b>tout le monde rechoisit son camp</b>.</li>
       <li>Chaque jour, tu peux attaquer <b>une fois chaque combattant</b> de l’autre section. Tout repart à zéro à minuit.</li>
       <li>Victoire contre plus fort que toi : <b>+3 pts</b>. Contre un niveau égal : <b>+2</b>. Contre plus faible : <b>+1</b>.</li>
       <li>Si ton attaque échoue, la section adverse gagne <b>+1 pt</b> de défense.</li>
@@ -1249,7 +1249,6 @@ function viewWar() {
           <div class="o-body"><div class="o-name">${nameHtml(m.name, m.data)}</div><div class="o-sub">${CLASSES[m.classId].name}</div></div>
           <div class="score">${m.points} pts</div></div>`).join('')}
       ${war.log.length ? `<div class="sub">TES ATTAQUES</div>${war.log.map(l => `<div class="log-line">${l.won ? ico('check') : ico('cross')} ${esc(l.name)} ${l.won ? `<b>+${l.pts}</b>` : '(+1 pour eux)'}</div>`).join('')}` : ''}
-      <button class="btn small" style="margin-top:12px" data-act="changeSection">Changer de camp</button>
     </section>`;
 }
 
@@ -2267,7 +2266,7 @@ const throneTeam = (data, pseudo) => teamOf(data, pseudo).reverse();
 /** Équipe d'un bot hors ligne : 4 persos autour de son niveau */
 function botThroneTeam(o) {
   const classes = [o.classId, ...Object.keys(CLASSES).filter(c => c !== o.classId)].slice(0, 3);
-  return [0, 1, 2, 3].map(j => E.snapshot(E.buildBot({ id: `${o.id}-t${j}`, name: o.name, classId: classes[j % classes.length] }, Math.max(1, o.level - j * 2), E.throneWeek())));
+  return [0, 1, 2, 3].map(j => E.snapshot(E.buildBot({ id: `${o.id}-t${j}`, name: o.name, classId: classes[j % classes.length] }, Math.max(1, o.level - j * 2), E.throneRound())));
 }
 /** Tous les prétendants au trône : moi et les autres joueurs (ou les bots hors ligne) */
 function throneContenders() {
@@ -2286,8 +2285,9 @@ function loadThrone() {
     try {
       const all = throneContenders();
       const ids = byPower(all);
-      const week = E.throneWeek();
-      const prevWeek = E.throneWeek(new Date(E.throneWeekStart() - 3 * 86400000));
+      // une « semaine » du trône est maintenant une manche de 3 jours
+      const week = E.throneRound();
+      const prevWeek = E.throneRound(new Date(E.throneRoundStart() - 86400000));
       if (!NET.online) {
         // hors ligne : le classement est gardé dans la sauvegarde
         acc.throne ||= { claimed: {} };
@@ -2301,7 +2301,7 @@ function loadThrone() {
         throneInfo = { week, order: E.throneRanking(L.order, L.fights, ids), prevWeek, prevOrder: P ? P.order : [] };
         return;
       }
-      const since = new Date(E.throneWeekStart() - 7 * 86400000).toISOString();
+      const since = new Date(E.throneRoundStart(new Date(E.throneRoundStart() - 86400000)) - 3600000).toISOString();
       let rows = await NET.fetchThrone(since);
       const startOf = (w) => rows.find(r => r.kind === 'throne_start' && r.a_snap && r.a_snap.week === w);
       const fightsOf = (w) => rows.filter(r => r.kind === 'throne' && r.a_snap && r.a_snap.week === w);
@@ -2326,7 +2326,7 @@ function loadThrone() {
 }
 
 function viewThrone() {
-  if (throneInfo.week !== E.throneWeek() || !throneInfo.order.length) {
+  if (throneInfo.week !== E.throneRound() || !throneInfo.order.length) {
     if (throneError) {
       return `<section class="card"><h2>Le trône</h2><p class="auth-msg">Impossible de charger le trône : ${esc(throneError)}</p>
         <button class="btn primary block" style="margin-top:12px" data-act="retryThrone">Réessayer</button></section>`;
@@ -2340,15 +2340,15 @@ function viewThrone() {
   const me = myId();
   const myRank = list.findIndex(c => c.id === me);
   const king = list[0];
-  // récompense de la semaine dernière
+  // récompense de la manche précédente
   const prevRank = throneInfo.prevOrder.indexOf(me);
   const claimed = acc.throne && acc.throne.claimed && acc.throne.claimed[throneInfo.prevWeek] !== undefined;
   const prevCard = prevRank >= 0 && !claimed ? `
     <section class="card war-reward">
-      <h2>Trône : la semaine dernière</h2>
+      <h2>Trône : la manche précédente</h2>
       <div class="big-res">${prevRank === 0 ? 'Tu étais le roi !' : `Tu as fini ${prevRank + 1}ᵉ`}</div>
-      <p class="hint">+${E.throneKeys(prevRank)} clef${E.throneKeys(prevRank) > 1 ? 's' : ''} pour chacun de tes persos.</p>
-      <button class="btn primary block" data-act="claimThrone">Récupérer mes clefs</button>
+      <p class="hint">+${E.throneFlouze(prevRank)} Flouze pour toi.</p>
+      <button class="btn primary block" data-act="claimThrone">Récupérer mon Flouze</button>
     </section>` : '';
   const heroOf = (c) => (c.data ? E.strongestHero(c.data) : { classId: c.classId || c.team[0].classId, dye: null });
   const canFight = (i) => myRank > i;   // on ne défie que ceux au-dessus de soi
@@ -2375,16 +2375,16 @@ function viewThrone() {
     chips: [
       mchip(ico('crown'), 'Ta place', `${myRank + 1} / ${list.length}`, myRank === 0 ? 'hot' : ''),
       mchip(ico('medal1'), 'Le roi', esc(king.name)),
-      mchip(ico('hourglass'), 'Fin de semaine', `<span data-endlong="${Date.now() + E.msToNextThroneWeek()}">${fmtLong(E.msToNextThroneWeek())}</span>`),
+      mchip(ico('hourglass'), 'Fin de la manche', `<span data-endlong="${Date.now() + E.msToNextThrone()}">${fmtLong(E.msToNextThrone())}</span>`),
     ],
-    info: `Tout le monde est classé, au début de la semaine, selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.<br><br>Lundi à 0 h, chaque perso du compte reçoit : <b>${THRONE.keys[0]} clefs</b> pour le roi, <b>${THRONE.keys[1]}</b> pour le 2ᵉ, <b>${THRONE.keys[2]}</b> pour le 3ᵉ, <b>${THRONE.keysRest}</b> pour tous les autres. Puis le classement repart selon la puissance.`,
+    info: `Une manche dure <b>${THRONE.days} jours</b>. Au début, tout le monde est classé selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.<br><br>À la fin de la manche : <b>${THRONE.flouze[0]} Flouze</b> pour le roi, <b>${THRONE.flouze[1]}</b> pour le 2ᵉ, <b>${THRONE.flouzeRest}</b> pour tous les autres. Puis une nouvelle manche repart selon la puissance.`,
   }) + `
     <section class="card hx throne-hall" style="--hc:#ffd45a">
       <div class="tr-king ${king.id === me ? 'me' : ''}">
         <span class="tr-crown">${ico('crown')}</span>
         <div class="tr-king-art"><canvas class="px" data-hero="${kh.classId}" data-pet="${kpet}" data-dye="${kh.dye || ''}"></canvas></div>
         <div class="tr-king-name">${nameHtml(king.name, king.data)}</div>
-        <small class="tr-pow">${ico('bolt')} ${fmtNum(king.power)} · Roi de la semaine</small>
+        <small class="tr-pow">${ico('bolt')} ${fmtNum(king.power)} · Roi de la manche</small>
         ${fightBtn(king, 0)}
       </div>
       ${rows.map((r, j) => `<div class="tr-row" style="--n:${j + 2}">${r}</div>`).join('')}
@@ -2397,7 +2397,7 @@ function claimThroneReward() {
   const n = E.claimThrone(acc, throneInfo.prevWeek, rank);
   if (!n) return;
   SFX.loot(3); save(); render();
-  toast(`+${n} clef${n > 1 ? 's' : ''} pour chacun de tes persos !`);
+  toast(`+${n} Flouze pour ta place au trône !`);
 }
 
 /** Défi du trône : mon équipe contre la sienne, en mêlée à 4 contre 4 */
@@ -2822,7 +2822,7 @@ function viewChamp() {
     const t = E.champTree(info.slots, champRes(info.matches)), place = E.champPlace(t, me);
     acc.champ ||= { claimed: {} };
     if (!place || acc.champ.claimed[info.week]) return '';
-    const txt = { win: ['Tu es champion !', 'Un coffre de guerre pour toi.'], second: ['Tu es finaliste !', 'Un coffre de combat pour toi.'], other: ['Merci d’avoir joué !', `Un coffre pour ton ${CLASSES[hero.classId].name}.`] }[place];
+    const txt = { win: ['Tu es champion !', `${CHAMP.flouze.win} Flouze pour toi.`], second: ['Tu es finaliste !', `${CHAMP.flouze.second} Flouze pour toi.`], other: ['Merci d’avoir joué !', `${CHAMP.flouze.other} Flouze pour toi.`] }[place];
     return `<section class="card war-reward"><h2>Championnat${info.week !== champInfo.week ? ' de la semaine dernière' : ''}</h2><div class="big-res">${txt[0]}</div><p class="hint">${txt[1]}</p>
       <button class="btn primary block" data-act="claimChamp" data-w="${info.week}">Récupérer ma récompense</button></section>`;
   };
@@ -2832,7 +2832,7 @@ function viewChamp() {
   return claimCard(champInfo.prev) + claimCard(champInfo) + myMatch() + bracket() + `
     <section class="card ch-rules ${infoCls('champ')}" data-info="champ">
       <div class="ch-rules-top">${ico('flag')}<b>Comment ça marche</b><small>Nouveau tableau dans <span data-endlong="${Date.now() + E.msToNextThroneWeek()}">${fmtLong(E.msToNextThroneWeek())}</span></small></div>
-      <div class="more-txt">Chaque lundi, un tableau de <b>8 joueurs</b> est tiré au hasard (s’il manque quelqu’un, son adversaire passe directement). Les combats se lancent tout seuls à <b>19 h 30</b> : quarts de finale le lundi, demi-finales le mardi, finale le mercredi. Chaque match se joue en <b>3 manches</b> (2 manches gagnées suffisent), tes 4 persos contre les 4 siens en relais, sans soin entre deux duels. Tu peux revoir chaque manche.<br><br>Récompenses : <b>coffre de guerre</b> pour le champion, <b>coffre de combat</b> pour le finaliste, <b>1 coffre</b> pour tous les autres. Puis tout recommence le lundi suivant.</div>
+      <div class="more-txt">Chaque lundi, un tableau de <b>8 joueurs</b> est tiré au hasard (s’il manque quelqu’un, son adversaire passe directement). Les combats se lancent tout seuls à <b>19 h 30</b> : quarts de finale le lundi, demi-finales le mardi, finale le mercredi. Chaque match se joue en <b>3 manches</b> (2 manches gagnées suffisent), tes 4 persos contre les 4 siens en relais, sans soin entre deux duels. Tu peux revoir chaque manche.<br><br>Récompenses : <b>${CHAMP.flouze.win} Flouze</b> pour le champion, <b>${CHAMP.flouze.second}</b> pour le finaliste, <b>${CHAMP.flouze.other}</b> pour tous les autres. Puis tout recommence le lundi suivant.</div>
       ${moreBtn('champ')}
     </section>`;
 }
@@ -3065,7 +3065,7 @@ function claimRaid(week) {
 function viewHorde() {
   const st = E.hordeState(acc);
   const left = E.hordeRunsLeft(hero);
-  const ex = [3, 10, 20, 30].map(k => `<span><b>${k}</b> monstres <i>→</i> <b>${E.hordeFlouze(k)}</b><canvas class="px" data-clat></canvas></span>`).join('');
+  const ex = [3, 10, 20, 30].map(k => `<span><b>${k}</b> monstres <i>→</i> <b>${E.hordeKeys(k)}</b><canvas class="px" data-key></canvas></span>`).join('');
   return modeHead({
     id: 'horde', c: '#ff3d6e', art: '<canvas class="px" data-emblem="horde"></canvas>',
     title: 'La Horde', sub: 'Des monstres à la chaîne : va le plus loin possible',
@@ -3075,10 +3075,10 @@ function viewHorde() {
       mchip(ico('clock'), 'Prochaine charge', E.hordeNextIn(hero) ? `<span data-charge="${Date.now() + E.hordeNextIn(hero)}">${fmt(E.hordeNextIn(hero))}</span>` : 'Pleine'),
     ],
     info: `Les monstres arrivent l’un après l’autre, sans pause, et de plus en plus forts (le 1<sup>er</sup> est niveau 1). <b>Aucun soin</b> entre deux monstres : tu gardes tes PV jusqu’à tomber.<br><br>
-      Tu gagnes du Flouze selon le nombre de monstres battus. <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
+      Tu gagnes des <b>clefs</b> pour ton perso selon le nombre de monstres battus (3 → 1, 10 → 2, 20 → 3, 30 → 5). <b>${HORDE.runsPerHalf} charges pour chaque perso</b> : une charge utilisée revient au bout de <b>${RECHARGE.ms / 3600000} h</b>. Change de perso actif pour en refaire.<br><br><b>XP</b> : chaque essai rapporte aussi de l’XP à ton perso actif. Plus tu vas loin, plus tu en gagnes.`,
   }) + `
     <section class="card hx horde-stage" style="--hc:#ff3d6e">
-      ${secHead(ico('flag'), 'Combien tu gagnes', 'Flouze selon les monstres battus')}
+      ${secHead(ico('flag'), 'Combien tu gagnes', 'Clefs pour ton perso selon les monstres battus')}
       <div class="horde-ex">${ex}</div>
       <button class="btn danger block big-go" data-act="startHorde" ${left ? '' : 'disabled'}>${left ? `${ico('swords')} Lancer la horde` : 'Plus d’essai : reviens à minuit ou à midi'}</button>
     </section>
@@ -3108,7 +3108,7 @@ function startHorde() {
   const seed = (Math.random() * 2 ** 31) | 0;
   const live = E.createHorde(me, seed);
   const h = hero;
-  const head = (kills) => `La Horde <span style="color:var(--gold)">·</span> ${kills} monstre${kills > 1 ? 's' : ''} battu${kills > 1 ? 's' : ''} <span style="color:var(--gold)">·</span> +${E.hordeFlouze(kills)} <canvas class="px ico" data-clat></canvas>`;
+  const head = (kills) => `La Horde <span style="color:var(--gold)">·</span> ${kills} monstre${kills > 1 ? 's' : ''} battu${kills > 1 ? 's' : ''} <span style="color:var(--gold)">·</span> +${E.hordeKeys(kills)} <canvas class="px ico" data-key></canvas>`;
   runBattle({
     me, foe: E.hordeMonster(seed, 0), live, theme: 'abyss', manual: true, victory: myVictory(), skip: true,
     title: head(0),
@@ -3124,7 +3124,7 @@ function startHorde() {
         rewards: rw,
         headline: `${result.kills} MONSTRE${result.kills > 1 ? 'S' : ''}`, headClass: result.kills ? 'win' : 'lose',
         rewardsHtml: `
-          <div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.flouze} Flouze</span>${xpPills(rw)}${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
+          <div class="rw"><span class="pill gold"><canvas class="px" data-key></canvas>+${rw.keys} clef${rw.keys > 1 ? 's' : ''}</span>${xpPills(rw)}${rw.record ? '<span class="pill gold">Nouveau record</span>' : ''}</div>
           <p style="color:var(--muted);margin:0">${chargeText(E.hordeRunsLeft(h), E.hordeNextIn(h), 'pour ce perso')}</p>`,
       };
     },
@@ -3145,16 +3145,16 @@ function viewTower() {
   const t = E.towerState(hero);
   const next = t.best + 1;
   const m = E.towerMonster(next);
-  const prize = TOWER.clatPerFloor + (next % 10 === 0 ? TOWER.clatEvery10 : 0);
+  const prizeAt = Math.ceil(next / 10) * 10;   // prochain palier de clefs (tous les 10 étages)
   return modeHead({
     id: 'tower', c: '#a77bff', art: '<canvas class="px" data-emblem="tower"></canvas>',
     title: 'Tour infinie', sub: 'Monte le plus haut possible : elle ne s’arrête jamais',
     chips: [
       mchip('▲', 'Prochain étage', next, 'hot'),
       mchip(ico('trophy'), `Record ${CLASSES[hero.classId].name}`, t.best),
-      mchip('<canvas class="px" data-clat></canvas>', 'Récompense', `+${prize}`),
+      mchip('<canvas class="px" data-key></canvas>', `Étage ${prizeAt}`, `+${E.towerKeys(prizeAt)} clefs`),
     ],
-    info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br><b>+${TOWER.clatPerFloor} Flouze</b> par nouvel étage, et <b>+${TOWER.clatEvery10}</b> en plus tous les 10 étages. Chaque perso a son propre record.<br><br><b>XP</b> : chaque étage réussi rapporte de l’XP (une défaite ne rapporte rien).`,
+    info: `Chaque étage est plus dur que le précédent. Tentatives <b>illimitées</b> : si tu perds, tu restes bloqué à cet étage jusqu’à le gagner.<br><br>Tous les 10 étages : <b>${TOWER.keysEvery10} clefs</b> pour ton perso, et <b>${TOWER.keysFrom50} clefs</b> à partir de l’étage 50 (50, 60, 70…). Chaque perso a son propre record.<br><br><b>XP</b> : chaque étage réussi rapporte de l’XP (une défaite ne rapporte rien).`,
   }) + `
     <section class="card hx boss-stage" style="--hc:#a77bff">
       <div class="bs-tag">ETAGE ${next}</div>
@@ -3191,7 +3191,7 @@ function attackTower() {
         rewards: rw,
         headline: won ? `ÉTAGE ${next} RÉUSSI !` : 'ÉCHEC…', headClass: won ? 'win' : 'lose',
         rewardsHtml: won
-          ? `<div class="rw"><span class="pill clat"><canvas class="px" data-clat></canvas>+${rw.clat} Flouze</span>${xpPills(rw)}</div>`
+          ? `<div class="rw">${rw.keys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.keys} clefs</span>` : ''}${xpPills(rw)}</div>`
           : '<p style="color:var(--muted);margin:0">Tu restes à cet étage : réessaie autant que tu veux !</p>',
       };
     },
@@ -3820,9 +3820,9 @@ const ACTIONS = {
     acc.champ ||= { claimed: {} };
     if (!place || acc.champ.claimed[info.week]) return;
     acc.champ.claimed[info.week] = place;
-    E.champReward(acc, hero, place);
+    const n = E.champReward(acc, hero, place);
     SFX.loot(place === 'win' ? 4 : 2); save(); render();
-    toast({ win: 'Coffre de guerre récupéré !', second: 'Coffre de combat récupéré !', other: `Coffre ajouté pour ton ${CLASSES[hero.classId].name} !` }[place]);
+    toast(`+${n} Flouze pour le championnat !`);
   },
   claimAuto: () => {
     const r = E.autoClaim(acc, hero);
@@ -4215,7 +4215,7 @@ const ACTIONS = {
         <span class="sc-flag"><canvas class="px" data-emblem="war"></canvas></span>
         <h3>Rejoindre ${s.the} ?</h3>
         <p class="sc-motto">« ${s.motto} »</p>
-        <p class="hint">Tu te battras avec ${s.the} toute la guerre. Tu ne pourras changer de camp qu’une fois par mois.</p>
+        <p class="hint">Tu te battras avec ${s.the} toute la semaine. À la prochaine guerre, tu rechoisis ton camp.</p>
       </div>
       <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn ${d.sec === 'rouge' ? 'danger' : 'blue'}" data-act="joinSectionGo" data-sec="${d.sec}">Rejoindre ${s.the}</button></div>`, { center: true });
   },
@@ -4224,26 +4224,6 @@ const ACTIONS = {
     closeModal();
     await refreshPlayers();
     if (!E.joinSection(acc, d.sec, others())) { toast(`Plus de place chez ${s.the} (${WAR.maxPerSection} max).`); render(); return; }
-    save(); render(); toast(`Bienvenue chez ${s.the} !`);
-  },
-  changeSection: () => {
-    const c = E.canChangeSection(acc);
-    if (!c.ok) { toast(`Changement possible dans ${Math.ceil(c.wait / 86400000)} jour(s).`); return; }
-    const other = E.otherSide(acc.war.section), s = WAR.sections[other];
-    openModal(`
-      <div class="sec-confirm" style="--sc:${s.color}">
-        <span class="sc-flag"><canvas class="px" data-emblem="war"></canvas></span>
-        <h3>Passer chez ${s.the} ?</h3>
-        <p class="sc-motto">« ${s.motto} »</p>
-        <p class="hint">Tes points de la semaine restent à ton ancien camp. Ensuite, plus de changement avant un mois.</p>
-      </div>
-      <div class="close-row"><button class="btn" data-act="closeModal">Annuler</button><button class="btn ${other === 'rouge' ? 'danger' : 'blue'}" data-act="changeSectionGo">Passer chez ${s.the}</button></div>`, { center: true });
-  },
-  changeSectionGo: async () => {
-    const other = E.otherSide(acc.war.section), s = WAR.sections[other];
-    closeModal();
-    await refreshPlayers();
-    if (!E.joinSection(acc, other, others())) { toast(`Plus de place chez ${s.the} (${WAR.maxPerSection} max).`); return; }
     save(); render(); toast(`Bienvenue chez ${s.the} !`);
   },
   claimWar: () => {
