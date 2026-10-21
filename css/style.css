@@ -2375,3 +2375,16 @@ body:has(#modal-root .modal-bg) #app * { animation-play-state: paused !important
 .login-days .ld.got i .ico { width: 14px; height: 14px; }
 .login-days .ld.now { background: linear-gradient(180deg, rgba(255,212,90,.25), rgba(255,154,61,.1)); box-shadow: inset 0 0 0 2px #ffd45a, 0 0 16px rgba(255,212,90,.35); }
 .login-days .ld.now small { color: #ffd45a; }
+
+/* Histoire : où en sont les potes (étiquette à côté du combat, et nombre de potes sur chaque zone) */
+.st-pals { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 3px; transform: translate(34px, -50%); pointer-events: none; animation: stPal 3s ease-in-out infinite; }
+.st-pals.left { transform: translate(calc(-100% - 34px), -50%); align-items: flex-end; }
+@keyframes stPal { 50% { translate: 0 -3px; } }
+.st-pal { display: flex; align-items: center; gap: 5px; padding: 2px 8px 2px 2px; border-radius: 999px; background: rgba(13, 9, 38, .88); box-shadow: 0 0 0 1.5px rgba(255, 212, 90, .55), 0 3px 8px rgba(0,0,0,.4); white-space: nowrap; }
+.st-pal i { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; display: grid; place-items: start center; background: #2a2178; box-shadow: 0 0 0 1.5px #ffd45a; }
+.st-pal i canvas { width: 21px; height: auto; margin-top: 3px; }
+.st-pal b { font-size: 11px; line-height: 1; color: #fff; max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
+.st-pal small { font-size: 9.5px; font-weight: 900; color: #ffd45a; }
+.st-zones button { position: relative; }
+.st-zp { position: absolute; top: -6px; right: -4px; display: flex; align-items: center; gap: 1px; padding: 1px 5px 1px 2px; border-radius: 999px; font-size: 10px; font-weight: 900; color: #0d0926; background: #ffd45a; box-shadow: 0 0 0 2px #0d0926; }
+.st-zp canvas { width: 13px; height: 13px; }

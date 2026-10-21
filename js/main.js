@@ -2256,6 +2256,13 @@ function storySub() {
   return `${STORY.modes[st.mode].name} · zone ${st.zone + 1} · combat ${st.fight + 1}`;
 }
 const storyUnlocked = (m, z) => E.storyState(hero).prog >= E.storyG(m, z, 0);
+/** Où en sont les potes dans l'Histoire (en ligne) : pour chacun, son perso le plus avancé */
+function storyPals() {
+  return (others() || []).map(p => {
+    const h = (p.data.heroes || []).reduce((b, x) => ((x.story && x.story.prog) || 0) > ((b && b.story && b.story.prog) || 0) ? x : b, null) || p.data.heroes[0];
+    return h ? { name: p.pseudo, data: p.data, classId: h.classId, dye: h.dye, level: h.level, g: (h.story && h.story.prog) || 0 } : null;
+  }).filter(x => x && x.g <= E.STORY_LAST);
+}
 const starsHtml = (n, cls = '') => `<span class="stars ${cls}">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>`;
 function viewStory() {
   const S = E.storyState(hero);
@@ -2274,6 +2281,16 @@ function viewStory() {
     return `C${(b[0] + (p[0] - a[0]) / 6).toFixed(1)} ${(b[1] + (p[1] - a[1]) / 6).toFixed(1)} ${(p[0] - (d[0] - b[0]) / 6).toFixed(1)} ${(p[1] - (d[1] - b[1]) / 6).toFixed(1)} ${p[0]} ${p[1]}`;
   }).join('');
   const g0 = E.storyG(m, z, 0), done = Math.max(0, Math.min(10, S.prog - g0));
+  // les potes : une étiquette (portrait, pseudo, niveau) à côté du combat où ils en sont
+  const pals = storyPals();
+  const palsHere = {};
+  for (const p of pals) if (p.g >= g0 && p.g < g0 + 10) (palsHere[p.g - g0] ||= []).push(p);
+  const palTags = Object.entries(palsHere).map(([f, list]) => {
+    const [x, y] = pts[f];
+    return `<div class="st-pals ${x > 55 ? 'left' : ''}" style="left:${x}%;top:${y}%">${list.map(p => `
+      <span class="st-pal"><i><canvas class="px" data-portrait="${p.classId}" data-dye="${p.dye || ''}"></canvas></i><b>${nameHtml(p.name, p.data)}</b><small>Nv.${p.level}</small></span>`).join('')}</div>`;
+  }).join('');
+  const palsInZone = (zi) => pals.filter(p => { const st = E.storyStage(p.g); return st.mode === m && st.zone === zi; }).length;
   const nodes = pts.map(([x, y], f) => {
     const g = g0 + f, kind = E.storyKind(g), stars = S.stars[g] || 0;
     const state = g < S.prog ? 'done' : g === S.prog ? 'now' : 'locked';
@@ -2302,7 +2319,7 @@ function viewStory() {
       <span class="st-total">${fmtNum(total)}<i>★</i><small>/ ${(E.STORY_LAST + 1) * 3}</small></span>
     </section>
     <div class="st-modes">${STORY.modes.map((x, i) => `<button class="${i === m ? 'on' : ''} ${storyUnlocked(i, 0) ? '' : 'lock'}" style="--mc:${x.color}" data-act="storyMode" data-m="${i}">${storyUnlocked(i, 0) ? '' : ico('lock')}${x.name}</button>`).join('')}</div>
-    <div class="st-zones">${STORY.zones.map((x, i) => `<button class="${i === z ? 'on' : ''} ${storyUnlocked(m, i) ? '' : 'lock'}" data-act="storyZone" data-z="${i}"><b>${i + 1}</b><small>${storyUnlocked(m, i) ? `${E.storyZoneStars(hero, m, i)}★` : ico('lock')}</small></button>`).join('')}</div>
+    <div class="st-zones">${STORY.zones.map((x, i) => `<button class="${i === z ? 'on' : ''} ${storyUnlocked(m, i) ? '' : 'lock'}" data-act="storyZone" data-z="${i}"><b>${i + 1}</b><small>${storyUnlocked(m, i) ? `${E.storyZoneStars(hero, m, i)}★` : ico('lock')}</small>${palsInZone(i) ? `<span class="st-zp"><canvas class="px" data-emblem="players"></canvas>${palsInZone(i)}</span>` : ''}</button>`).join('')}</div>
     <section class="st-map mode-${M.id}">
       <img class="st-bg" src="art/decors/${Z.theme}.svg" alt=""><i class="st-tint"></i>
       <div class="st-title"><small>${M.name} · zone ${z + 1}</small><b>${esc(Z.name)}</b></div>
@@ -2311,6 +2328,7 @@ function viewStory() {
         ${done > 0 ? `<path d="${curve(pts.slice(0, Math.min(10, done + 1)))}" class="done"/>` : ''}
       </svg>
       ${nodes}
+      ${palTags}
     </section>
     <section class="card st-rew">
       <div class="st-rew-top"><b>Étoiles de la zone</b><span>${zs} / 30 ★</span></div>

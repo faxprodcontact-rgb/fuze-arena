@@ -28,9 +28,12 @@ if (new URLSearchParams(location.search).get('lourd')) {
     const a = E.newAccount(pseudo, cls[0]); a.born = Date.now(); a.heroes[0].level = 30;
     cls.slice(1).forEach(c => E.addCharacter(a, c));
     a.heroes.forEach(h => { h.level = 25 + Math.floor(rnd() * 6); for (let i = 0; i < 90; i++) E.addItem(h, ITEM_LIST[Math.floor(rnd() * ITEM_LIST.length)].id, Math.floor(rnd() * 5));});
+    a.heroes.forEach(h => { h.story = { prog: Math.floor(rnd() * 26), stars: {}, claimed: {} }; });   // avancée dans l'Histoire
     a.active = 0; a.clat = 150; a.war.section = 'bleue'; return a;
   };
   mine = { id: ME, pseudo: PSEUDO, data: heavy(PSEUDO, ['archer', 'mage', 'paladin']) };
+  const myProg = +new URLSearchParams(location.search).get('prog');   // ?prog=30 : mon avancée dans l'Histoire
+  if (myProg) mine.data.heroes.forEach(h => { h.story.prog = myProg; });
   others.length = 0;
   ['Fuuuuze', 'AlexDcr', 'Kush', 'Tchomb', 'Didztasoeur', 'Le Stein'].forEach((n, i) => others.push({ id: 'u-' + i, pseudo: n, data: heavy(n, [['archer', 'paladin', 'guerrier'], ['guerrier', 'mage'], ['archer'], ['guerrier', 'archer'], ['paladin', 'archer', 'mage'], ['guerrier']][i]) }));
 }

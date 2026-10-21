@@ -20,6 +20,15 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2235-histoire-potes', date: '21/10/2026', time: '22h35', title: 'Tes potes sur la carte de l’Histoire',
+    sections: [
+      { title: 'Nouveau', items: [
+        'Histoire : tes potes apparaissent sur la carte, à côté du combat où ils en sont, avec leur pseudo et leur niveau.',
+        'Sur les boutons des zones, une pastille dorée indique combien de potes s’y trouvent.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2225-confort', date: '21/10/2026', time: '22h25', title: 'Récompense du jour et combats à la suite',
     sections: [
       { title: 'Nouveau', items: [
