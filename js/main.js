@@ -2441,24 +2441,93 @@ function teamPairs(data, pseudo) {   // [[héros, photo], …] dans l'ordre des 
 }
 function throneTeam(data, pseudo) { return teamPairs(data, pseudo).map(x => x[1]); }
 
-/** Ma formation pour les combats à 4 : l'ordre des lignes, de devant (1) à derrière (4) */
+/** Ma formation pour les combats à 4 : un petit terrain où les persos sont debout comme en combat.
+ *  On les déplace en les faisant glisser sur une autre place, ou en touchant un perso puis un autre (ils échangent). */
 const LINE_NAMES = ['devant', '2ᵉ ligne', '3ᵉ ligne', 'derrière'];
+const FORM_SLOTS = [[61, 16], [46, 122], [31, 16], [16, 122]];   // place de chaque ligne sur le terrain : gauche (%), hauteur (px) — de devant (près des ennemis) à derrière, en quinconce
+let formSel = null;
 function openFormation() {
   const pairs = teamPairs(acc, acc.pseudo);
+  formSel = null;
   openModal(`
     <h3>${ico('swords')} Ma formation</h3>
-    <p class="hint" style="margin-top:4px">Combats à 4 contre 4 (trône, combat auto). Le Guerrier et le Paladin frappent d’abord les lignes 1 et 2 ; le Mage et l’Archer frappent toutes les lignes.</p>
-    ${pairs.length < 2 ? '<p class="empty">Il te faut au moins 2 persos pour choisir une formation.</p>' : `<div class="form-list">${pairs.map(([h, sn], i) => `
-      <div class="form-row">
-        <span class="form-line"><b>${i + 1}</b><small>${LINE_NAMES[i]}</small></span>
-        <span class="form-av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
-        <span class="form-txt"><b>${CLASSES[h.classId].name} <span>Nv.${h.level}</span></b><small class="${E.MELEE_CLASSES.includes(h.classId) ? 'cac' : 'dist'}">${E.MELEE_CLASSES.includes(h.classId) ? 'Corps à corps · lignes 1-2' : 'À distance · toutes les lignes'}</small></span>
-        <span class="form-btns">
-          <button class="ibtn" data-act="formMove" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter">▲</button>
-          <button class="ibtn" data-act="formMove" data-i="${i}" data-d="1" ${i === pairs.length - 1 ? 'disabled' : ''} aria-label="Descendre">▼</button>
-        </span>
-      </div>`).join('')}</div>`}
+    ${pairs.length < 2 ? '<p class="empty">Il te faut au moins 2 persos pour choisir une formation.</p>' : `
+    <div class="fm-field" id="fm-field">
+      <img class="fm-bg" src="art/decors/castle.svg" alt=""><i class="fm-shade"></i>
+      <div class="fm-foes"><span>${ico('swords')} Ennemis</span></div>
+      ${pairs.map(([h], i) => { const [x, y] = FORM_SLOTS[i], cac = E.MELEE_CLASSES.includes(h.classId); return `
+        <div class="fm-slot" data-i="${i}" style="left:${x}%;bottom:${y}px;z-index:${30 - Math.round(y / 10)}">
+          <i class="fm-mark"><b>${i + 1}</b></i>
+          <div class="fm-hero" data-i="${i}">
+            <canvas class="px" data-hero="${h.classId}" data-dye="${h.dye || ''}"></canvas>
+            <span class="fm-tag ${cac ? 'cac' : 'dist'}">${cac ? ico('sword') : ico('target')}</span>
+          </div>
+          <small class="fm-name">${CLASSES[h.classId].name}<span>Nv.${h.level}</span></small>
+        </div>`; }).join('')}
+    </div>
+    <div class="fm-legend"><span class="cac">${ico('sword')} Corps à corps : lignes 1 et 2 d’abord</span><span class="dist">${ico('target')} À distance : toutes les lignes</span></div>
+    <p class="hint fm-help">Fais glisser un perso sur une autre place, ou touche-en deux pour les échanger.</p>`}
     <div class="close-row"><button class="btn primary" data-act="closeModal">C’est bon</button></div>`, { center: true });
+  initFormationField();
+}
+function formationSwap(i, j) {
+  const ids = teamPairs(acc, acc.pseudo).map(([h]) => h.id);
+  if (i === j || i < 0 || j < 0 || i >= ids.length || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  acc.formation = ids;
+  SFX.click(); save();
+  renderOnClose = true;   // l'équipe affichée derrière (combat auto, trône) se met à jour à la fermeture
+  openFormation();
+}
+/** Glisser-déposer (doigt ou souris) et « touche-en deux » sur le terrain de formation */
+function initFormationField() {
+  const field = document.getElementById('fm-field');
+  if (!field) return;
+  let drag = null;
+  const slotAt = (x, y) => {
+    let best = null, bd = Infinity;
+    field.querySelectorAll('.fm-slot').forEach(sl => {
+      const r = sl.querySelector('.fm-hero').getBoundingClientRect(), d = Math.hypot(r.left + r.width / 2 - x, r.top + r.height / 2 - y);
+      if (d < bd) { bd = d; best = +sl.dataset.i; }
+    });
+    return best;
+  };
+  field.querySelectorAll('.fm-hero').forEach(el => {
+    el.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      try { el.setPointerCapture(ev.pointerId); } catch (e) { /* certains navigateurs refusent : le glisser marche quand même */ }
+      drag = { el, i: +el.dataset.i, x: ev.clientX, y: ev.clientY, moved: false };
+    });
+    el.addEventListener('pointermove', (ev) => {
+      if (!drag || drag.el !== el) return;
+      const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      drag.moved = true;
+      el.classList.add('drag');
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(1.12)`;
+      const over = slotAt(ev.clientX, ev.clientY);
+      field.querySelectorAll('.fm-slot').forEach(sl => sl.classList.toggle('over', +sl.dataset.i === over && over !== drag.i));
+    });
+    const end = (ev) => {
+      if (!drag || drag.el !== el) return;
+      const d = drag;
+      drag = null;
+      if (d.moved) {
+        el.style.transform = '';
+        el.classList.remove('drag');
+        field.querySelectorAll('.fm-slot').forEach(sl => sl.classList.remove('over'));
+        const to = slotAt(ev.clientX, ev.clientY);
+        if (to !== null && to !== d.i) formationSwap(d.i, to);
+        return;
+      }
+      // simple toucher : on choisit un perso, puis un autre pour échanger
+      if (formSel === null) { formSel = d.i; el.closest('.fm-slot').classList.add('sel'); SFX.click(); }
+      else if (formSel === d.i) { formSel = null; el.closest('.fm-slot').classList.remove('sel'); }
+      else formationSwap(formSel, d.i);
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', (ev) => { if (drag && drag.el === el) { drag.moved = true; end(ev); } });
+  });
 }
 /** Équipe d'un bot hors ligne : 4 persos autour de son niveau */
 function botThroneTeam(o) {
@@ -4316,14 +4385,6 @@ const ACTIONS = {
   },
   slotPick: (d) => openSlotPicker(d.slot),
   formation: () => openFormation(),
-  formMove: (d) => {
-    const ids = teamPairs(acc, acc.pseudo).map(([h]) => h.id), i = +d.i, j = i + +d.d;
-    if (j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    acc.formation = ids;
-    SFX.click(); save(); openFormation();
-    renderOnClose = true;   // l'équipe affichée derrière (combat auto, trône) se met à jour à la fermeture
-  },
   bestGear: () => {
     const { equipped, gain } = E.bestGear(hero);
     if (gain <= 0) { toast('Tu portes déjà ton meilleur équipement !'); return; }

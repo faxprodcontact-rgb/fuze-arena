@@ -25,13 +25,13 @@ if (new URLSearchParams(location.search).get('lourd')) {
   const { ITEM_LIST } = await import('./js/data.js?v=__V__');
   let sd = 11; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
   const heavy = (pseudo, cls) => {
-    const a = E.newAccount(pseudo, cls[0]); a.born = Date.now(); a.heroes[0].level = 30;
+    const a = E.newAccount(pseudo, cls[0]); a.born = Date.now(); a.heroes[0].level = 50;
     cls.slice(1).forEach(c => E.addCharacter(a, c));
     a.heroes.forEach(h => { h.level = 25 + Math.floor(rnd() * 6); for (let i = 0; i < 90; i++) E.addItem(h, ITEM_LIST[Math.floor(rnd() * ITEM_LIST.length)].id, Math.floor(rnd() * 5));});
     a.heroes.forEach(h => { h.story = { prog: Math.floor(rnd() * 26), stars: {}, claimed: {} }; });   // avancée dans l'Histoire
     a.active = 0; a.clat = 150; a.war.section = 'bleue'; return a;
   };
-  mine = { id: ME, pseudo: PSEUDO, data: heavy(PSEUDO, ['archer', 'mage', 'paladin']) };
+  mine = { id: ME, pseudo: PSEUDO, data: heavy(PSEUDO, ['archer', 'mage', 'paladin', 'guerrier']) };
   const myProg = +new URLSearchParams(location.search).get('prog');   // ?prog=30 : mon avancée dans l'Histoire
   if (myProg) mine.data.heroes.forEach(h => { h.story.prog = myProg; });
   others.length = 0;

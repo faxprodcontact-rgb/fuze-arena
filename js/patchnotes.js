@@ -20,6 +20,15 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2355-formation-terrain', date: '21/10/2026', time: '23h55', title: 'Formation sur le terrain',
+    sections: [
+      { title: 'Amélioration', items: [
+        '« Ma formation » se fait maintenant sur un petit terrain : tes persos sont debout comme en combat, la ligne 1 près des ennemis.',
+        'Fais glisser un perso sur une autre place, ou touche-en deux pour les échanger.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2350-formation', date: '21/10/2026', time: '23h50', title: 'Ma formation : place tes persos',
     sections: [
       { title: 'Nouveau', items: [

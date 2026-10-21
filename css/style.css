@@ -2407,3 +2407,33 @@ body:has(#modal-root .modal-bg) #app * { animation-play-state: paused !important
 .form-btns .ibtn:disabled { opacity: .3; }
 .form-open { margin-top: 10px; }
 .auto-form { margin-left: auto; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 900; color: #0d0926; background: #ffd45a; box-shadow: 0 2px 0 #a8621a; }
+
+/* Ma formation : le terrain (persos debout comme en combat, à déplacer) */
+.fm-field { position: relative; height: 300px; margin: 12px 0 8px; border-radius: 16px; overflow: hidden; background: #1a1352; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: inset 0 0 0 2px rgba(242,193,78,.5); }
+.fm-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 75%; }
+.fm-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(13,9,38,.15), rgba(13,9,38,.05) 55%, rgba(120,10,30,.45)); }
+.fm-foes { position: absolute; top: 0; bottom: 0; right: 0; width: 22%; display: flex; align-items: center; justify-content: center; border-left: 2px dashed rgba(255,93,108,.6); background: linear-gradient(90deg, rgba(255,93,108,.12), rgba(255,93,108,.28)); }
+.fm-foes span { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 900; color: #fff; background: rgba(13,9,38,.8); writing-mode: horizontal-tb; }
+.fm-foes .ico { width: 14px; height: 14px; }
+.fm-slot { position: absolute; width: 96px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.fm-mark { position: absolute; bottom: 14px; left: 50%; width: 64px; height: 18px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(rgba(255,212,90,.45), rgba(255,212,90,0) 70%); box-shadow: 0 0 0 2px rgba(255,212,90,.55); }
+.fm-mark b { position: absolute; left: -10px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--pixel); font-weight: 400; font-size: 14px; color: #0d0926; background: #ffd45a; box-shadow: 0 0 0 2px #0d0926; }
+.fm-hero { position: relative; width: 104px; cursor: grab; touch-action: none; transition: transform .12s; }
+.fm-hero canvas { width: 100%; height: auto; display: block; pointer-events: none; }
+.fm-hero.drag { z-index: 50; cursor: grabbing; transition: none; filter: drop-shadow(0 8px 10px rgba(0,0,0,.5)); }
+.fm-slot.drag-src { opacity: .6; }
+.fm-tag { position: absolute; top: 2px; right: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 2px #0d0926; }
+.fm-tag.cac { background: #ff8a5d; } .fm-tag.dist { background: #6fd0ff; }
+.fm-tag .ico { width: 14px; height: 14px; }
+.fm-name { margin-top: -2px; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; white-space: nowrap; color: #fff; background: rgba(13,9,38,.85); }
+.fm-name span { color: #ffd45a; }
+.fm-slot.sel .fm-mark, .fm-slot.over .fm-mark { box-shadow: 0 0 0 3px #7bf09a, 0 0 16px rgba(123,240,154,.8); background: radial-gradient(rgba(123,240,154,.5), rgba(123,240,154,0) 70%); }
+.fm-slot.sel .fm-hero { animation: fmPick .9s ease-in-out infinite; }
+@keyframes fmPick { 50% { transform: translateY(-5px); } }
+.fm-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-size: 11px; font-weight: 800; }
+.fm-legend span { display: flex; align-items: center; gap: 4px; }
+.fm-legend .ico { width: 14px; height: 14px; }
+.fm-legend .cac { color: #ff8a5d; } .fm-legend .dist { color: #6fd0ff; }
+.fm-help { text-align: center; margin: 6px 0 0; }
+.fm-name { display: flex; flex-direction: column; align-items: center; line-height: 1.1; padding: 2px 8px; border-radius: 8px; }
+.fm-foes span { flex-direction: column; text-align: center; }
