@@ -2345,3 +2345,11 @@ canvas[data-hero] { translate: -10.4% 0; }
 /* Titre unique (podium de l'ancien Fuze Arena) : doré, jamais en vente */
 .hx .shop-item.unique { background: linear-gradient(160deg, rgba(255, 212, 90, .22), rgba(255, 154, 61, .08) 60%), var(--card2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 2px rgba(255, 212, 90, .7), 0 0 16px rgba(255, 212, 90, .25), 0 3px 0 rgba(0,0,0,.35); }
 .hx .shop-item.unique .ptitle { color: #ffd45a; }
+
+/* Fluidité sur téléphone : dans les listes d'objets (sac, choix d'emplacement…), les cases Légendaire et Mythique
+   gardent leur lueur mais ne s'animent plus en boucle (des dizaines de lueurs animées faisaient ramer).
+   Les cases équipées de l'armurerie et le Chaotique restent animés. */
+.it.r4, .it.r5 { animation: none; }
+.it.r3::after, .it.r4::after, .it.r5::after, .it[style*="b05cff"]::after, .it[style*="ff9f1a"]::after { animation: none; display: none; }
+/* Une fenêtre est ouverte : les animations de la page derrière (floutée) se mettent en pause, le téléphone n'a plus à recalculer le flou */
+body:has(#modal-root .modal-bg) #app * { animation-play-state: paused !important; }

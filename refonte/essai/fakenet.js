@@ -20,6 +20,20 @@ const others = [
 ];
 const PSEUDO = new URLSearchParams(location.search).get('pseudo') || 'Simon';
 let mine = { id: ME, pseudo: PSEUDO, data: oldAcc(PSEUDO, 'paladin', 40) };
+// ?lourd=1 : comptes déjà bien avancés (3 persos, 90 objets chacun) pour mesurer la fluidité, comme après une soirée de jeu
+if (new URLSearchParams(location.search).get('lourd')) {
+  const { ITEM_LIST } = await import('./js/data.js?v=__V__');
+  let sd = 11; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const heavy = (pseudo, cls) => {
+    const a = E.newAccount(pseudo, cls[0]); a.born = Date.now(); a.heroes[0].level = 30;
+    cls.slice(1).forEach(c => E.addCharacter(a, c));
+    a.heroes.forEach(h => { h.level = 25 + Math.floor(rnd() * 6); for (let i = 0; i < 90; i++) E.addItem(h, ITEM_LIST[Math.floor(rnd() * ITEM_LIST.length)].id, Math.floor(rnd() * 5));});
+    a.active = 0; a.clat = 150; a.war.section = 'bleue'; return a;
+  };
+  mine = { id: ME, pseudo: PSEUDO, data: heavy(PSEUDO, ['archer', 'mage', 'paladin']) };
+  others.length = 0;
+  ['Fuuuuze', 'AlexDcr', 'Kush', 'Tchomb', 'Didztasoeur', 'Le Stein'].forEach((n, i) => others.push({ id: 'u-' + i, pseudo: n, data: heavy(n, [['archer', 'paladin', 'guerrier'], ['guerrier', 'mage'], ['archer'], ['guerrier', 'archer'], ['paladin', 'archer', 'mage'], ['guerrier']][i]) }));
+}
 const db = { msgs: [{ id: 1, user_id: 'u-tom', pseudo: 'Tom', text: 'vieux message', created_at: t(5 * H) }], fights: [], challenges: [], wagers: [], auctions: [], bids: [],
   raids: [{ week: 'hollande-c0-2026-10-19', boss: 'hollande:c0', hp: 900000, level: 90, created_at: t(30 * H) }],
   hits: [{ week: 'hollande-c0-2026-10-19', user_id: 'u-tom', pseudo: 'Tom', damage: 400000, created_at: t(20 * H) }] };

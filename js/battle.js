@@ -1385,6 +1385,7 @@ export function idlePreview(canvas, classId, petItemId = null, dyeId = null) {
   const t0 = performance.now();
   function loop(now) {
     if (!alive || !canvas.isConnected) return;
+    if (behindModal(canvas)) { requestAnimationFrame(loop); return; }   // en pause derrière une fenêtre
     const t = (now - t0) / 1000;
     sprite = heroCanvas(classId, dyeId); wS = weaponCanvas(weapon, dyeId);   // un skin pas encore prêt apparaît dès qu'il l'est
     ctx.clearRect(0, 0, Wc, Hc);
@@ -1986,20 +1987,30 @@ export function playMelee(canvas, teamA, teamB, fight, { colors = ['#3d9bff', '#
  * Héros au centre de l'écran d'équipement : il respire, son arme bouge,
  * et de temps en temps il prend sa pose d'attaque. Son familier flotte à ses pieds.
  */
+/** Une fenêtre est ouverte par-dessus ce dessin (il est caché et flouté derrière) : inutile de l'animer */
+function behindModal(canvas) {
+  const m = document.getElementById('modal-root');
+  return !!(m && m.firstElementChild && !m.contains(canvas));
+}
+
 export function dollPreview(canvas, classId, petItemId = null, dyeId = null) {
   const ctx = canvas.getContext('2d');
   let idle = heroCanvas(classId, dyeId), atk = heroCanvas(classId, dyeId, 'atk');
-  const sc = idle.smooth ? 10 : 6, LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
+  const LW = 84, LH = 62, K = 1.85;   // zone large : l'arme peut dépasser derrière les cases d'équipement
+  // résolution juste nécessaire pour la taille affichée (écran fin compris, plafonné) : moins de pixels à redessiner sur téléphone
+  const sc = idle.smooth ? Math.max(4, Math.min(10, Math.round((canvas.clientWidth || 340) * Math.min(2, window.devicePixelRatio || 1) / LW))) : 6;
   canvas.width = LW * sc; canvas.height = LH * sc;
   canvas.style.imageRendering = idle.smooth ? 'auto' : '';
   const weapon = CLASSES[classId].weapon, aura = skinAura(dyeId);
   let wS = weaponCanvas(weapon, dyeId);
   const [px, py] = weaponPivot(weapon);
   const pet = petItemId ? petCanvas(petItemId) : null;
-  let alive = true;
+  let alive = true, last = 0;
   const t0 = performance.now();
   function loop(now) {
     if (!alive || !canvas.isConnected) return;
+    if (now - last < 32 || behindModal(canvas)) { requestAnimationFrame(loop); return; }   // 30 images par seconde suffisent ; en pause derrière une fenêtre
+    last = now;
     const t = (now - t0) / 1000;
     idle = heroCanvas(classId, dyeId); atk = heroCanvas(classId, dyeId, 'atk'); wS = weaponCanvas(weapon, dyeId);
     ctx.setTransform(sc, 0, 0, sc, 0, 0);

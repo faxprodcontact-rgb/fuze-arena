@@ -20,6 +20,14 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2005-fluide', date: '21/10/2026', time: '20h05', title: 'Sac plus fluide',
+    sections: [
+      { title: 'Correctif', items: [
+        'Le Sac et l’équipement ne rament plus sur téléphone : moins d’animations en boucle, et la page se met en pause derrière les fenêtres.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-20-1900-v2', date: '20/10/2026', time: '19h00', title: 'Bienvenue dans Fuze Arena 2.0 !',
     sections: [
       { title: 'Un tout nouveau Fuze Arena', items: [
