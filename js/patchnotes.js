@@ -20,6 +20,17 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2350-formation', date: '21/10/2026', time: '23h50', title: 'Ma formation : place tes persos',
+    sections: [
+      { title: 'Nouveau', items: [
+        'Combats à 4 contre 4 (trône et combat auto) : choisis la ligne de chaque perso, de la ligne 1 (devant) à la ligne 4 (derrière). Bouton « Ma formation » sur le trône, « Formation » sur le combat auto.',
+        'Le Guerrier et le Paladin (corps à corps) frappent d’abord les lignes 1 et 2 ; les lignes 3 et 4 seulement quand il n’y a plus personne devant.',
+        'Le Mage et l’Archer (à distance) frappent toutes les lignes.',
+        'Sans formation choisie, ton perso le plus fort est devant.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2250-fusion', date: '21/10/2026', time: '22h50', title: 'Fusion sans lag',
     sections: [
       { title: 'Correctif', items: [

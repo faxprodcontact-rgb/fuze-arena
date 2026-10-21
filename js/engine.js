@@ -415,14 +415,19 @@ export function createFight(A, B, seed, { maxActions = MAX_ACTIONS, timeoutWinne
 /**
  * Mêlée en équipe (le trône) : les deux équipes (jusqu'à 4 persos chacune) se battent toutes en même temps.
  * Chacun joue selon sa vitesse (même jauge qu'en duel) et frappe un adversaire encore debout, tiré au hasard.
+ * Lignes (lines) : l'ordre de l'équipe = ses lignes (1 devant … 4 derrière). Le Guerrier et le Paladin (corps à corps)
+ * ne frappent que les lignes 1 et 2 tant qu'il y reste quelqu'un debout ; le Mage et l'Archer frappent toutes les lignes.
  * Mêmes règles qu'un duel : sorts, critiques, esquives, boucliers, brûlures, étourdissements, familiers, rage.
  * Les index des persos vont de 0 à n−1 (l'équipe A d'abord). Événements : ceux d'un duel (avec « target »),
  * plus { type: 'ko', target } quand un perso tombe. L'équipe qui n'a plus personne debout perd.
  */
-export function createMelee(A, B, seed, { maxActions = null } = {}) {
+/** Classes de corps à corps : en mêlée à 4, elles ne frappent que les 2 premières lignes (tant qu'il y a quelqu'un) */
+export const MELEE_CLASSES = ['guerrier', 'paladin'];
+
+export function createMelee(A, B, seed, { maxActions = null, lines = true } = {}) {
   const rng = makeRng(seed);
-  const F = [...A.map(s => [s, 0]), ...B.map(s => [s, 1])].map(([s, side], i) => ({
-    i, side, s, hp: s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
+  const F = [...A.map((s, j) => [s, 0, j]), ...B.map((s, j) => [s, 1, j])].map(([s, side, line], i) => ({
+    i, side, line, s, hp: s.maxHp, max: s.maxHp, shield: 0, gauge: rng() * 200,
     cds: {}, buffs: [], dots: [], stun: 0, stunImmune: 0, petN: 0,
     pet: (s.v || 0) >= 2 ? petSpell(s.pet) : null,
   }));
@@ -557,8 +562,12 @@ export function createMelee(A, B, seed, { maxActions = null } = {}) {
       actor.stunImmune = 2;
       push({ type: 'stunned', target: actor.i });
     } else {
-      const foes = standing(1 - actor.side);
-      const foe = foes[Math.floor(rng() * foes.length)];   // un adversaire encore debout, au hasard
+      let foes = standing(1 - actor.side);
+      if (lines && MELEE_CLASSES.includes(actor.s.classId)) {   // corps à corps : d'abord les lignes 1 et 2
+        const front = foes.filter(f => f.line < 2);
+        if (front.length) foes = front;
+      }
+      const foe = foes[Math.floor(rng() * foes.length)];   // un adversaire encore debout (à sa portée), au hasard
       perform(actor, foe, choose(actor));
       if (wiped(foe.side)) { winner = actor.side; return; }
       if (actor.pet && ++actor.petN % PET_EVERY === 0) {

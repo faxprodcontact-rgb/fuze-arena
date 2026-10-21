@@ -1954,7 +1954,7 @@ function replayFight(row) {
   if (row.kind === 'throne') {   // le trône : mêlée à 4 contre 4, rejouée à l'identique avec la même graine
     const A = row.a_snap.team, B = row.d_snap.team;
     runMelee({
-      teamA: A, teamB: B, fight: E.createMelee(A, B, Number(row.seed)),
+      teamA: A, teamB: B, fight: E.createMelee(A, B, Number(row.seed), { lines: !!row.a_snap.lines }),   // avant les lignes : rejoué comme à l'époque
       title: `Rediffusion · ${esc(row.attacker_name)} <span style="color:var(--gold)">VS</span> ${esc(row.defender_name)}`,
       finish: (r) => ({ headline: `${(r.winner === 0 ? row.attacker_name : row.defender_name).toUpperCase()} GAGNE !`, headClass: 'win' }),
     });
@@ -2210,7 +2210,7 @@ function autoCard() {
     <section class="auto-hero">
       <div class="auto-stage"><canvas data-auto></canvas><div class="auto-sky" data-auto-sky>${autoSkyHtml()}</div></div>
       <div class="auto-panel">
-        <div class="auto-top">${ico('swords')}<b>Combat auto</b></div>
+        <div class="auto-top">${ico('swords')}<b>Combat auto</b>${acc.heroes.length > 1 ? `<button class="auto-form" data-act="formation">Formation</button>` : ''}</div>
         <div data-auto-info>${autoInfoHtml()}</div>
       </div>
     </section>`;
@@ -2432,7 +2432,34 @@ let throneLoading = null, throneError = '';
 const throneRank = (id = myId()) => throneInfo.order.indexOf(id);
 
 /** L'équipe du trône d'un compte : ses 4 persos, les plus forts devant */
-const throneTeam = (data, pseudo) => teamOf(data, pseudo).reverse();
+/** Équipe à 4 (trône, combat auto) : les 4 plus forts, rangés selon la formation du joueur (ligne 1 devant) ; sans formation, le plus fort devant */
+function teamPairs(data, pseudo) {   // [[héros, photo], …] dans l'ordre des lignes
+  const top = data.heroes.map(h => [h, snapOf(data, h, pseudo)]).sort((a, b) => E.powerScore(b[1]) - E.powerScore(a[1])).slice(0, 4);
+  const f = data.formation || [];
+  const rank = (h) => { const i = f.indexOf(h.id); return i < 0 ? 99 : i; };
+  return top.sort((a, b) => rank(a[0]) - rank(b[0]));
+}
+function throneTeam(data, pseudo) { return teamPairs(data, pseudo).map(x => x[1]); }
+
+/** Ma formation pour les combats à 4 : l'ordre des lignes, de devant (1) à derrière (4) */
+const LINE_NAMES = ['devant', '2ᵉ ligne', '3ᵉ ligne', 'derrière'];
+function openFormation() {
+  const pairs = teamPairs(acc, acc.pseudo);
+  openModal(`
+    <h3>${ico('swords')} Ma formation</h3>
+    <p class="hint" style="margin-top:4px">Combats à 4 contre 4 (trône, combat auto). Le Guerrier et le Paladin frappent d’abord les lignes 1 et 2 ; le Mage et l’Archer frappent toutes les lignes.</p>
+    ${pairs.length < 2 ? '<p class="empty">Il te faut au moins 2 persos pour choisir une formation.</p>' : `<div class="form-list">${pairs.map(([h, sn], i) => `
+      <div class="form-row">
+        <span class="form-line"><b>${i + 1}</b><small>${LINE_NAMES[i]}</small></span>
+        <span class="form-av"><canvas class="px" data-portrait="${h.classId}" data-dye="${h.dye || ''}"></canvas></span>
+        <span class="form-txt"><b>${CLASSES[h.classId].name} <span>Nv.${h.level}</span></b><small class="${E.MELEE_CLASSES.includes(h.classId) ? 'cac' : 'dist'}">${E.MELEE_CLASSES.includes(h.classId) ? 'Corps à corps · lignes 1-2' : 'À distance · toutes les lignes'}</small></span>
+        <span class="form-btns">
+          <button class="ibtn" data-act="formMove" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter">▲</button>
+          <button class="ibtn" data-act="formMove" data-i="${i}" data-d="1" ${i === pairs.length - 1 ? 'disabled' : ''} aria-label="Descendre">▼</button>
+        </span>
+      </div>`).join('')}</div>`}
+    <div class="close-row"><button class="btn primary" data-act="closeModal">C’est bon</button></div>`, { center: true });
+}
 /** Équipe d'un bot hors ligne : 4 persos autour de son niveau */
 function botThroneTeam(o) {
   const classes = [o.classId, ...Object.keys(CLASSES).filter(c => c !== o.classId)].slice(0, 3);
@@ -2548,7 +2575,8 @@ function viewThrone() {
       mchip(ico('medal1'), 'Le roi', esc(king.name)),
       mchip(ico('hourglass'), 'Fin de la manche', `<span data-endlong="${Date.now() + E.msToNextThrone()}">${fmtLong(E.msToNextThrone())}</span>`),
     ],
-    info: `Une manche dure <b>${THRONE.days} jours</b>. Au début, tout le monde est classé selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse.<br><br>À la fin de la manche : <b>${THRONE.flouze[0]} Flouze</b> pour le roi, <b>${THRONE.flouze[1]}</b> pour le 2ᵉ, <b>${THRONE.flouzeRest}</b> pour tous les autres. Puis une nouvelle manche repart selon la puissance.`,
+    extra: acc.heroes.length > 1 ? `<button class="btn small block form-open" data-act="formation">${ico('swords')} Ma formation (lignes 1 à ${Math.min(4, acc.heroes.length)})</button>` : '',
+    info: `Une manche dure <b>${THRONE.days} jours</b>. Au début, tout le monde est classé selon la <b>puissance de ses 4 persos</b>. Défie qui tu veux <b>au-dessus de toi</b>, autant de fois que tu veux : si tu gagnes, vous échangez vos places ; si tu perds, rien ne bouge.<br><br>Combat à <b>4 contre 4</b> : tous tes persos contre tous les siens, en même temps, chacun selon sa vitesse. Choisis tes lignes dans « Ma formation » : le Guerrier et le Paladin frappent d’abord les lignes 1 et 2, le Mage et l’Archer toutes les lignes.<br><br>À la fin de la manche : <b>${THRONE.flouze[0]} Flouze</b> pour le roi, <b>${THRONE.flouze[1]}</b> pour le 2ᵉ, <b>${THRONE.flouzeRest}</b> pour tous les autres. Puis une nouvelle manche repart selon la puissance.`,
   }) + `
     <section class="card hx throne-hall" style="--hc:#ffd45a">
       <div class="tr-king ${king.id === me ? 'me' : ''}">
@@ -2589,8 +2617,8 @@ function startThrone(targetId) {
       const won = result.winner === 0;
       const row = { attacker_id: myId(), defender_id: foe.id, winner: won ? 0 : 1 };
       if (NET.online) {
-        NET.logFight({ defender_id: foe.id, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', winner: won ? 0 : 1, seed, a_snap: { week, team: meC.team }, d_snap: { team: foe.team } })
-          .then(r => { journal.unshift({ ...r, ...row, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', seed, a_snap: { week, team: meC.team }, d_snap: { team: foe.team } }); return loadThrone(); })
+        NET.logFight({ defender_id: foe.id, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', winner: won ? 0 : 1, seed, a_snap: { week, team: meC.team, lines: true }, d_snap: { team: foe.team } })
+          .then(r => { journal.unshift({ ...r, ...row, attacker_name: acc.pseudo, defender_name: foe.name, kind: 'throne', seed, a_snap: { week, team: meC.team, lines: true }, d_snap: { team: foe.team } }); return loadThrone(); })
           .then(() => { if (tab === 'throne' && !document.querySelector('.battle')) softRender(); })
           .catch(e => toast(e.message));
       } else if (acc.throne && acc.throne.local && acc.throne.local.week === week) {
@@ -4287,6 +4315,15 @@ const ACTIONS = {
     save(); closeModal(); render(); toast(`${ITEMS[d.id].name} équipé !`);
   },
   slotPick: (d) => openSlotPicker(d.slot),
+  formation: () => openFormation(),
+  formMove: (d) => {
+    const ids = teamPairs(acc, acc.pseudo).map(([h]) => h.id), i = +d.i, j = i + +d.d;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    acc.formation = ids;
+    SFX.click(); save(); openFormation();
+    renderOnClose = true;   // l'équipe affichée derrière (combat auto, trône) se met à jour à la fermeture
+  },
   bestGear: () => {
     const { equipped, gain } = E.bestGear(hero);
     if (gain <= 0) { toast('Tu portes déjà ton meilleur équipement !'); return; }
