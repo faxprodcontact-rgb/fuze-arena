@@ -1218,6 +1218,11 @@ export function bestGear(hero) {
     seen.add(k);
     (bySlot[ITEMS[it.itemId].slot] ||= []).push(it);
   }
+  // on n'essaie que les plus rares de chaque emplacement (3 raretés en dessous, un objet ne peut plus gagner) : beaucoup plus rapide
+  for (const slot in bySlot) {
+    const top = Math.max(...bySlot[slot].map(i => i.rarity));
+    bySlot[slot] = bySlot[slot].filter(i => i.rarity >= top - 2).sort((a, b) => b.rarity - a.rarity).slice(0, 16);
+  }
   const start = power(hero.equipped);
   let eq = { ...hero.equipped }, best = start;
   for (let pass = 0; pass < 3; pass++) {

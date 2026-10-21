@@ -20,6 +20,17 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2245-x3', date: '21/10/2026', time: '22h45', title: 'Combats en x3 et Sac encore plus fluide',
+    sections: [
+      { title: 'Nouveau', items: [
+        'Tous les combats démarrent en vitesse x3. Touche le bouton de vitesse pour repasser en x1 ou x2.',
+      ] },
+      { title: 'Correctifs', items: [
+        '« Tout fusionner » et le Sac ne rament plus, même avec un très gros sac : le calcul du meilleur équipement est bien plus rapide, et les images des objets se dessinent au fil du défilement.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2235-histoire-potes', date: '21/10/2026', time: '22h35', title: 'Tes potes sur la carte de l’Histoire',
     sections: [
       { title: 'Nouveau', items: [

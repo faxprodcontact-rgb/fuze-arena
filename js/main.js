@@ -100,7 +100,16 @@ function warmSkins() {
 const byLevel = (heroes) => heroes.map((h, i) => [h, i]).sort(([a, i], [b, j]) => b.level - a.level || b.xp - a.xp || i - j);
 const ico = (name, cls = '') => `<canvas class="px ico ${cls}" data-ico="${name}"></canvas>`;
 function hydrate(root = document) {
-  root.querySelectorAll('canvas[data-icon]').forEach(c => paint(c, itemIcon(c.dataset.icon), { scale: 4 }));
+  // icônes d'objets : avec un gros sac, on ne dessine que celles qui arrivent à l'écran (le reste au fil du défilement)
+  const icons = root.querySelectorAll('canvas[data-icon]');
+  if (icons.length > 48 && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((list) => list.forEach(e => {
+      if (!e.isIntersecting) return;
+      io.unobserve(e.target);
+      paint(e.target, itemIcon(e.target.dataset.icon), { scale: 4 });
+    }), { rootMargin: '400px 0px' });
+    icons.forEach(c => io.observe(c));
+  } else icons.forEach(c => paint(c, itemIcon(c.dataset.icon), { scale: 4 }));
   root.querySelectorAll('canvas[data-portrait]').forEach(c => paint(c, heroPortrait(c.dataset.portrait, CLASSES[c.dataset.portrait].weapon, c.dataset.dye || null), { scale: 4 }));
   root.querySelectorAll('canvas[data-monster]').forEach(c => paint(c, monsterCanvas(c.dataset.monster), { scale: 3 }));
   root.querySelectorAll('canvas[data-clat]').forEach(c => paint(c, clatCanvas(), { scale: 3 }));
@@ -304,14 +313,10 @@ function paintTabIcons() {
 }
 
 function countFusable() {
-  const seen = new Set();
+  const count = new Map();   // une seule passe sur le sac (avant : une recherche par objet, lent avec un gros sac)
+  for (const it of hero.inventory) if (it.rarity < RARITIES.length - 1) { const key = it.itemId + ':' + it.rarity; count.set(key, (count.get(key) || 0) + 1); }
   let n = 0;
-  for (const it of hero.inventory) {
-    const key = it.itemId + ':' + it.rarity;
-    if (seen.has(key) || it.rarity >= RARITIES.length - 1) continue;
-    seen.add(key);
-    if (E.stackOf(hero, it.itemId, it.rarity).length >= E.fuseNeed(it.rarity)) n++;
-  }
+  for (const [key, c] of count) if (c >= E.fuseNeed(+key.split(':')[1])) n++;
   return n;
 }
 
@@ -780,6 +785,15 @@ function openSlotPicker(slot) {
     </div>`);
 }
 
+/** Gain de « Équiper le meilleur », recalculé seulement quand le sac, l'équipement ou les points changent */
+let bestMemo = { key: '', gain: 0 };
+function bestGainOf(h) {
+  if (!h.inventory.length) return 0;
+  const key = `${h.id}|${h.nextUid}|${h.inventory.length}|${h.level}|${JSON.stringify(h.equipped)}|${JSON.stringify(h.alloc)}`;
+  if (bestMemo.key !== key) bestMemo = { key, gain: E.bestGear(h).gain };
+  return bestMemo.gain;
+}
+
 function viewBag() {
   const eq = E.equippedItems(hero);
   const slotHtml = (slot) => {
@@ -789,7 +803,7 @@ function viewBag() {
       : `<button class="slot empty-slot" data-act="slotPick" data-slot="${slot}"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><span class="sl-name">${SLOTS[slot].name}</span></button>`;
   };
   const power = E.powerScore(E.snapshot(hero));
-  const bestGain = hero.inventory.length ? E.bestGear(hero).gain : 0;   // le bouton « Équiper le meilleur » n'apparaît que s'il y a mieux
+  const bestGain = bestGainOf(hero);   // le bouton « Équiper le meilleur » n'apparaît que s'il y a mieux
   const filled = Object.keys(eq).length;
   const setsOn = E.activeSets(hero).filter(a => a.bonus);
   const st = stacks();
@@ -2605,7 +2619,7 @@ function runMelee({ teamA, teamB, fight, title, finish }) {
     <div class="battle-ctrl nobar">
       <div class="dock">
         <div class="dock-side">
-          <button class="dock-btn" data-act="speed" id="speed-btn">x1</button>
+          <button class="dock-btn on" data-act="speed" id="speed-btn">x3</button>
           <button class="dock-btn" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
         </div>
       </div>
@@ -2615,7 +2629,7 @@ function runMelee({ teamA, teamB, fight, title, finish }) {
   hydrate(ov);
   battleFight = null;
   battleCtl = playMelee(ov.querySelector('#arena'), short(teamA), short(teamB), fight, { colors: ['#3d9bff', '#ff5d6c'] });
-  battleCtl.speedIdx = 0;
+  battleCtl.speedIdx = 2; battleCtl.setSpeed(3);   // les combats partent en x3 (le bouton repasse en x1, x2…)
   battleCtl.promise.then(() => {
     const result = fight.result();
     const out = finish(result) || {};
@@ -3762,7 +3776,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
           ${spells.map((id, i) => `<button class="sb ready" data-act="cast" data-id="${id}" data-i="${i}" aria-label="${esc(SPELLS[id].name)}"><canvas class="px" data-spell="${id}"></canvas><span class="cd"></span></button>`).join('')}
         </div>` : ''}
         <div class="dock-side">
-          <button class="dock-btn" data-act="speed" id="speed-btn">x1</button>
+          <button class="dock-btn on" data-act="speed" id="speed-btn">x3</button>
           <button class="dock-btn" data-act="toggleSound" id="snd-btn" aria-label="Son">${ico(getPref('sfx') || getPref('music') ? 'speaker' : 'mute')}</button>
         </div>
       </div>
@@ -3771,7 +3785,7 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
   document.body.appendChild(ov);
   hydrate(ov);
   battleCtl = playBattle(ov.querySelector('#arena'), me, foe, fight || result, { theme, victory, spellBar: spells.length > 0, onBegin: (e) => { updateSpellBar(e); if (onEvent) onEvent(e); } });
-  battleCtl.speedIdx = 0;
+  battleCtl.speedIdx = 2; battleCtl.setSpeed(3);   // les combats partent en x3 (le bouton repasse en x1, x2…)
   battleCtl.promise.then(() => {
     if (fight) {
       result = fight.result();
