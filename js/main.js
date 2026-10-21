@@ -864,14 +864,17 @@ function viewBag() {
 }
 
 /** Liste des objets obtenus par « Tout fusionner », les plus rares d'abord */
+const FUSE_SHOW = 20;   // au plus 20 lignes (les meilleures) : une longue liste d'images faisait ramer les téléphones
 function fuseSummary(made) {
   const groups = {};
   for (const it of made) (groups[it.itemId + ':' + it.rarity] ||= { ...it, n: 0 }).n++;
-  return Object.values(groups).sort((a, b) => b.rarity - a.rarity).map(g => `
+  const all = Object.values(groups).sort((a, b) => b.rarity - a.rarity);
+  const more = all.length - FUSE_SHOW, rest = all.slice(FUSE_SHOW).reduce((t, g) => t + g.n, 0);
+  return all.slice(0, FUSE_SHOW).map(g => `
     <div class="fl-row" style="--rc:${RARITIES[g.rarity].color}">
       <span class="it r${g.rarity}" style="--rc:${RARITIES[g.rarity].color}"><canvas class="px" data-icon="${g.itemId}"></canvas></span>
       <b>${esc(ITEMS[g.itemId].name)}</b><small>${RARITIES[g.rarity].name}${g.n > 1 ? ` ×${g.n}` : ''}</small>
-    </div>`).join('');
+    </div>`).join('') + (more > 0 ? `<p class="hint fl-more">… et ${rest} autre${rest > 1 ? 's' : ''} objet${rest > 1 ? 's' : ''} plus faible${rest > 1 ? 's' : ''}</p>` : '');
 }
 
 /** Puissance du héros s'il portait cet objet, comparée à maintenant (null si c'est déjà l'objet porté) */
@@ -4233,17 +4236,17 @@ const ACTIONS = {
       return;
     }
     const res = E.fuseAll(hero);
-    for (let i = 0; i < res.fusions; i++) E.missionEvent(acc, 'fuse');
+    E.missionEvent(acc, 'fuse', res.fusions);
     SFX.fuse();
     save();
-    closeModal();
-    render();
     const best = Math.max(...res.made.map(it => it.rarity));
+    // le résultat s'affiche tout de suite ; le sac se redessine derrière juste après
     openModal(`
       <h3>${ico('sparkle')} ${res.fusions} fusion${res.fusions > 1 ? 's' : ''} réussie${res.fusions > 1 ? 's' : ''} !</h3>
       <div class="fuse-list">${fuseSummary(res.made)}</div>
       <div class="close-row"><button class="btn primary" data-act="closeModal">Super</button></div>`);
     SFX.loot(best);
+    setTimeout(render, 60);
   },
   fight: (d) => startFight(d.id),
   friendly: (d) => startFriendly(d.id),

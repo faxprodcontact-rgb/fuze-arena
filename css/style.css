@@ -2353,3 +2353,7 @@ canvas[data-hero] { translate: -10.4% 0; }
 .it.r3::after, .it.r4::after, .it.r5::after, .it[style*="b05cff"]::after, .it[style*="ff9f1a"]::after { animation: none; display: none; }
 /* Une fenêtre est ouverte : les animations de la page derrière (floutée) se mettent en pause, le téléphone n'a plus à recalculer le flou */
 body:has(#modal-root .modal-bg) #app * { animation-play-state: paused !important; }
+/* Liste des fusions : cases sans grande lueur (plus léger à faire défiler) */
+.fuse-list .it { box-shadow: inset 0 0 0 2px var(--rc) !important; animation: none !important; }
+.fuse-list .it::after { display: none !important; }
+.fl-more { text-align: center; margin: 4px 0 0; }

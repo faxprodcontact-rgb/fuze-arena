@@ -24,6 +24,7 @@ export const PATCH_NOTES = [
     sections: [
       { title: 'Correctif', items: [
         'Le Sac et l’équipement ne rament plus sur téléphone : moins d’animations en boucle, et la page se met en pause derrière les fenêtres.',
+        '« Tout fusionner » est plus rapide : le résultat s’affiche tout de suite, avec les 20 meilleurs objets obtenus.',
       ] },
     ],
   },
