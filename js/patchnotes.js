@@ -20,14 +20,18 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
-    id: '2026-10-21-2005-fluide', date: '21/10/2026', time: '20h05', title: 'Sac plus fluide',
+    id: '2026-10-21-2155-tour-auto', date: '21/10/2026', time: '21h55', title: 'Tour automatique et Sac plus fluide',
     sections: [
-      { title: 'Correctif', items: [
-        'Le Sac et l’équipement ne rament plus sur téléphone : moins d’animations en boucle, et la page se met en pause derrière les fenêtres.',
-        '« Tout fusionner » est plus rapide : le résultat s’affiche tout de suite, avec les 20 meilleurs objets obtenus.',
+      { title: 'Nouveau', items: [
+        'Tour infinie : après une victoire, l’étage suivant se lance tout seul au bout de 3 secondes, jusqu’à ta défaite. Touche « Arrêter » pour sortir quand tu veux.',
+      ] },
+      { title: 'Correctifs', items: [
+        'Le Sac et l’équipement ne rament plus sur téléphone.',
+        '« Tout fusionner » est beaucoup plus rapide : le résultat s’affiche tout de suite, avec les 20 meilleurs objets obtenus.',
       ] },
     ],
   },
+
   {
     id: '2026-10-20-1900-v2', date: '20/10/2026', time: '19h00', title: 'Bienvenue dans Fuze Arena 2.0 !',
     sections: [

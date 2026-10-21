@@ -3372,6 +3372,8 @@ function attackTower() {
         rewardsHtml: won
           ? `<div class="rw">${rw.keys ? `<span class="pill gold"><canvas class="px" data-key></canvas>+${rw.keys} clefs</span>` : ''}${xpPills(rw)}</div>`
           : '<p style="color:var(--muted);margin:0">Tu restes à cet étage : réessaie autant que tu veux !</p>',
+        // victoire : l'étage suivant part tout seul, jusqu'à la défaite (« Arrêter » pour sortir)
+        ...(won ? { next: () => attackTower(), nextLabel: `Étage ${next + 1} ›`, backLabel: 'Arrêter', auto: 3000 } : {}),
       };
     },
   });
@@ -3753,6 +3755,18 @@ function runBattle({ me, foe, theme, title, result = null, seed = 0, sim = {}, m
     waveNext = out.next || null;
     hydrate(slot);
     announce(out.rewards);
+    if (out.next && out.auto) {   // enchaînement automatique (Tour infinie) : le combat suivant part tout seul après un petit compte à rebours
+      const go = out.next, b = slot.querySelector('[data-act="waveNext"]');
+      let left = Math.ceil(out.auto / 1000);
+      const tick = () => {
+        if (waveNext !== go || !document.body.contains(slot)) return;   // il a touché « Arrêter » ou « Étage suivant » lui-même
+        if (left <= 0) { ACTIONS.waveNext(); return; }
+        if (b) b.textContent = `${out.nextLabel} (${left})`;
+        left--;
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
   });
 }
 
