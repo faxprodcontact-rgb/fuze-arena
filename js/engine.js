@@ -3,7 +3,7 @@
 //  plus tard sur le serveur pour que personne ne puisse tricher.
 // =====================================================================
 import {
-  SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, ERA, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
+  SHOP_DAILY, PVP, THRONE, AUTO, ALT_XP_MULT, LEVEL_KEYS, SPECIAL_RESET, ERA, DAILY_LOGIN, LEVEL_FIXES, CLASSES, SPELLS, SPELL_LIST, ITEMS, ITEM_LIST, RARITIES, STAT_KEYS, SLOT_ORDER, SETS,
   MAX_LEVEL, POINTS_PER_LEVEL, WINS_PER_COMBAT_CHEST, CHEST_INTERVAL_MS, CHEST_MAX, CHEST_ODDS, MAX_ACTIVE_SPELLS, CHEST_LUCK, OPEN_MAX,
   CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID, REMATCH_CLAT,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP, AUCTION,
@@ -1205,6 +1205,33 @@ export function fuse(hero, itemId, rarity) {
  * être fusionnés (2 Communs → 1 Peu commun, et s'il y en avait déjà un → 1 Rare…).
  * Renvoie { fusions, made } : le nombre de fusions et les objets obtenus à la fin (ceux qui n'ont pas été refusionnés).
  */
+/**
+ * Meilleur équipement : pour chaque emplacement, l'objet qui donne le plus de puissance au héros.
+ * Plusieurs passes, pour profiter des bonus de panoplie (2, 3 ou 5 pièces). Renvoie { equipped, gain }.
+ */
+export function bestGear(hero) {
+  const power = (eq) => powerScore(snapshot({ ...hero, equipped: eq }));
+  const bySlot = {}, seen = new Set();
+  for (const it of hero.inventory) {   // un exemplaire par objet et rareté suffit
+    const k = it.itemId + ':' + it.rarity;
+    if (seen.has(k) || !ITEMS[it.itemId]) continue;
+    seen.add(k);
+    (bySlot[ITEMS[it.itemId].slot] ||= []).push(it);
+  }
+  const start = power(hero.equipped);
+  let eq = { ...hero.equipped }, best = start;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const slot of SLOT_ORDER) for (const it of bySlot[slot] || []) {
+      if (eq[slot] === it.uid) continue;
+      const tryEq = { ...eq, [slot]: it.uid }, p = power(tryEq);
+      if (p > best) { best = p; eq = tryEq; changed = true; }
+    }
+    if (!changed) break;
+  }
+  return { equipped: eq, gain: best - start };
+}
+
 export function fuseAll(hero) {
   const created = [];
   for (let r = 0; r < RARITIES.length - 1; r++) {
@@ -2087,6 +2114,11 @@ export function claimGift(acc, gift, hero = null) {
   acc.gifts ||= {};
   if (acc.gifts[gift.id]) return 0;
   acc.gifts[gift.id] = true;
+  return giveReward(acc, gift, hero);
+}
+
+/** Donne une récompense (Flouze, coffres, titre) ; les coffres normaux vont au perso actif */
+function giveReward(acc, gift, hero = null) {
   acc.clat += gift.amount || 0;
   acc.combatChests += gift.combatChests || 0;   // cadeau en coffres de combat
   acc.warChests = (acc.warChests || 0) + (gift.warChests || 0);   // coffres de guerre
@@ -2099,6 +2131,25 @@ export function claimGift(acc, gift, hero = null) {
     acc.cosmetics.title = gift.title;
   }
   return (gift.title ? 1 : 0) + (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
+}
+
+// ------------------------------ Récompense de connexion ------------------------------
+/** Où en est la série : { claimed (déjà pris aujourd'hui), idx (récompense du jour, 0 à 6), streak (jours de suite déjà pris) } */
+export function loginState(acc, now = new Date()) {
+  const L = acc.login || { day: '', streak: 0 };
+  const y = new Date(now); y.setDate(y.getDate() - 1);
+  const claimed = L.day === dayKey(now);
+  const streak = claimed || L.day === dayKey(y) ? L.streak : 0;   // un jour raté : la série repart de zéro
+  return { claimed, streak, idx: (claimed ? streak - 1 : streak) % DAILY_LOGIN.length };
+}
+/** Prend la récompense du jour (une fois par jour). Renvoie { reward, idx } ou null. */
+export function claimLogin(acc, hero = null) {
+  const s = loginState(acc);
+  if (s.claimed) return null;
+  const reward = DAILY_LOGIN[s.idx];
+  acc.login = { day: dayKey(), streak: s.streak + 1 };
+  giveReward(acc, reward, hero);
+  return { reward, idx: s.idx };
 }
 
 // ------------------------------ Remise à zéro exceptionnelle ------------------------------

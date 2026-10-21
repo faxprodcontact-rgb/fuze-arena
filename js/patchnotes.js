@@ -20,6 +20,17 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2225-confort', date: '21/10/2026', time: '22h25', title: 'Récompense du jour et combats à la suite',
+    sections: [
+      { title: 'Nouveau', items: [
+        'Récompense du jour : connecte-toi chaque jour pour la récupérer. Elle grossit jusqu’au 7ᵉ jour (un coffre Épique !), mais un jour raté et la série repart du jour 1.',
+        'Sac : bouton « Équiper le meilleur ». Un seul appui et ton héros porte, sur chaque emplacement, l’objet qui lui donne le plus de puissance (panoplies comprises).',
+        'Donjons : après une victoire, la vague suivante part toute seule tant qu’il te reste des charges. Touche « Arrêter » pour garder tes charges.',
+        'Histoire : après une victoire, le combat suivant part tout seul.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2155-tour-auto', date: '21/10/2026', time: '21h55', title: 'Tour automatique et Sac plus fluide',
     sections: [
       { title: 'Nouveau', items: [

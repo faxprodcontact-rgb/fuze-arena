@@ -26,6 +26,9 @@ export const RESET_ID = '2026-10-18-maj';
 // Fuze Arena 2.0 : chaque compte en ligne repart de zéro une seule fois (il choisit un nouveau héros).
 // open : mise en ligne, l'appli affiche le compte à rebours jusqu'à start (personne n'entre avant).
 // start : ouverture à tous. Ce qui a été joué en ligne avant (trône, raid, journal, enchères, comptes d'essai) ne compte plus.
+// Récompense de connexion : une par jour. La série monte du jour 1 au jour 7 (puis recommence au jour 1) ;
+// un jour raté et elle repart du jour 1.
+export const DAILY_LOGIN = [{ chests: 2 }, { amount: 30 }, { chests: 3 }, { combatChests: 1 }, { amount: 50 }, { warChests: 1 }, { epicChests: 1 }];
 export const ERA = { id: '2.0', open: [2026, 9, 20, 17, 30], start: [2026, 9, 20, 19, 0] };   // 20/10/2026 à 19 h
 
 export const STAT_KEYS = ['vit', 'atk', 'mag', 'def', 'spd', 'lck'];

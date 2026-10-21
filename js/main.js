@@ -5,7 +5,7 @@ import {
   CLASSES, STATS, STAT_KEYS, RARITIES, ITEMS, SLOTS, SLOT_ORDER, SPELLS, FRIENDS,
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
-  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION, REMATCH_CLAT,
+  KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION, REMATCH_CLAT, DAILY_LOGIN,
 } from './data.js?v=20261021214952';
 import * as E from './engine.js?v=20261021214952';
 import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261021214952';
@@ -789,6 +789,7 @@ function viewBag() {
       : `<button class="slot empty-slot" data-act="slotPick" data-slot="${slot}"><span class="sl-ghost">${SLOT_GLYPH[slot]}</span><span class="sl-name">${SLOTS[slot].name}</span></button>`;
   };
   const power = E.powerScore(E.snapshot(hero));
+  const bestGain = hero.inventory.length ? E.bestGear(hero).gain : 0;   // le bouton « Équiper le meilleur » n'apparaît que s'il y a mieux
   const filled = Object.keys(eq).length;
   const setsOn = E.activeSets(hero).filter(a => a.bonus);
   const st = stacks();
@@ -846,6 +847,7 @@ function viewBag() {
         <span>${ico('bag')} ${hero.inventory.length}</span>
         ${setsOn.map(a => `<span class="set">${groupName(a.setId)} ${a.count}/5</span>`).join('')}
       </div>
+      ${bestGain > 0 ? `<button class="btn primary block arm2-best" data-act="bestGear">${ico('bolt')} Équiper le meilleur <span class="gain up">▲ +${fmtNum(bestGain)}</span></button>` : ''}
     </section>
     <section class="card hx bag-card ${infoCls('bag')}" data-info="bag" style="--hc:#c9a24a">
       ${secHead(ico('bag'), 'Sac', `${hero.inventory.length} objet${hero.inventory.length > 1 ? 's' : ''}${countFusable() ? ` · <b class="fuse-hint">${countFusable()} fusion${countFusable() > 1 ? 's' : ''} possible${countFusable() > 1 ? 's' : ''}</b>` : ''}`)}
@@ -1863,6 +1865,22 @@ const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.
   g.warChests ? `${g.warChests} coffre${g.warChests > 1 ? 's' : ''} de guerre` : '',
   g.title && COSMETIC[g.title] ? `le titre « ${COSMETIC[g.title].name} »` : '',
   g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : ''].filter(Boolean).join(' + ');
+// ------------------------------ Récompense de connexion ------------------------------
+const loginIcon = (g) => g.amount ? '<canvas class="px" data-clat></canvas>'
+  : `<canvas class="px" data-chest="${g.combatChests ? 'combat' : g.warChests ? 'war' : g.epicChests ? 'epic' : 'normal'}"></canvas>`;
+/** La fenêtre du jour : les 7 jours de la série, celui d'aujourd'hui en avant */
+function openLogin() {
+  const s = E.loginState(acc);
+  openModal(`
+    <h3>${ico('star')} Récompense du jour</h3>
+    <p class="hint" style="margin-top:4px">Connecte-toi chaque jour : la récompense grossit jusqu’au 7ᵉ jour. Un jour raté et la série repart du jour 1.</p>
+    <div class="login-days">${DAILY_LOGIN.map((g, i) => `
+      <div class="ld ${i < s.idx ? 'got' : ''} ${i === s.idx ? 'now' : ''} ${i === DAILY_LOGIN.length - 1 ? 'big' : ''}">
+        <small>Jour ${i + 1}</small>${loginIcon(g)}<b>${giftLabel(g)}</b>${i < s.idx ? `<i>${ico('check')}</i>` : ''}
+      </div>`).join('')}</div>
+    <button class="btn primary block" data-act="claimLogin">Récupérer : ${giftLabel(DAILY_LOGIN[s.idx])}</button>`, { center: true });
+}
+
 function openPatchNotes() {
   try { localStorage.setItem(PATCH_SEEN, myNotes()[0].id); } catch (e) { /* stockage indisponible */ }
   const b = document.getElementById('patch-badge');
@@ -2355,11 +2373,12 @@ function startStoryFight(g) {
         if (ns.fight === 0) unlock = ns.zone === 0 ? `Mode ${STORY.modes[ns.mode].name} débloqué !` : `Zone ${ns.zone + 1} débloquée : ${STORY.zones[ns.zone].name} !`;
         storySel = { hero: h.id, m: ns.mode, z: ns.zone };
       } else if (won && S2.prog > E.STORY_LAST && prevProg <= E.STORY_LAST) unlock = 'Tu as fini toute l’histoire. Légende !';
-      const next = won && g + 1 <= E.STORY_LAST && g + 1 <= S2.prog ? () => { render(); openStoryFight(g + 1); } : null;
+      const next = won && g + 1 <= E.STORY_LAST && g + 1 <= S2.prog ? () => startStoryFight(g + 1) : null;
       return {
         rewards: rw,
         headline: won ? (kind === 'boss' ? 'BOSS VAINCU !' : 'VICTOIRE !') : 'DÉFAITE…',
         next, nextLabel: 'Combat suivant ›', backLabel: 'Carte',
+        auto: next && g + 1 === S2.prog ? 3000 : 0,   // un nouveau combat derrière : il part tout seul (pas pour rejouer les anciens)
         rewardsHtml: won ? `
           <div class="sr-stars">${[1, 2, 3].map(i => `<i class="${i <= rw.stars ? 'on' : ''}" style="animation-delay:${i * 0.25}s">★</i>`).join('')}</div>
           <p class="hint" style="margin:0">Il te reste ${Math.round((result.hpFrac || 0) * 100)} % de vie${rw.stars < 3 ? ` · 3 ★ à partir de ${Math.round(STORY.stars[1] * 100)} %` : ''}${rw.better && !rw.first ? ' · nouveau record d’étoiles !' : ''}</p>
@@ -3862,9 +3881,12 @@ function startDungeon(id) {
       const rw = E.dungeonRewards(h, d, won, won ? last : i);
       if (won) { E.missionEvent(acc, 'dungeon_win'); E.missionEvent(acc, 'dungeon_kinds', 1, d.id); }
       save();
+      const left = E.runsLeft(h, d);
       return {
         rewards: rw,
         headline: won ? 'DONJON TERMINÉ !' : 'DÉFAITE…',
+        // victoire et encore des charges : la vague suivante part toute seule (« Arrêter » pour garder ses charges)
+        ...(won && left > 0 && hero === h ? { next: () => startDungeon(d.id), nextLabel: 'Vague suivante ›', backLabel: 'Arrêter', auto: 3000 } : {}),
         rewardsHtml: `${waveBar(i, won)}
           <div class="rw">${xpPills(rw)}</div>
           ${rw.key ? `
@@ -3996,6 +4018,13 @@ const ACTIONS = {
   pvpCancel: async (d) => { try { await NET.answerChallenge(+d.id, { status: 'cancelled' }); } catch (e) { toast(e.message); } await refreshBets(); softRender(); },
   pvpWatch: (d) => { const c = pvpRows.find(x => String(x.id) === String(d.id)); closeModal(); if (c) watchPvp(c); },
   pvpVs: (d) => { const c = pvpRows.find(x => String(x.id) === String(d.id)); if (c) openPvpVs(c, c.status === 'pending' && c.to_id === myId()); },
+  claimLogin: () => {
+    const got = E.claimLogin(acc, hero);
+    closeModal();
+    if (!got) return;
+    SFX.loot(got.idx === DAILY_LOGIN.length - 1 ? 3 : 1); save(); render();
+    toast(`Jour ${got.idx + 1} : +${giftLabel(got.reward)} !`);
+  },
   claimGift: (d) => {
     const n = myNotes().find(x => x.gift && x.gift.id === d.id);
     const got = n ? E.claimGift(acc, n.gift, hero) : 0;
@@ -4220,6 +4249,14 @@ const ACTIONS = {
     save(); closeModal(); render(); toast(`${ITEMS[d.id].name} équipé !`);
   },
   slotPick: (d) => openSlotPicker(d.slot),
+  bestGear: () => {
+    const { equipped, gain } = E.bestGear(hero);
+    if (gain <= 0) { toast('Tu portes déjà ton meilleur équipement !'); return; }
+    hero.equipped = equipped;
+    E.missionEvent(acc, 'equip');
+    SFX.loot(3); save(); render();
+    toast(`Meilleur équipement porté : +${fmtNum(gain)} de puissance !`);
+  },
   unequip: (d) => { delete hero.equipped[d.slot]; save(); closeModal(); render(); },
   fuse: (d) => {
     const anim = document.getElementById('fuse-anim');
@@ -4522,6 +4559,8 @@ setInterval(() => {
   if (!hero) return;
   // 19 h : le compte d'essai du propriétaire repart de zéro comme tout le monde
   if (NET.online && !eraReload && !E.isEra(acc)) { eraReload = true; NET.flush().then(() => location.reload()); return; }
+  // récompense du jour : la fenêtre s'ouvre dès que l'écran est libre (pas en combat, pas d'autre fenêtre)
+  if (!E.loginState(acc).claimed && !modalRoot.innerHTML && !document.querySelector('.battle')) { openLogin(); return; }
   autoTick();
   if (E.applySpecialReset(acc)) { save(); softRender(); toast('Remise à zéro spéciale de 20 h : tout est rechargé !'); return; }
   const before = hero.chest.stored;

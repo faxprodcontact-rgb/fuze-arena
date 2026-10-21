@@ -2357,3 +2357,21 @@ body:has(#modal-root .modal-bg) #app * { animation-play-state: paused !important
 .fuse-list .it { box-shadow: inset 0 0 0 2px var(--rc) !important; animation: none !important; }
 .fuse-list .it::after { display: none !important; }
 .fl-more { text-align: center; margin: 4px 0 0; }
+
+/* Bouton « Équiper le meilleur » sous l'armurerie */
+.arm2-best { position: relative; z-index: 2; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.arm2-best .ico { width: 20px; height: 20px; }
+.arm2-best .gain { font-size: 13px; }
+
+/* Récompense de connexion : les 7 jours de la série */
+.login-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+.login-days .ld { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 2px rgba(255,255,255,.08); text-align: center; }
+.login-days .ld.big { grid-column: span 2; }
+.login-days .ld small { font-size: 10.5px; color: var(--muted); font-weight: 800; }
+.login-days .ld canvas { width: 34px; height: 34px; object-fit: contain; }
+.login-days .ld b { font-size: 10.5px; line-height: 1.15; }
+.login-days .ld.got { opacity: .5; }
+.login-days .ld.got i { position: absolute; top: 4px; right: 4px; }
+.login-days .ld.got i .ico { width: 14px; height: 14px; }
+.login-days .ld.now { background: linear-gradient(180deg, rgba(255,212,90,.25), rgba(255,154,61,.1)); box-shadow: inset 0 0 0 2px #ffd45a, 0 0 16px rgba(255,212,90,.35); }
+.login-days .ld.now small { color: #ffd45a; }
