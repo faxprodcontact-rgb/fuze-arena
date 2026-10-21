@@ -124,6 +124,7 @@ function hydrate(root = document) {
 }
 
 function render() {
+  renderOnClose = false;
   stopPreviews.forEach(f => f());
   stopPreviews = [];
   if (!acc) { if (rebirth) renderRebirth(); else if (NET.online) renderAuth(); else renderCreate(); return; }
@@ -3625,7 +3626,12 @@ function openModal(html, { center = false } = {}) {
   modalRoot.innerHTML = `<div class="modal-bg ${center ? 'mid' : ''}" data-act="bgClose"><div class="modal ${center ? 'center' : ''}">${html}</div></div>`;
   hydrate(modalRoot);
 }
-function closeModal() { if (spellDemoStop) { spellDemoStop(); spellDemoStop = null; } modalRoot.innerHTML = ''; }
+let renderOnClose = false;   // une page à redessiner dès que la fenêtre se ferme (après « Tout fusionner »)
+function closeModal() {
+  if (spellDemoStop) { spellDemoStop(); spellDemoStop = null; }
+  modalRoot.innerHTML = '';
+  if (renderOnClose) setTimeout(() => { if (renderOnClose) { renderOnClose = false; softRender(); } }, 0);   // sauf si la page vient d'être redessinée
+}
 
 function toast(text) {
   const root = document.getElementById('toast-root');
@@ -4308,9 +4314,9 @@ const ACTIONS = {
   },
   fuseAll: (d) => {
     // d'abord, on montre ce que ça va donner (sur une copie du sac), puis on confirme
-    const preview = E.fuseAll(JSON.parse(JSON.stringify(hero)));
-    if (!preview.fusions) return;
     if (!d.sure) {
+      const preview = E.fuseAll(JSON.parse(JSON.stringify(hero)));
+      if (!preview.fusions) return;
       openModal(`
         <h3>${ico('sparkle')} Tout fusionner ?</h3>
         <p class="hint" style="margin-top:8px"><b>${preview.fusions} fusion${preview.fusions > 1 ? 's' : ''}</b> en chaîne : les objets obtenus sont refusionnés tant que c’est possible. Ton équipement reste équipé (avec sa nouvelle rareté).</p>
@@ -4319,17 +4325,18 @@ const ACTIONS = {
       return;
     }
     const res = E.fuseAll(hero);
+    if (!res.fusions) { closeModal(); return; }
     E.missionEvent(acc, 'fuse', res.fusions);
     SFX.fuse();
     save();
     const best = Math.max(...res.made.map(it => it.rarity));
-    // le résultat s'affiche tout de suite ; le sac se redessine derrière juste après
+    // le résultat s'affiche tout de suite ; le sac se redessinera à la fermeture de la fenêtre
     openModal(`
       <h3>${ico('sparkle')} ${res.fusions} fusion${res.fusions > 1 ? 's' : ''} réussie${res.fusions > 1 ? 's' : ''} !</h3>
       <div class="fuse-list">${fuseSummary(res.made)}</div>
       <div class="close-row"><button class="btn primary" data-act="closeModal">Super</button></div>`);
     SFX.loot(best);
-    setTimeout(render, 60);
+    renderOnClose = true;   // le sac (caché derrière la fenêtre) se redessine quand on la ferme : rien de lourd pendant que le résultat s'affiche
   },
   fight: (d) => startFight(d.id),
   friendly: (d) => startFriendly(d.id),

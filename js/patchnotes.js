@@ -20,6 +20,14 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-21-2250-fusion', date: '21/10/2026', time: '22h50', title: 'Fusion sans lag',
+    sections: [
+      { title: 'Correctif', items: [
+        '« Tout fusionner » : plus de lag au moment d’appuyer sur « Fusionner ». Le résultat s’affiche tout de suite, et le Sac se met à jour quand tu fermes la fenêtre.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2245-x3', date: '21/10/2026', time: '22h45', title: 'Combats en x3 et Sac encore plus fluide',
     sections: [
       { title: 'Nouveau', items: [
