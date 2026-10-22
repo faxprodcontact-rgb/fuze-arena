@@ -89,3 +89,5 @@ garde les outils qui génèrent les dessins (`refonte/outils/*.cjs`) et les simu
 - Site de test (hors ligne, avec des bots) : `sh refonte/publier-test.sh` →
   https://faxprodcontact-rgb.github.io/fuze-arena-test/ ; `essai.html?pseudo=X#avant=30` y rejoue la mise
   en ligne avec un faux serveur (`refonte/essai/fakenet.js`).
+- Le site de test héberge aussi la version web du jeu AVA (autre projet, dépôt `AVA`, fait avec Godot) dans
+  `ava/` : https://faxprodcontact-rgb.github.io/fuze-arena-test/ava/ . `publier-test.sh` garde ce dossier.

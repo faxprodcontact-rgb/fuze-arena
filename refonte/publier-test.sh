@@ -29,6 +29,10 @@ printf '{"v":"%s"}\n' "$V" > version.json
 sed "s/__V__/$V/g" "$SRC/refonte/essai/fakenet.js" > fakenet.js
 sed "s#<script type=\"module\"#<script type=\"importmap\">{\"imports\":{\"./js/net.js?v=$V\":\"./fakenet.js\"}}</script>\n<script type=\"module\"#" index.html > essai.html
 if [ "$1" = "local" ]; then echo "Jeu de test prêt dans $OUT (version $V)"; exit 0; fi
+# Le site de test héberge aussi le jeu AVA (dossier ava/, publié à part) : on le reprend, sinon le push l'effacerait
+git clone -q --depth 1 https://github.com/faxprodcontact-rgb/fuze-arena-test.git "$OUT/.ancien"
+if [ -d "$OUT/.ancien/ava" ]; then mv "$OUT/.ancien/ava" "$OUT/ava"; fi
+rm -rf "$OUT/.ancien"
 git init -q -b main
 git add -A
 git commit -q -m "Jeu de test de la refonte ($V)"
