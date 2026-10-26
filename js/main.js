@@ -6,16 +6,16 @@ import {
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION, REMATCH_CLAT, DAILY_LOGIN,
-} from './data.js?v=20261021235012';
-import * as E from './engine.js?v=20261021235012';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261021235012';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt, prepareSkin } from './sprites.js?v=20261021235012';
-import { hashStr, makeRng } from './rng.js?v=20261021235012';
-import { APP_VERSION } from './version.js?v=20261021235012';
-import { PATCH_NOTES } from './patchnotes.js?v=20261021235012';
-import * as NET from './net.js?v=20261021235012';
-import * as AUC from './encheres.js?v=20261021235012';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261021235012';
+} from './data.js?v=20261026170744';
+import * as E from './engine.js?v=20261026170744';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261026170744';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt, prepareSkin } from './sprites.js?v=20261026170744';
+import { hashStr, makeRng } from './rng.js?v=20261026170744';
+import { APP_VERSION } from './version.js?v=20261026170744';
+import { PATCH_NOTES } from './patchnotes.js?v=20261026170744';
+import * as NET from './net.js?v=20261026170744';
+import * as AUC from './encheres.js?v=20261026170744';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261026170744';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.

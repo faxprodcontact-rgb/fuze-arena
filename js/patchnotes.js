@@ -20,6 +20,20 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-10-26-1705-cadeau', date: '26/10/2026', time: '17h05', title: 'Un cadeau pour tout le monde',
+    gift: { id: 'cadeau-tous-10-legendaires-2026-10-26', amount: 300, legendaryChests: 10, text: 'Merci d’être là et de faire vivre Fuze Arena ! Voici 10 coffres Légendaires et 300 Flouze, juste pour te faire plaisir. Les objets vont à ton perso actif quand tu ouvres les coffres.' },
+    sections: [
+      { title: 'Un petit mot', items: [
+        'Merci à toutes et à tous de jouer à Fuze Arena. Que tu sois en haut du classement ou que tu viennes de commencer, ça fait vraiment plaisir de vous voir dans l’arène chaque jour.',
+        'Prends soin de toi, amuse-toi bien, et à très vite pour de nouveaux combats !',
+      ] },
+      { title: 'Cadeau', items: [
+        '10 coffres Légendaires (99 % d’objets Légendaires, 1 % de chance d’un Mythique) et 300 Flouze pour tout le monde.',
+        'Tes coffres t’attendent dans l’onglet Coffres : les objets vont à ton perso actif au moment où tu les ouvres.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-21-2355-formation-terrain', date: '21/10/2026', time: '23h55', title: 'Formation sur le terrain',
     sections: [
       { title: 'Amélioration', items: [
