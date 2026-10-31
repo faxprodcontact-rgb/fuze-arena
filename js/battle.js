@@ -1,9 +1,9 @@
 // =====================================================================
 //  ÉCRAN DE COMBAT — rejoue le combat calculé avec des animations 2D
 // =====================================================================
-import { CLASSES, COSMETIC, ELEMENTS } from './data.js?v=20261101001025';
-import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261101001025';
-import { SFX, SFX as SFX_ON, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261101001025';
+import { CLASSES, COSMETIC, ELEMENTS } from './data.js?v=20261101003126';
+import { heroCanvas, weaponCanvas, weaponPivot, petCanvas, monsterCanvas, whiteOf, shade, lw, lh, HAND, handOf, IDLE_ANGLE, HERO_W, HERO_H } from './sprites.js?v=20261101003126';
+import { SFX, SFX as SFX_ON, setQuiet, startMusic, stopMusic } from './sfx.js?v=20261101003126';
 
 
 const S = 3;                      // taille d'un pixel de sprite

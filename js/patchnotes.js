@@ -1,7 +1,8 @@
 // =====================================================================
 //  NOTES DE MISE À JOUR — la plus récente en premier.
 //  Pour une nouvelle mise à jour : ajouter une entrée tout en haut de la liste.
-//  gift = cadeau à récupérer une seule fois par compte (amount = Flouze, chests = coffres normaux pour le perso actif, combatChests = coffres de combat).
+//  gift = cadeau à récupérer une seule fois par compte (amount = Flouze, chests = coffres normaux pour le perso actif, combatChests = coffres de combat,
+//  legendaryChests = coffres Légendaires, items: [{ rarity }] = objet au hasard de cette rareté pour le perso actif).
 //  for = liste de pseudos : la note (et son cadeau) n'est visible que par ces comptes.
 //  Fuze Arena 2.0 : les anciennes notes ont été retirées, tout le monde repart de zéro.
 // =====================================================================
@@ -19,6 +20,16 @@ const RANK_GIFTS = [
 ];
 
 export const PATCH_NOTES = [
+  {
+    id: '2026-11-01-0025-chaotique', date: '01/11/2026', time: '00h25', title: 'Un objet Chaotique pour tout le monde',
+    gift: { id: 'objet-chaotique-hasard-2026-11-01', items: [{ rarity: 6 }], text: 'Un objet Chaotique tiré au hasard, rien que pour toi ! Choisis bien ton perso actif avant de le récupérer : c’est lui qui le reçoit dans son Sac.' },
+    sections: [
+      { title: 'Cadeau', items: [
+        'Tout le monde reçoit 1 objet Chaotique, la plus haute rareté du jeu, tiré au hasard parmi tous les objets et familiers.',
+        'Il va dans le Sac de ton perso actif au moment où tu le récupères.',
+      ] },
+    ],
+  },
   {
     id: '2026-11-01-0010-bisou', date: '01/11/2026', time: '00h10', title: 'Bisou',
     gift: { id: 'bisou-30-legendaires-2026-11-01', legendaryChests: 30, text: 'Bisou !' },

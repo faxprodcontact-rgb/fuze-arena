@@ -37,8 +37,11 @@ Un changement qui ne touche pas au jeu (comme ce fichier) n'a pas besoin de nouv
 
 ## Cadeaux (dans `js/patchnotes.js`)
 
-`gift: { id, amount, chests, combatChests, text }`
-- `amount` = Flouze ; `chests` = coffres normaux pour le perso actif ; `combatChests` = coffres de combat.
+`gift: { id, amount, chests, combatChests, warChests, epicChests, legendaryChests, items, title, text }`
+- `amount` = Flouze ; `chests` = coffres normaux pour le perso actif ; `combatChests` = coffres de combat ;
+  `warChests` / `epicChests` / `legendaryChests` = coffres de guerre / Épiques / Légendaires (le Légendaire est le plus fort).
+- `items: [{ rarity: 6 }]` = un objet au hasard de cette rareté (6 = Chaotique) ; `{ itemId, rarity }` = un objet précis.
+  Les objets vont dans le Sac du perso actif et sont révélés comme à l'ouverture d'un coffre.
 - `id` doit être unique et jamais réutilisé : chaque compte ne peut récupérer un cadeau qu'une fois.
 - `for: ['Pseudo']` sur la note = visible seulement par ces comptes (comparaison sans tenir
   compte des majuscules). Un cadeau « rien qu'à lui » doit TOUJOURS avoir `for`.

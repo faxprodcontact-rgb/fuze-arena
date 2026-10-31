@@ -8,8 +8,8 @@ import {
   CHAMP, STORY, RECHARGE, SET_TIERS, FUSE_NEED, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, WAR, FRIENDS, PETS, PET_EVERY, PET_AFFINITY, KEY_PRICE, SELL_PRICE, STAT_RESET_COST, RESET_ID, REMATCH_CLAT,
   ITEM_CRIT, ITEM_DODGE, CRIT_CAP, DODGE_CAP, AUCTION,
   XP_CATCHUP, XP_CURVE, TOWER, RAID, RAID_BOSSES, DUNGEONS, MISSION_POOL, MISSIONS_PER_DAY, MISSIONS_BONUS, COSMETIC,
-} from './data.js?v=20261101001025';
-import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261101001025';
+} from './data.js?v=20261101003126';
+import { makeRng, hashStr, pickWeighted } from './rng.js?v=20261101003126';
 
 // ----------------------------- Progression -----------------------------
 // XP pour passer un niveau : +2 % de plus à chaque niveau (exponentiel), la montée ralentit petit à petit jusqu'au niveau 100
@@ -2131,8 +2131,8 @@ export function claimGift(acc, gift, hero = null) {
   return giveReward(acc, gift, hero);
 }
 
-/** Donne une récompense (Flouze, coffres, titre) ; les coffres normaux vont au perso actif */
-function giveReward(acc, gift, hero = null) {
+/** Donne une récompense (Flouze, coffres, objets, titre) ; les coffres normaux et les objets vont au perso actif */
+function giveReward(acc, gift, hero = null, rng = Math.random) {
   acc.clat += gift.amount || 0;
   acc.combatChests += gift.combatChests || 0;   // cadeau en coffres de combat
   acc.warChests = (acc.warChests || 0) + (gift.warChests || 0);   // coffres de guerre
@@ -2140,11 +2140,13 @@ function giveReward(acc, gift, hero = null) {
   acc.legendaryChests = (acc.legendaryChests || 0) + (gift.legendaryChests || 0);   // coffres Légendaires
   const h = hero || acc.heroes[0];
   if (gift.chests) { refreshChests(h); h.chest.stored += gift.chests; }   // coffres normaux : pour le perso actif
+  // objets offerts : { rarity } = un objet au hasard de cette rareté, { itemId, rarity } = cet objet précis
+  for (const it of gift.items || []) addItem(h, it.itemId || ITEM_LIST[Math.floor(rng() * ITEM_LIST.length)].id, it.rarity);
   if (gift.title && COSMETIC[gift.title]) {   // titre offert : porté tout de suite
     if (!acc.cosmetics.owned.includes(gift.title)) acc.cosmetics.owned.push(gift.title);
     acc.cosmetics.title = gift.title;
   }
-  return (gift.title ? 1 : 0) + (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0);
+  return (gift.title ? 1 : 0) + (gift.amount || 0) + (gift.combatChests || 0) + (gift.warChests || 0) + (gift.chests || 0) + (gift.epicChests || 0) + (gift.legendaryChests || 0) + (gift.items || []).length;
 }
 
 // ------------------------------ Récompense de connexion ------------------------------

@@ -6,16 +6,16 @@ import {
   CHEST_MAX, CHEST_ODDS, OPEN_MAX, MAX_ACTIVE_SPELLS, WINS_PER_COMBAT_CHEST, MAX_LEVEL,
   THRONE, AUTO, DUNGEONS, DUNGEON_RUNS, DUNGEON_KEYS_MAX, DUNGEON_SKIP_KEEP, HORDE, SETS, WAR, COSMETICS, COSMETIC, RAID, TOWER, MISSIONS_BONUS,
   KEY_PRICE, SHOP_DAILY, CHAMP, STORY, RECHARGE, SET_TIERS, PVP, SELL_PRICE, STAT_RESET_COST, PETS, PET_EVERY, ITEM_LIST, AUCTION, REMATCH_CLAT, DAILY_LOGIN,
-} from './data.js?v=20261101001025';
-import * as E from './engine.js?v=20261101001025';
-import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261101001025';
-import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt, prepareSkin } from './sprites.js?v=20261101001025';
-import { hashStr, makeRng } from './rng.js?v=20261101001025';
-import { APP_VERSION } from './version.js?v=20261101001025';
-import { PATCH_NOTES } from './patchnotes.js?v=20261101001025';
-import * as NET from './net.js?v=20261101001025';
-import * as AUC from './encheres.js?v=20261101001025';
-import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261101001025';
+} from './data.js?v=20261101003126';
+import * as E from './engine.js?v=20261101003126';
+import { playBattle, playTraining, idlePreview, playSkirmish, dollPreview, playMelee, loadDecorArt } from './battle.js?v=20261101003126';
+import { itemIcon, chestCanvas, paint, heroPortrait, monsterCanvas, clatCanvas, keyCanvas, spellIcon, modeEmblem, uiIcon, loadHeroArt, loadMonsterArt, loadIconArt, loadItemArt, prepareSkin } from './sprites.js?v=20261101003126';
+import { hashStr, makeRng } from './rng.js?v=20261101003126';
+import { APP_VERSION } from './version.js?v=20261101003126';
+import { PATCH_NOTES } from './patchnotes.js?v=20261101003126';
+import * as NET from './net.js?v=20261101003126';
+import * as AUC from './encheres.js?v=20261101003126';
+import { SFX, unlock as unlockSound, getPref, setPref, startMusic, stopMusic } from './sfx.js?v=20261101003126';
 
 // ------------------------------ Sauvegarde ------------------------------
 // Hors ligne : sauvegarde dans le téléphone. En ligne : sur le serveur.
@@ -1875,11 +1875,19 @@ function maybeShowGift() {
   giftShown = true;
   setTimeout(() => { if (!modalRoot.innerHTML && !document.querySelector('.battle')) openPatchNotes(); }, 700);
 }
-/** Ce que contient un cadeau (Flouze et/ou coffres de combat) */
+/** Objets d'un cadeau : « Stick Chaotique » pour un objet précis, « 1 objet Chaotique au hasard » sinon */
+const giftItemsLabel = (items = []) => {
+  const out = items.filter(it => it.itemId).map(it => `${ITEMS[it.itemId].name} ${RARITIES[it.rarity].name}`), rnd = {};
+  for (const it of items) if (!it.itemId) rnd[it.rarity] = (rnd[it.rarity] || 0) + 1;
+  for (const [r, n] of Object.entries(rnd)) out.push(`${n} objet${n > 1 ? 's' : ''} ${RARITIES[r].name}${n > 1 ? 's' : ''} au hasard`);
+  return out;
+};
+/** Ce que contient un cadeau (Flouze, coffres, objets, titre) */
 const giftLabel = (g) => [g.amount ? `${g.amount} Flouze` : '', g.chests ? `${g.chests} coffre${g.chests > 1 ? 's' : ''}` : '', g.combatChests ? `${g.combatChests} coffre${g.combatChests > 1 ? 's' : ''} de combat` : '',
   g.warChests ? `${g.warChests} coffre${g.warChests > 1 ? 's' : ''} de guerre` : '',
   g.title && COSMETIC[g.title] ? `le titre « ${COSMETIC[g.title].name} »` : '',
-  g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : ''].filter(Boolean).join(' + ');
+  g.epicChests ? `${g.epicChests} coffre${g.epicChests > 1 ? 's' : ''} Épique${g.epicChests > 1 ? 's' : ''}` : '', g.legendaryChests ? `${g.legendaryChests} coffre${g.legendaryChests > 1 ? 's' : ''} Légendaire${g.legendaryChests > 1 ? 's' : ''}` : '',
+  ...giftItemsLabel(g.items)].filter(Boolean).join(' + ');
 // ------------------------------ Récompense de connexion ------------------------------
 const loginIcon = (g) => g.amount ? '<canvas class="px" data-clat></canvas>'
   : `<canvas class="px" data-chest="${g.combatChests ? 'combat' : g.warChests ? 'war' : g.epicChests ? 'epic' : 'normal'}"></canvas>`;
@@ -3749,6 +3757,42 @@ function announce(lv) {
 // ------------------------------ Ouverture de coffre ------------------------------
 /** Couleur de la lumière du coffre selon la rareté (Légendaire en jaune) */
 const CHEST_RAY = { 4: '#ffd23a' };
+/** Les cartes des objets sortis d'un coffre (ou d'un cadeau) */
+const lootCards = (items) => `
+      <div class="loot ${items.length > 4 ? 'many' : ''}">
+        ${items.map((it, i) => `
+          <div class="loot-card" style="--rc:${RARITIES[it.rarity].color};animation-delay:${Math.min(i * 0.18, 2)}s">
+            <canvas class="px" data-icon="${it.itemId}"></canvas>
+            <div class="ln">${esc(ITEMS[it.itemId].name)}</div>
+            ${ITEMS[it.itemId].set ? `<div class="ls">${SETS[ITEMS[it.itemId].set].name}</div>` : ''}
+            <div class="rar" style="color:${RARITIES[it.rarity].color}">${RARITIES[it.rarity].name}</div>
+          </div>`).join('')}
+      </div>`;
+/** Objets offerts par un cadeau : le coffre cadeau tremble, s'ouvre et les révèle */
+function giftLootFlow(items) {
+  SFX.chest();
+  openModal(`
+    <div class="open-stage ${items.length > 4 ? 'many' : ''}">
+      <h3>Cadeau !</h3>
+      <div class="rays" id="chest-wrap"><canvas class="px chest-big shake" id="chest-cv" data-chest="war"></canvas></div>
+      <div id="loot"></div>
+    </div>`, { center: true });
+  const cv = document.getElementById('chest-cv'), wrap = document.getElementById('chest-wrap');
+  const best = Math.max(...items.map(it => it.rarity));
+  wrap.style.setProperty('--ray', CHEST_RAY[best] || RARITIES[best].color);
+  setTimeout(() => wrap.classList.add('tease'), 380);
+  setTimeout(() => {
+    paint(cv, chestCanvas('war', true), { scale: 6 });
+    cv.classList.remove('shake'); cv.classList.add('burst');
+    wrap.classList.remove('tease'); wrap.classList.add('lit');
+    SFX.loot(best);
+    document.getElementById('loot').innerHTML = `
+      ${lootCards(items)}
+      <p class="loot-xp">Rangé dans le Sac de ton ${CLASSES[hero.classId].name}</p>
+      <div class="close-row"><button class="btn primary" data-act="closeAndRender">Super !</button></div>`;
+    hydrate(document.getElementById('loot'));
+  }, 900);
+}
 function openChestFlow(kind, all = false) {
   const res = all ? E.openAllChests(acc, hero) : E.openChest(acc, hero, kind);
   if (!res) return;
@@ -3778,15 +3822,7 @@ function openChestFlow(kind, all = false) {
     if (best > 0) { wrap.classList.remove('tease'); wrap.classList.add('lit'); }
     SFX.loot(best);
     document.getElementById('loot').innerHTML = `
-      <div class="loot ${res.items.length > 4 ? 'many' : ''}">
-        ${res.items.map((it, i) => `
-          <div class="loot-card" style="--rc:${RARITIES[it.rarity].color};animation-delay:${Math.min(i * 0.18, 2)}s">
-            <canvas class="px" data-icon="${it.itemId}"></canvas>
-            <div class="ln">${esc(ITEMS[it.itemId].name)}</div>
-            ${ITEMS[it.itemId].set ? `<div class="ls">${SETS[ITEMS[it.itemId].set].name}</div>` : ''}
-            <div class="rar" style="color:${RARITIES[it.rarity].color}">${RARITIES[it.rarity].name}</div>
-          </div>`).join('')}
-      </div>
+      ${lootCards(res.items)}
       <p class="loot-xp">+${res.xp} XP${all && E.openableChests(hero) > 0 ? ` · encore ${E.openableChests(hero)} coffre${E.openableChests(hero) > 1 ? 's' : ''} à ouvrir` : ''}</p>
       ${res.items.some(it => E.stackOf(hero, it.itemId, it.rarity).length >= E.fuseNeed(it.rarity) && it.rarity < RARITIES.length - 1) ? '<p style="color:#c58bff;font-weight:800;margin:6px 0 0">✦ Une fusion est possible !</p>' : ''}
       <div class="close-row"><button class="btn primary" data-act="closeAndRender">Super !</button></div>`;
@@ -4162,9 +4198,12 @@ const ACTIONS = {
   },
   claimGift: (d) => {
     const n = myNotes().find(x => x.gift && x.gift.id === d.id);
+    const before = hero.inventory.length;
     const got = n ? E.claimGift(acc, n.gift, hero) : 0;
     if (!got) return;
-    SFX.loot(4); save(); render(); openPatchNotes();
+    const items = hero.inventory.slice(before);   // objets offerts : révélés comme à l'ouverture d'un coffre
+    save(); render();
+    if (items.length) giftLootFlow(items); else { SFX.loot(4); openPatchNotes(); }
     toast(`+${giftLabel(n.gift)}, cadeau !`);
   },
   playerCard: (d) => openPlayerCard(d.id, d.h !== undefined ? +d.h : null),
