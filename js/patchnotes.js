@@ -20,6 +20,16 @@ const RANK_GIFTS = [
 
 export const PATCH_NOTES = [
   {
+    id: '2026-11-01-0010-bisou', date: '01/11/2026', time: '00h10', title: 'Bisou',
+    gift: { id: 'bisou-30-legendaires-2026-11-01', legendaryChests: 30, text: 'Bisou !' },
+    sections: [
+      { title: 'Cadeau', items: [
+        '30 coffres Légendaires pour tout le monde. Bisou !',
+        'Tes coffres t’attendent dans l’onglet Coffres : les objets vont à ton perso actif au moment où tu les ouvres.',
+      ] },
+    ],
+  },
+  {
     id: '2026-10-26-1705-cadeau', date: '26/10/2026', time: '17h05', title: 'Un cadeau pour tout le monde',
     gift: { id: 'cadeau-tous-10-legendaires-2026-10-26', amount: 300, legendaryChests: 10, text: 'Merci d’être là et de faire vivre Fuze Arena ! Voici 10 coffres Légendaires et 300 Flouze, juste pour te faire plaisir. Les objets vont à ton perso actif quand tu ouvres les coffres.' },
     sections: [
