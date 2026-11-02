@@ -32,6 +32,8 @@ if [ "$1" = "local" ]; then echo "Jeu de test prêt dans $OUT (version $V)"; exi
 # Le site de test héberge aussi le jeu AVA (dossier ava/, publié à part) : on le reprend, sinon le push l'effacerait
 git clone -q --depth 1 https://github.com/faxprodcontact-rgb/fuze-arena-test.git "$OUT/.ancien"
 if [ -d "$OUT/.ancien/ava" ]; then mv "$OUT/.ancien/ava" "$OUT/ava"; fi
+# (et ses fichiers à la racine : ava-serveur.json, ses pages de règles ava-confidentialite.html, ava-conditions.html…)
+for f in "$OUT"/.ancien/ava-*; do [ -e "$f" ] && mv "$f" "$OUT/"; done
 rm -rf "$OUT/.ancien"
 git init -q -b main
 git add -A
