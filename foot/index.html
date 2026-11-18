@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Équipes Foot en Salle</title>
+<meta name="description" content="Faire deux équipes équilibrées pour le foot en salle (5 contre 5).">
+<meta name="theme-color" content="#fdf6e3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Équipes Foot">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papier:#fdf6e3; --ligne:#eadfc4; --encre:#2b2b2b; --blanc:#fffdf7;
+  --orange:#ff922b; --orange-clair:#ffe0c2; --bleu:#4dabf7; --bleu-clair:#d3ebff;
+  --att:#ff6b6b; --def:#4dabf7; --car:#51cf66;
+  --herbe:#5fb646; --herbe2:#55a83e;
+  --titre:'Luckiest Guy', 'Comic Sans MS', cursive;
+  --texte:'Patrick Hand', 'Comic Sans MS', cursive;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background-color:var(--papier);
+  background-image:linear-gradient(var(--ligne) 1px, transparent 1px);
+  background-size:100% 28px;
+  color:var(--encre); font-family:var(--texte); font-size:19px; line-height:1.25;
+  padding-bottom:110px; -webkit-tap-highlight-color:transparent;
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+
+/* ---------- En-tête ---------- */
+header{padding:18px 0 6px;text-align:center}
+h1{font-family:var(--titre);font-weight:400;font-size:clamp(30px,7vw,46px);margin:0;letter-spacing:1px;
+  transform:rotate(-1.5deg);text-shadow:3px 3px 0 var(--orange)}
+h1 .ballon{display:inline-block;animation:rebond 1.6s ease-in-out infinite}
+@keyframes rebond{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(180deg)}}
+.sous-titre{margin:6px 0 0;font-size:20px;opacity:.8}
+
+.onglets{display:flex;gap:10px;justify-content:center;margin:16px 0 10px}
+.onglet{border:3px solid var(--encre);background:var(--blanc);border-radius:14px;padding:6px 18px;
+  font-size:21px;box-shadow:3px 3px 0 var(--encre);transition:transform .1s}
+.onglet[aria-selected="true"]{background:var(--encre);color:var(--blanc)}
+.onglet:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--encre)}
+
+/* ---------- Boutons ---------- */
+.btn{border:3px solid var(--encre);background:var(--blanc);border-radius:14px;padding:8px 16px;
+  box-shadow:4px 4px 0 var(--encre);font-size:20px;display:inline-flex;align-items:center;gap:8px;
+  transition:transform .1s, box-shadow .1s}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--encre)}
+.btn.orange{background:var(--orange)}
+.btn.bleu{background:var(--bleu)}
+.btn.vert{background:#8ce99a}
+.btn.rouge{background:#ffa8a8}
+.btn.petit{font-size:17px;padding:4px 12px;box-shadow:3px 3px 0 var(--encre)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- Barre d'outils ---------- */
+.outils{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:8px 0 16px}
+.outils .gauche{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.compteur{font-size:19px;background:var(--blanc);border:2px dashed var(--encre);border-radius:10px;padding:3px 10px}
+select.tri{border:3px solid var(--encre);border-radius:12px;background:var(--blanc);padding:5px 8px;font-size:18px}
+
+/* ---------- Cartes joueurs ---------- */
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+@media (max-width:420px){.grille{grid-template-columns:repeat(2,1fr);gap:12px}}
+.carte{position:relative;background:var(--blanc);border:3px solid var(--encre);border-radius:18px;
+  box-shadow:5px 5px 0 var(--encre);padding:10px 10px 12px;text-align:center;cursor:pointer;
+  transition:transform .15s, opacity .2s, filter .2s}
+.carte:nth-child(odd){transform:rotate(-1deg)}
+.carte:nth-child(even){transform:rotate(1deg)}
+.carte:hover{transform:rotate(0) translateY(-3px)}
+.carte.absent{opacity:.55;filter:grayscale(1)}
+.carte.absent .bonhomme{transform:rotate(-8deg)}
+.carte .bonhomme{width:96px;height:125px;display:block;margin:4px auto 0;transition:transform .2s}
+.carte .nom{font-size:21px;margin:4px 0 0;line-height:1.05;word-break:break-word}
+.carte .nom small{display:block;font-size:17px;opacity:.75}
+.presence{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;font-size:15px;
+  background:#d3f9d8;border:2px solid var(--encre);border-radius:10px;padding:1px 7px 1px 3px;z-index:2;user-select:none}
+.presence input{width:20px;height:20px;margin:0;accent-color:#2f9e44;cursor:pointer}
+.carte.absent .presence{background:#ffe3e3}
+.note-badge{position:absolute;top:6px;right:8px;font-family:var(--titre);font-size:24px;line-height:1;
+  background:var(--encre);color:var(--blanc);border-radius:10px;padding:5px 7px 2px}
+.postes{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0 4px;min-height:24px}
+.poste{font-size:15px;border:2px solid var(--encre);border-radius:8px;padding:0 6px;background:#fff3bf}
+.poste.G{background:#e5dbff}.poste.D{background:var(--bleu-clair)}.poste.M{background:#d3f9d8}.poste.A{background:#ffe3e3}
+.stats{display:grid;gap:3px;margin-top:6px}
+.stat{display:grid;grid-template-columns:34px 1fr 26px;align-items:center;gap:5px;font-size:15px;text-align:left}
+.barre{height:10px;border:2px solid var(--encre);border-radius:6px;background:#fff;overflow:hidden}
+.barre i{display:block;height:100%}
+
+.vide{text-align:center;padding:30px 10px;border:3px dashed var(--encre);border-radius:20px;background:var(--blanc)}
+.vide svg{width:110px;height:140px}
+.vide p{font-size:22px;margin:8px 0 16px}
+
+/* ---------- Barre du bas ---------- */
+.barre-bas{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent, var(--papier) 30%);display:flex;justify-content:center;z-index:20;pointer-events:none}
+.barre-bas .btn{pointer-events:auto;font-family:var(--titre);font-size:clamp(18px,5.4vw,23px);white-space:nowrap;padding:12px 22px 8px;letter-spacing:.5px}
+
+/* ---------- Fenêtre (créer / modifier) ---------- */
+.fond{position:fixed;inset:0;background:rgba(43,43,43,.45);display:none;align-items:flex-start;justify-content:center;
+  z-index:50;overflow-y:auto;padding:20px 12px}
+.fond.ouvert{display:flex}
+.fenetre{background:var(--blanc);border:3px solid var(--encre);border-radius:22px;box-shadow:6px 6px 0 var(--encre);
+  width:100%;max-width:480px;padding:18px;animation:pop .2s ease-out}
+@keyframes pop{from{transform:scale(.9) rotate(-2deg);opacity:0}to{transform:none;opacity:1}}
+.fenetre h2{font-family:var(--titre);font-weight:400;margin:0 0 10px;font-size:28px;text-align:center}
+.apercu{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:6px}
+.apercu svg{width:100px;height:130px}
+.look{display:grid;gap:6px}
+.champs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.champs label{display:grid;gap:2px;font-size:17px}
+.champs input{border:3px solid var(--encre);border-radius:12px;padding:6px 10px;background:#fff;font-size:20px;width:100%}
+.curseur{display:grid;grid-template-columns:90px 1fr 46px;align-items:center;gap:8px;margin:8px 0}
+.curseur span.val{font-family:var(--titre);font-size:22px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--encre);height:28px}
+.curseur.att input{accent-color:var(--att)} .curseur.def input{accent-color:var(--def)} .curseur.car input{accent-color:#2f9e44}
+.note-base{text-align:center;margin:8px 0;font-size:20px}
+.note-base b{font-family:var(--titre);font-weight:400;font-size:34px;display:inline-block;background:var(--encre);color:var(--blanc);
+  border-radius:12px;padding:6px 12px 0;margin-left:6px;transform:rotate(-3deg)}
+.choix-postes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 14px}
+.choix-postes button{border:3px solid var(--encre);border-radius:12px;background:#fff;padding:4px 12px;font-size:18px}
+.choix-postes button[aria-pressed="true"]{background:#ffd43b;box-shadow:3px 3px 0 var(--encre)}
+.actions{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.erreur{color:#c92a2a;text-align:center;min-height:22px;font-size:17px}
+
+/* ---------- Équipes ---------- */
+.resume{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:14px}
+.equipe-tete{border:3px solid var(--encre);border-radius:16px;padding:8px 10px;box-shadow:4px 4px 0 var(--encre);text-align:center}
+.equipe-tete.orange{background:var(--orange-clair)}
+.equipe-tete.bleu{background:var(--bleu-clair)}
+.equipe-tete h3{font-family:var(--titre);font-weight:400;margin:0;font-size:22px}
+.equipe-tete .moy{font-family:var(--titre);font-size:30px;line-height:1.1}
+.equipe-tete .detail{font-size:15px}
+.ecart{align-self:center;text-align:center;font-size:16px;background:var(--blanc);border:2px dashed var(--encre);border-radius:12px;padding:6px 8px}
+.ecart b{display:block;font-family:var(--titre);font-weight:400;font-size:24px}
+.disposition{display:grid;grid-template-columns:minmax(0,560px);justify-content:center;gap:14px}
+@media (min-width:900px){.disposition{grid-template-columns:240px minmax(0,460px) 240px;align-items:start}}
+.terrain-cadre{border:3px solid var(--encre);border-radius:20px;box-shadow:6px 6px 0 var(--encre);overflow:hidden;background:var(--herbe)}
+.terrain{display:block;width:100%;height:auto}
+.terrain .joueur{cursor:pointer}
+.terrain .joueur.arrive{animation:arrive .45s cubic-bezier(.3,1.5,.6,1) backwards}
+@keyframes arrive{from{opacity:0;transform:translateY(-14px) scale(.6)}to{opacity:1;transform:none}}
+.terrain .joueur{transform-box:fill-box;transform-origin:center}
+.terrain .joueur.choisi .etiquette{fill:#ffd43b}
+.liste-equipe{border:3px solid var(--encre);border-radius:16px;background:var(--blanc);padding:10px 12px;box-shadow:4px 4px 0 var(--encre)}
+.liste-equipe.orange{border-top:10px solid var(--orange)} .liste-equipe.bleu{border-top:10px solid var(--bleu)}
+.liste-equipe h4{margin:0 0 6px;font-family:var(--titre);font-weight:400;font-size:20px}
+.liste-equipe ul{list-style:none;margin:0;padding:0}
+.liste-equipe li{display:flex;justify-content:space-between;gap:6px;padding:3px 4px;border-bottom:2px dotted var(--ligne);border-radius:6px;cursor:pointer}
+.liste-equipe li.choisi{background:#ffd43b}
+.liste-equipe li .n{font-family:var(--titre);font-size:17px}
+.liste-equipe .banc-titre{margin-top:8px;font-size:17px;opacity:.75}
+.astuce{text-align:center;font-size:17px;opacity:.8;margin:12px 0 4px}
+.actions-equipes{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:16px 0 8px}
+.alerte{background:#fff3bf;border:2px dashed var(--encre);border-radius:12px;padding:8px 12px;margin:0 0 12px;text-align:center;font-size:17px}
+
+footer{text-align:center;margin:40px 0 0;font-size:17px;opacity:.85}
+footer button{background:none;border:none;text-decoration:underline;font-size:17px;padding:2px 4px}
+
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:var(--encre);color:var(--blanc);
+  padding:8px 18px;border-radius:14px;font-size:20px;opacity:0;transition:.25s;z-index:60;pointer-events:none;white-space:nowrap}
+.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="ballon">⚽</span> Les Équipes du Five</h1>
+    <p class="sous-titre">Foot en salle · 5 contre 5 · équipes équilibrées</p>
+    <nav class="onglets" role="tablist">
+      <button class="onglet" role="tab" id="tab-joueurs" aria-selected="true">👕 Joueurs</button>
+      <button class="onglet" role="tab" id="tab-equipes" aria-selected="false">🏟️ Équipes</button>
+    </nav>
+  </header>
+
+  <!-- ===== Écran joueurs ===== -->
+  <main id="ecran-joueurs">
+    <div class="outils">
+      <div class="gauche">
+        <button class="btn vert" id="btn-nouveau">➕ Nouveau joueur</button>
+        <span class="compteur" id="compteur"></span>
+      </div>
+      <div class="gauche">
+        <button class="btn petit" id="btn-tous">✔ Tout le monde là</button>
+        <select class="tri" id="tri" aria-label="Trier">
+          <option value="note">Trier : meilleure note</option>
+          <option value="nom">Trier : prénom</option>
+          <option value="presence">Trier : présents d'abord</option>
+        </select>
+      </div>
+    </div>
+    <div class="grille" id="grille"></div>
+    <div class="vide" id="vide" hidden>
+      <div id="vide-dessin"></div>
+      <p>Aucun joueur pour l'instant.<br>Crée ton premier joueur !</p>
+      <button class="btn vert" id="btn-nouveau2">➕ Créer un joueur</button>
+      <p style="font-size:17px;margin-top:18px">ou <button class="btn petit" id="btn-exemple">🎲 Essayer avec 12 joueurs exemples</button></p>
+    </div>
+  </main>
+
+  <!-- ===== Écran équipes ===== -->
+  <section id="ecran-equipes" hidden>
+    <div id="equipes-contenu"></div>
+  </section>
+
+  <footer>
+    Les joueurs sont gardés sur ce téléphone.<br>
+    💾 <button id="btn-exporter">Sauvegarder dans un fichier</button> ·
+    <button id="btn-importer">Charger un fichier</button> ·
+    <button id="btn-effacer">Tout effacer</button>
+    <input type="file" id="fichier" accept="application/json,.json" hidden>
+  </footer>
+</div>
+
+<div class="barre-bas" id="barre-bas">
+  <button class="btn orange" id="btn-generer">🎲 Faire les équipes</button>
+</div>
+
+<!-- ===== Fenêtre joueur ===== -->
+<div class="fond" id="fond">
+  <form class="fenetre" id="formulaire" autocomplete="off">
+    <h2 id="form-titre">Nouveau joueur</h2>
+    <div class="apercu">
+      <div id="apercu-dessin"></div>
+      <div class="look">
+        <button type="button" class="btn petit" data-look="peau">🎨 Peau</button>
+        <button type="button" class="btn petit" data-look="coupe">💇 Coupe</button>
+        <button type="button" class="btn petit" data-look="couleur">🖌️ Cheveux</button>
+      </div>
+    </div>
+    <div class="champs">
+      <label>Prénom<input id="f-prenom" maxlength="20" required></label>
+      <label>Nom<input id="f-nom" maxlength="20"></label>
+    </div>
+    <div class="curseur att"><span>⚡ Attaque</span><input type="range" id="f-att" min="0" max="100" value="50"><span class="val" id="v-att">50</span></div>
+    <div class="curseur def"><span>🛡️ Défense</span><input type="range" id="f-def" min="0" max="100" value="50"><span class="val" id="v-def">50</span></div>
+    <div class="curseur car"><span>❤️ Cardio</span><input type="range" id="f-car" min="0" max="100" value="50"><span class="val" id="v-car">50</span></div>
+    <div class="note-base">Note de base (moyenne) <b id="f-note">50</b></div>
+    <div style="text-align:center;font-size:17px">Postes joués (un ou plusieurs) :</div>
+    <div class="choix-postes" id="f-postes"></div>
+    <div class="erreur" id="f-erreur"></div>
+    <div class="actions">
+      <button type="button" class="btn rouge" id="f-supprimer">🗑️ Supprimer</button>
+      <span style="display:flex;gap:10px;margin-left:auto">
+        <button type="button" class="btn" id="f-annuler">Annuler</button>
+        <button type="submit" class="btn vert">✔ Enregistrer</button>
+      </span>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================== Réglages ================== */
+const CLE = 'equipes-foot-v1';
+const POSTES = [
+  { id: 'G', nom: 'Gardien',   court: 'GB',  icone: '🧤' },
+  { id: 'D', nom: 'Défenseur', court: 'DÉF', icone: '🛡️' },
+  { id: 'M', nom: 'Milieu',    court: 'MIL', icone: '⚙️', pluriel: 'Milieux' },
+  { id: 'A', nom: 'Attaquant', court: 'ATT', icone: '⚡' },
+];
+const PEAUX = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5c3a1e'];
+const COUPES = ['court', 'pics', 'boucles', 'long', 'crete', 'chauve'];
+const COULEURS = ['#2b1d0e', '#6b4423', '#e0b04a', '#b5451b', '#1a1a1a', '#9e9e9e'];
+const EQUIPES = {
+  A: { nom: 'Orange', maillot: '#ff922b', emoji: '🟠', classe: 'orange' },
+  B: { nom: 'Bleue',  maillot: '#4dabf7', emoji: '🔵', classe: 'bleu' },
+};
+const TITULAIRES = 5;
+
+/* ================== Données ================== */
+let etat = { joueurs: [], tirage: null, tri: 'note' };
+function charger() {
+  try {
+    const brut = localStorage.getItem(CLE);
+    if (brut) etat = Object.assign(etat, JSON.parse(brut));
+  } catch (e) { /* stockage indisponible : on continue sans */ }
+}
+function sauver() {
+  try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) {}
+}
+const note = j => Math.round((j.att + j.def + j.car) / 3);
+const trouver = id => etat.joueurs.find(j => j.id === id);
+const hasard = n => Math.floor(Math.random() * n);
+const echap = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nomCourt = j => j.prenom + (j.nom ? ' ' + j.nom[0].toUpperCase() + '.' : '');
+const nomComplet = j => j.prenom + (j.nom ? ' ' + j.nom : '');
+const $ = id => document.getElementById(id);
+
+/* ================== Le petit bonhomme ================== */
+function couleurNote(n) {
+  if (n >= 80) return '#ffd43b';   // or
+  if (n >= 65) return '#dee2e6';   // argent
+  return '#f0b27a';                // bronze
+}
+function cheveux(style, c) {
+  const s = `fill="${c}" stroke="#2b2b2b" stroke-width="2.5" stroke-linejoin="round"`;
+  switch (style) {
+    case 'court': return `<path ${s} d="M33,33 Q32,14 50,14 Q68,14 67,33 Q63,23 50,23 Q38,23 33,33Z"/>`;
+    case 'pics': return `<path ${s} d="M33,31 L34,15 L41,21 L45,10 L51,19 L57,9 L60,20 L67,14 L67,31 Q61,22 50,22 Q40,22 33,31Z"/>`;
+    case 'boucles': return `<g ${s}><circle cx="36" cy="25" r="7"/><circle cx="44" cy="18" r="8"/><circle cx="54" cy="17" r="8"/><circle cx="63" cy="23" r="7"/></g>`;
+    case 'long': return `<path ${s} d="M31,50 Q28,12 50,13 Q72,12 69,50 Q64,44 65,30 Q58,22 50,22 Q42,22 35,30 Q36,44 31,50Z"/>`;
+    case 'crete': return `<path ${s} d="M45,22 Q42,6 50,4 Q58,6 55,22Z"/>`;
+    default: return `<path d="M40,22 Q45,19 50,20" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7" stroke-linecap="round"/>`;
+  }
+}
+function bonhomme(j, maillot, texte) {
+  const peau = j.peau || PEAUX[0];
+  const t = texte === undefined ? '' : echap(texte);
+  return `<svg class="bonhomme" viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <g stroke="#2b2b2b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="38" y="96" width="9" height="20" rx="3" fill="${peau}"/>
+    <rect x="53" y="96" width="9" height="20" rx="3" fill="${peau}"/>
+    <rect x="37" y="105" width="11" height="10" rx="2" fill="${maillot}"/>
+    <rect x="52" y="105" width="11" height="10" rx="2" fill="${maillot}"/>
+    <ellipse cx="41" cy="120" rx="9" ry="5" fill="#2b2b2b"/>
+    <ellipse cx="59" cy="120" rx="9" ry="5" fill="#2b2b2b"/>
+    <path d="M31,84 L69,84 L71,101 L53,101 L50,94 L47,101 L29,101Z" fill="#34405a"/>
+    <circle cx="21" cy="78" r="5.5" fill="${peau}"/>
+    <circle cx="79" cy="78" r="5.5" fill="${peau}"/>
+    <path d="M34,50 Q50,57 66,50 L83,61 L77,75 L68,71 L68,89 L32,89 L32,71 L23,75 L17,61Z" fill="${maillot}"/>
+    <path d="M42,52 Q50,61 58,52" fill="none"/>
+    <circle cx="33" cy="37" r="4" fill="${peau}"/>
+    <circle cx="67" cy="37" r="4" fill="${peau}"/>
+    <circle cx="50" cy="35" r="17" fill="${peau}"/>
+  </g>
+  ${cheveux(j.coupe, j.cheveux || COULEURS[0])}
+  <circle cx="44" cy="36" r="2.4" fill="#2b2b2b"/><circle cx="56" cy="36" r="2.4" fill="#2b2b2b"/>
+  <circle cx="40" cy="42" r="3" fill="#ff8787" opacity=".45"/><circle cx="60" cy="42" r="3" fill="#ff8787" opacity=".45"/>
+  <path d="M44,43 Q50,48 56,43" fill="none" stroke="#2b2b2b" stroke-width="2.5" stroke-linecap="round"/>
+  ${t ? `<text x="50" y="82" text-anchor="middle" font-family="Luckiest Guy, Comic Sans MS, cursive" font-size="17" fill="#2b2b2b">${t}</text>` : ''}
+</svg>`;
+}
+
+/* ================== Écran joueurs ================== */
+function rendreJoueurs() {
+  const liste = [...etat.joueurs];
+  if (etat.tri === 'nom') liste.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'));
+  else if (etat.tri === 'presence') liste.sort((a, b) => (a.absent - b.absent) || note(b) - note(a));
+  else liste.sort((a, b) => note(b) - note(a));
+  $('tri').value = etat.tri;
+
+  const presents = etat.joueurs.filter(j => !j.absent).length;
+  $('compteur').textContent = `${etat.joueurs.length} joueur${etat.joueurs.length > 1 ? 's' : ''} · ${presents} présent${presents > 1 ? 's' : ''}`;
+  $('vide').hidden = etat.joueurs.length > 0;
+  $('btn-tous').hidden = etat.joueurs.length === 0;
+  $('btn-generer').textContent = `🎲 Faire les équipes (${presents})`;
+  $('btn-generer').disabled = presents < 2;
+
+  $('grille').innerHTML = liste.map(j => {
+    const n = note(j);
+    const postes = j.postes.length
+      ? j.postes.map(p => { const P = POSTES.find(x => x.id === p); return `<span class="poste ${p}">${P.icone} ${P.court}</span>`; }).join('')
+      : '<span class="poste" style="background:#fff">Tous postes</span>';
+    const barre = (lib, v, c) => `<div class="stat"><span>${lib}</span><span class="barre"><i style="width:${v}%;background:${c}"></i></span><span>${v}</span></div>`;
+    return `<article class="carte ${j.absent ? 'absent' : ''}" data-id="${j.id}">
+      <label class="presence" onclick="event.stopPropagation()"><input type="checkbox" data-presence="${j.id}" ${j.absent ? '' : 'checked'}> ${j.absent ? 'Absent' : 'Là'}</label>
+      <span class="note-badge">${n}</span>
+      ${bonhomme(j, couleurNote(n), n)}
+      <p class="nom">${echap(j.prenom)}<small>${echap(j.nom || '')}</small></p>
+      <div class="postes">${postes}</div>
+      <div class="stats">${barre('ATT', j.att, 'var(--att)')}${barre('DÉF', j.def, 'var(--def)')}${barre('CAR', j.car, 'var(--car)')}</div>
+    </article>`;
+  }).join('');
+}
+
+/* ================== Formulaire ================== */
+let brouillon = null;
+function ouvrirFormulaire(id) {
+  const j = id ? trouver(id) : null;
+  brouillon = j ? JSON.parse(JSON.stringify(j)) : {
+    id: null, prenom: '', nom: '', att: 50, def: 50, car: 50, postes: [],
+    peau: PEAUX[hasard(PEAUX.length)], coupe: COUPES[hasard(COUPES.length)], cheveux: COULEURS[hasard(COULEURS.length)], absent: false,
+  };
+  $('form-titre').textContent = j ? 'Modifier le joueur' : 'Nouveau joueur';
+  $('f-prenom').value = brouillon.prenom;
+  $('f-nom').value = brouillon.nom;
+  $('f-att').value = brouillon.att; $('f-def').value = brouillon.def; $('f-car').value = brouillon.car;
+  $('f-supprimer').hidden = !j;
+  $('f-erreur').textContent = '';
+  majFormulaire();
+  $('fond').classList.add('ouvert');
+  if (!j) setTimeout(() => $('f-prenom').focus(), 50);
+}
+function fermerFormulaire() { $('fond').classList.remove('ouvert'); brouillon = null; }
+function majFormulaire() {
+  brouillon.att = +$('f-att').value; brouillon.def = +$('f-def').value; brouillon.car = +$('f-car').value;
+  $('v-att').textContent = brouillon.att; $('v-def').textContent = brouillon.def; $('v-car').textContent = brouillon.car;
+  const n = note(brouillon);
+  $('f-note').textContent = n;
+  $('apercu-dessin').innerHTML = bonhomme(brouillon, couleurNote(n), n);
+  $('f-postes').innerHTML = POSTES.map(p =>
+    `<button type="button" data-poste="${p.id}" aria-pressed="${brouillon.postes.includes(p.id)}">${p.icone} ${p.nom}</button>`).join('');
+}
+function suivant(liste, v) { return liste[(liste.indexOf(v) + 1) % liste.length]; }
+
+/* ================== Fabrication des équipes ================== */
+function moyenne(eq, f) { return eq.length ? eq.reduce((s, j) => s + f(j), 0) / eq.length : 0; }
+function compte(eq, p) { return eq.filter(j => j.postes.includes(p)).length; }
+
+// Plus le « coût » est petit, plus les deux équipes se valent.
+function cout(A, B, totaux) {
+  let c = Math.abs(moyenne(A, note) - moyenne(B, note)) * 2;
+  c += 0.5 * (Math.abs(moyenne(A, j => j.att) - moyenne(B, j => j.att))
+            + Math.abs(moyenne(A, j => j.def) - moyenne(B, j => j.def))
+            + Math.abs(moyenne(A, j => j.car) - moyenne(B, j => j.car)));
+  // Un gardien de chaque côté si on en a au moins deux
+  if (totaux.G >= 2 && (compte(A, 'G') === 0 || compte(B, 'G') === 0)) c += 30;
+  // Les défenseurs, milieux et attaquants répartis des deux côtés
+  for (const p of ['D', 'M', 'A']) {
+    if (totaux[p] >= 2 && (compte(A, p) === 0 || compte(B, p) === 0)) c += 6;
+    c += Math.abs(compte(A, p) - compte(B, p)) * 0.8;
+  }
+  return c;
+}
+function melanger(t) { for (let i = t.length - 1; i > 0; i--) { const k = hasard(i + 1); [t[i], t[k]] = [t[k], t[i]]; } return t; }
+function fabriquerEquipes(joueurs, ancien) {
+  const totaux = {}; POSTES.forEach(p => totaux[p.id] = compte(joueurs, p.id));
+  const tailleA = Math.ceil(joueurs.length / 2);
+  const vus = new Map();
+  for (let essai = 0; essai < 250; essai++) {
+    const t = melanger([...joueurs]);
+    let A = t.slice(0, tailleA), B = t.slice(tailleA);
+    let c = cout(A, B, totaux), mieux = true;
+    while (mieux) {                       // on échange des joueurs tant que ça équilibre mieux
+      mieux = false;
+      for (let i = 0; i < A.length && !mieux; i++) for (let k = 0; k < B.length && !mieux; k++) {
+        [A[i], B[k]] = [B[k], A[i]];
+        const c2 = cout(A, B, totaux);
+        if (c2 < c - 1e-9) { c = c2; mieux = true; } else [A[i], B[k]] = [B[k], A[i]];
+      }
+    }
+    const cle = [A.map(j => j.id).sort().join(','), B.map(j => j.id).sort().join(',')].sort().join('|');
+    if (!vus.has(cle)) vus.set(cle, { A: [...A], B: [...B], c, cle });
+  }
+  const sol = [...vus.values()].sort((x, y) => x.c - y.c);
+  const meilleur = sol[0].c;
+  let bons = sol.filter(s => s.c <= meilleur + 1.2).slice(0, 25);   // un peu de hasard parmi les meilleurs
+  if (ancien && bons.length > 1) bons = bons.filter(s => s.cle !== ancien);
+  const choix = bons[hasard(bons.length)];
+  if (Math.random() < 0.5) [choix.A, choix.B] = [choix.B, choix.A];
+  return { A: choix.A.map(j => j.id), B: choix.B.map(j => j.id), cle: choix.cle };
+}
+
+/* ================== Placement sur le terrain (losange 1-1-2-1) ================== */
+const PLACES = [
+  { id: 'G', poste: 'G', x: 160, y: 640 },
+  { id: 'D', poste: 'D', x: 160, y: 552 },
+  { id: 'A', poste: 'A', x: 160, y: 400 },
+  { id: 'MG', poste: 'M', x: 70, y: 470 },
+  { id: 'MD', poste: 'M', x: 250, y: 470 },
+];
+function aptitude(j, place) {
+  const stat = { G: j.def * 0.8 + j.car * 0.2, D: j.def, M: j.car * 0.5 + j.att * 0.25 + j.def * 0.25, A: j.att }[place.poste];
+  let bonus = 0;
+  if (j.postes.includes(place.poste)) bonus += 40;
+  else if (j.postes.length) bonus -= 10;
+  if (place.poste === 'G' && !j.postes.includes('G')) bonus -= 25;
+  if (place.poste !== 'G' && j.postes.length === 1 && j.postes[0] === 'G') bonus -= 40;
+  return bonus + stat * 0.3;
+}
+function placer(eq) {
+  const k = Math.min(TITULAIRES, eq.length);
+  const places = PLACES.slice(0, k);
+  let meilleur = -Infinity, choix = null;
+  if (eq.length <= 9) {
+    const pris = new Array(eq.length).fill(false), actuel = [];
+    (function chercher(i, total) {
+      if (i === k) { if (total > meilleur) { meilleur = total; choix = [...actuel]; } return; }
+      for (let p = 0; p < eq.length; p++) if (!pris[p]) {
+        pris[p] = true; actuel.push(p);
+        chercher(i + 1, total + aptitude(eq[p], places[i]));
+        pris[p] = false; actuel.pop();
+      }
+    })(0, 0);
+  } else {                                   // très grosse équipe : on place un par un
+    const libres = eq.map((_, i) => i); choix = [];
+    for (const pl of places) {
+      libres.sort((a, b) => aptitude(eq[b], pl) - aptitude(eq[a], pl));
+      choix.push(libres.shift());
+    }
+  }
+  const titulaires = choix.map((p, i) => ({ j: eq[p], place: places[i] }));
+  const banc = eq.filter((_, i) => !choix.includes(i)).sort((a, b) => note(b) - note(a));
+  return { titulaires, banc };
+}
+
+/* ================== Écran équipes ================== */
+let selection = null;   // pour échanger deux joueurs à la main
+let animer = false;     // les joueurs arrivent sur le terrain après un tirage
+function equipesActuelles() {
+  if (!etat.tirage) return null;
+  const A = etat.tirage.A.map(trouver).filter(Boolean);
+  const B = etat.tirage.B.map(trouver).filter(Boolean);
+  return A.length + B.length ? { A, B } : null;
+}
+function rendreEquipes() {
+  const zone = $('equipes-contenu');
+  const eq = equipesActuelles();
+  if (!eq) {
+    zone.innerHTML = `<div class="vide">${bonhomme({ peau: PEAUX[1], coupe: 'pics', cheveux: COULEURS[0] }, EQUIPES.A.maillot, '?')}
+      <p>Pas encore d'équipes.<br>Coche les joueurs présents puis appuie sur « Faire les équipes ».</p>
+      <button class="btn orange" id="btn-generer2">🎲 Faire les équipes</button></div>`;
+    $('btn-generer2').onclick = generer;
+    return;
+  }
+  const pA = placer(eq.A), pB = placer(eq.B);
+  const mA = moyenne(eq.A, note), mB = moyenne(eq.B, note);
+  const detail = e => `ATT ${Math.round(moyenne(e, j => j.att))} · DÉF ${Math.round(moyenne(e, j => j.def))} · CAR ${Math.round(moyenne(e, j => j.car))}`;
+  const total = eq.A.length + eq.B.length;
+  let alerte = '';
+  if (total > 14) alerte = `<div class="alerte">⚠️ ${total} joueurs présents : ça fait plus de 2 remplaçants par équipe.</div>`;
+  else if (total < 10) alerte = `<div class="alerte">ℹ️ ${total} joueurs présents : il manque du monde pour un vrai 5 contre 5.</div>`;
+
+  zone.innerHTML = `
+    ${alerte}
+    <div class="resume">
+      <div class="equipe-tete bleu"><h3>${EQUIPES.B.emoji} Bleue</h3><div class="moy">${mB.toFixed(1)}</div><div class="detail">${detail(eq.B)}</div></div>
+      <div class="ecart">Écart<b>${Math.abs(mA - mB).toFixed(1)}</b>${Math.abs(mA - mB) < 1.5 ? '👌' : '🤏'}</div>
+      <div class="equipe-tete orange"><h3>${EQUIPES.A.emoji} Orange</h3><div class="moy">${mA.toFixed(1)}</div><div class="detail">${detail(eq.A)}</div></div>
+    </div>
+    <div class="actions-equipes">
+      <button class="btn orange" id="btn-copier">📋 Copier les équipes</button>
+      ${navigator.share ? '<button class="btn bleu" id="btn-partager">📤 Envoyer</button>' : ''}
+      <button class="btn" id="btn-retirer">🔀 Autre tirage</button>
+    </div>
+    <div class="disposition">
+      ${listeEquipe('B', pB)}
+      <div class="terrain-cadre">${terrain(pA, pB)}</div>
+      ${listeEquipe('A', pA)}
+    </div>
+    <p class="astuce">👆 Touche un joueur puis un joueur de l'autre équipe pour les échanger.</p>`;
+
+  $('btn-copier').onclick = copier;
+  $('btn-retirer').onclick = generer;
+  if ($('btn-partager')) $('btn-partager').onclick = () => navigator.share({ text: texteEquipes() }).catch(() => {});
+  zone.querySelectorAll('[data-joueur]').forEach(el => el.onclick = () => toucherJoueur(el.dataset.joueur));
+}
+function listeEquipe(cote, p) {
+  const E = EQUIPES[cote];
+  const ligne = (j, lib) => `<li data-joueur="${j.id}" class="${selection === j.id ? 'choisi' : ''}"><span>${lib} ${echap(nomComplet(j))}</span><span class="n">${note(j)}</span></li>`;
+  const icone = pl => POSTES.find(x => x.id === pl.poste).icone;
+  return `<div class="liste-equipe ${E.classe}">
+    <h4>${E.emoji} Équipe ${E.nom}</h4>
+    <ul>${p.titulaires.map(t => ligne(t.j, icone(t.place))).join('')}</ul>
+    ${p.banc.length ? `<div class="banc-titre">🪑 Remplaçant${p.banc.length > 1 ? 's' : ''}</div><ul>${p.banc.map(j => ligne(j, '🔄')).join('')}</ul>` : ''}
+  </div>`;
+}
+function terrain(pA, pB) {
+  const W = 320, H = 700, haut = 14, bas = H - 14, prof = 104;
+  let bandes = '';
+  for (let i = 0; i < 8; i++) bandes += `<rect x="0" y="${haut + i * (bas - haut) / 8}" width="${W}" height="${(bas - haut) / 16}" fill="var(--herbe2)"/>`;
+  let rang = 0;
+  const L = `stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".92"`;
+  const dessinerJoueur = (t, cote) => {
+    const E = EQUIPES[cote];
+    const x = t.place.x, y = cote === 'A' ? t.place.y : H - t.place.y;
+    const nom = echap(nomCourt(t.j));
+    const larg = Math.max(46, nom.length * 7.6 + 14);
+    const anim = animer ? ` arrive" style="animation-delay:${(rang++) * 70}ms` : '';
+    return `<g class="joueur ${selection === t.j.id ? 'choisi' : ''}${anim}" data-joueur="${t.j.id}">
+      <svg x="${x - 28}" y="${y - 40}" width="56" height="73" viewBox="0 0 100 130">${bonhomme(t.j, E.maillot, note(t.j)).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>
+      <rect class="etiquette" x="${x - larg / 2}" y="${y + 24}" width="${larg}" height="19" rx="8" fill="#fff" stroke="#2b2b2b" stroke-width="2"/>
+      <text x="${x}" y="${y + 38}" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="15" fill="#2b2b2b">${nom}</text>
+    </g>`;
+  };
+  return `<svg class="terrain" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Terrain avec les deux équipes">
+    <rect width="${W}" height="${H}" fill="var(--herbe)"/>${bandes}
+    <rect x="12" y="${haut}" width="${W - 24}" height="${bas - haut}" rx="10" ${L}/>
+    <line x1="12" y1="${H / 2}" x2="${W - 12}" y2="${H / 2}" ${L}/>
+    <circle cx="${W / 2}" cy="${H / 2}" r="42" ${L}/><circle cx="${W / 2}" cy="${H / 2}" r="4" fill="#fff"/>
+    <path d="M78,${haut} Q78,${haut + prof} ${W / 2},${haut + prof} Q${W - 78},${haut + prof} ${W - 78},${haut}" ${L}/>
+    <path d="M78,${bas} Q78,${bas - prof} ${W / 2},${bas - prof} Q${W - 78},${bas - prof} ${W - 78},${bas}" ${L}/>
+    <rect x="${W / 2 - 30}" y="${haut - 12}" width="60" height="12" fill="#fff" stroke="#2b2b2b" stroke-width="2.5"/>
+    <rect x="${W / 2 - 30}" y="${bas}" width="60" height="12" fill="#fff" stroke="#2b2b2b" stroke-width="2.5"/>
+    <text x="18" y="${H / 2 - 8}" font-family="Luckiest Guy, cursive" font-size="16" fill="${EQUIPES.B.maillot}" stroke="#2b2b2b" stroke-width=".8">BLEUE</text>
+    <text x="16" y="${H / 2 + 22}" font-family="Luckiest Guy, cursive" font-size="16" fill="${EQUIPES.A.maillot}" stroke="#2b2b2b" stroke-width=".8">ORANGE</text>
+    ${pB.titulaires.map(t => dessinerJoueur(t, 'B')).join('')}
+    ${pA.titulaires.map(t => dessinerJoueur(t, 'A')).join('')}
+  </svg>`;
+  animer = false;
+}
+function toucherJoueur(id) {
+  if (!selection) { selection = id; rendreEquipes(); return; }
+  if (selection === id) { selection = null; rendreEquipes(); return; }
+  const t = etat.tirage, a = selection;
+  const camp = x => t.A.includes(x) ? 'A' : 'B';
+  if (camp(a) === camp(id)) { selection = id; rendreEquipes(); return; }
+  for (const cote of ['A', 'B']) t[cote] = t[cote].map(x => x === a ? id : x === id ? a : x);
+  t.cle = null;
+  selection = null; sauver(); rendreEquipes();
+  toast('🔁 Joueurs échangés');
+}
+
+function generer() {
+  const presents = etat.joueurs.filter(j => !j.absent);
+  if (presents.length < 2) { toast('Il faut au moins 2 joueurs présents'); return; }
+  etat.tirage = fabriquerEquipes(presents, etat.tirage && etat.tirage.cle);
+  etat.tirage.date = Date.now();
+  selection = null; animer = true;
+  sauver();
+  montrer('equipes');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ================== Copier / partager ================== */
+function texteEquipes() {
+  const eq = equipesActuelles(); if (!eq) return '';
+  const jour = new Date(etat.tirage.date || Date.now()).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const bloc = (cote, e) => {
+    const p = placer(e), E = EQUIPES[cote];
+    const lignes = [`${E.emoji} ÉQUIPE ${E.nom.toUpperCase()} (moyenne ${moyenne(e, note).toFixed(1).replace('.', ',')})`];
+    const parPoste = { G: [], D: [], M: [], A: [] };
+    p.titulaires.forEach(t => parPoste[t.place.poste].push(nomComplet(t.j)));
+    for (const P of POSTES) if (parPoste[P.id].length) lignes.push(`${P.icone} ${parPoste[P.id].length > 1 ? (P.pluriel || P.nom + 's') : P.nom} : ${parPoste[P.id].join(', ')}`);
+    if (p.banc.length) lignes.push(`🔄 Remplaçant${p.banc.length > 1 ? 's' : ''} : ${p.banc.map(nomComplet).join(', ')}`);
+    return lignes.join('\n');
+  };
+  return `⚽ Équipes du ${jour}\n\n${bloc('A', eq.A)}\n\n${bloc('B', eq.B)}`;
+}
+function copier() {
+  const texte = texteEquipes();
+  const secours = () => {
+    const zone = document.createElement('textarea');
+    zone.value = texte; zone.style.position = 'fixed'; zone.style.opacity = '0';
+    document.body.appendChild(zone); zone.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    zone.remove();
+    toast(ok ? '📋 Copié ! Colle-le dans le groupe' : 'Impossible de copier 😕');
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texte).then(() => toast('📋 Copié ! Colle-le dans le groupe'), secours);
+  else secours();
+}
+
+/* ================== Divers ================== */
+let minuteur;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('visible');
+  clearTimeout(minuteur); minuteur = setTimeout(() => t.classList.remove('visible'), 2200);
+}
+function montrer(ecran) {
+  const eq = ecran === 'equipes';
+  $('ecran-joueurs').hidden = eq; $('ecran-equipes').hidden = !eq;
+  $('tab-joueurs').setAttribute('aria-selected', !eq); $('tab-equipes').setAttribute('aria-selected', eq);
+  $('barre-bas').hidden = eq;
+  if (eq) rendreEquipes(); else rendreJoueurs();
+}
+function exemples() {
+  const noms = [['Karim', 'Benali', 78, 55, 70, ['A']], ['Lucas', 'Martin', 52, 74, 66, ['D']], ['Yanis', 'Diallo', 85, 48, 82, ['A', 'M']],
+    ['Tom', 'Girard', 40, 80, 50, ['G']], ['Mehdi', 'Haddad', 66, 66, 75, ['M']], ['Hugo', 'Leroy', 58, 62, 55, ['D', 'M']],
+    ['Sofiane', 'Amrani', 72, 45, 60, ['A']], ['Julien', 'Petit', 35, 70, 45, ['G', 'D']], ['Noah', 'Faure', 62, 58, 88, ['M']],
+    ['Adam', 'Roux', 70, 70, 70, []], ['Enzo', 'Blanc', 48, 52, 64, ['D']], ['Ilyes', 'Moreau', 80, 60, 58, ['A', 'M']]];
+  etat.joueurs = noms.map(([prenom, nom, att, def, car, postes], i) => ({
+    id: 'j' + Date.now().toString(36) + i, prenom, nom, att, def, car, postes,
+    peau: PEAUX[i % PEAUX.length], coupe: COUPES[(i * 5) % COUPES.length], cheveux: COULEURS[(i * 7) % COULEURS.length], absent: false,
+  }));
+  sauver(); rendreJoueurs(); toast('12 joueurs ajoutés (tu peux les supprimer)');
+}
+
+/* ================== Événements ================== */
+$('tab-joueurs').onclick = () => montrer('joueurs');
+$('tab-equipes').onclick = () => montrer('equipes');
+$('btn-nouveau').onclick = $('btn-nouveau2').onclick = () => ouvrirFormulaire(null);
+$('btn-exemple').onclick = exemples;
+$('btn-generer').onclick = generer;
+$('btn-tous').onclick = () => { etat.joueurs.forEach(j => j.absent = false); sauver(); rendreJoueurs(); };
+$('tri').onchange = e => { etat.tri = e.target.value; sauver(); rendreJoueurs(); };
+
+$('grille').addEventListener('click', e => {
+  const carte = e.target.closest('.carte');
+  if (carte && !e.target.closest('.presence')) ouvrirFormulaire(carte.dataset.id);
+});
+$('grille').addEventListener('change', e => {
+  const id = e.target.dataset.presence; if (!id) return;
+  trouver(id).absent = !e.target.checked; sauver(); rendreJoueurs();
+});
+
+['f-att', 'f-def', 'f-car'].forEach(id => $(id).addEventListener('input', majFormulaire));
+$('f-postes').addEventListener('click', e => {
+  const b = e.target.closest('[data-poste]'); if (!b) return;
+  const p = b.dataset.poste, i = brouillon.postes.indexOf(p);
+  if (i >= 0) brouillon.postes.splice(i, 1); else brouillon.postes.push(p);
+  brouillon.postes.sort((a, b) => POSTES.findIndex(x => x.id === a) - POSTES.findIndex(x => x.id === b));
+  majFormulaire();
+});
+document.querySelectorAll('[data-look]').forEach(b => b.onclick = () => {
+  const l = b.dataset.look;
+  if (l === 'peau') brouillon.peau = suivant(PEAUX, brouillon.peau);
+  if (l === 'coupe') brouillon.coupe = suivant(COUPES, brouillon.coupe);
+  if (l === 'couleur') brouillon.cheveux = suivant(COULEURS, brouillon.cheveux);
+  majFormulaire();
+});
+$('formulaire').onsubmit = e => {
+  e.preventDefault();
+  const prenom = $('f-prenom').value.trim(), nom = $('f-nom').value.trim();
+  if (!prenom) { $('f-erreur').textContent = 'Il faut au moins un prénom 🙂'; return; }
+  majFormulaire();
+  Object.assign(brouillon, { prenom, nom });
+  const neuf = !brouillon.id;
+  if (brouillon.id) Object.assign(trouver(brouillon.id), brouillon);
+  else { brouillon.id = 'j' + Date.now().toString(36) + hasard(1e6).toString(36); etat.joueurs.push(brouillon); }
+  sauver(); fermerFormulaire(); rendreJoueurs();
+  toast(neuf ? `✅ ${prenom} est dans l'équipe !` : '✅ Modifié');
+};
+$('f-annuler').onclick = fermerFormulaire;
+$('fond').addEventListener('click', e => { if (e.target === $('fond')) fermerFormulaire(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerFormulaire(); });
+$('f-supprimer').onclick = () => {
+  if (!confirm(`Supprimer ${brouillon.prenom} ?`)) return;
+  etat.joueurs = etat.joueurs.filter(j => j.id !== brouillon.id);
+  sauver(); fermerFormulaire(); rendreJoueurs(); toast('🗑️ Joueur supprimé');
+};
+
+$('btn-exporter').onclick = () => {
+  const blob = new Blob([JSON.stringify({ joueurs: etat.joueurs }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'joueurs-foot.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('btn-importer').onclick = () => $('fichier').click();
+$('fichier').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => {
+    const d = JSON.parse(t);
+    if (!Array.isArray(d.joueurs)) throw new Error();
+    etat.joueurs = d.joueurs; etat.tirage = null; sauver(); montrer('joueurs'); toast(`📥 ${d.joueurs.length} joueurs chargés`);
+  }).catch(() => toast('Fichier pas reconnu 😕'));
+  e.target.value = '';
+};
+$('btn-effacer').onclick = () => {
+  if (!confirm('Effacer TOUS les joueurs ? (pense à sauvegarder avant)')) return;
+  etat.joueurs = []; etat.tirage = null; sauver(); montrer('joueurs');
+};
+
+$('vide-dessin').innerHTML = bonhomme({ peau: PEAUX[2], coupe: 'court', cheveux: COULEURS[1] }, '#8ce99a', '?');
+charger();
+montrer('joueurs');
+})();
+</script>
+</body>
+</html>
