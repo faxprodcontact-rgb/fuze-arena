@@ -240,9 +240,9 @@ footer button{background:none;border:none;text-decoration:underline;font-size:17
       <label>Prénom<input id="f-prenom" maxlength="20" required></label>
       <label>Nom<input id="f-nom" maxlength="20"></label>
     </div>
-    <div class="curseur att"><span>⚡ Attaque</span><input type="range" id="f-att" min="0" max="100" value="50"><span class="val" id="v-att">50</span></div>
-    <div class="curseur def"><span>🛡️ Défense</span><input type="range" id="f-def" min="0" max="100" value="50"><span class="val" id="v-def">50</span></div>
-    <div class="curseur car"><span>❤️ Cardio</span><input type="range" id="f-car" min="0" max="100" value="50"><span class="val" id="v-car">50</span></div>
+    <div class="curseur att"><span>⚡ Attaque</span><input type="range" id="f-att" min="70" max="95" value="80"><span class="val" id="v-att">80</span></div>
+    <div class="curseur def"><span>🛡️ Défense</span><input type="range" id="f-def" min="70" max="95" value="80"><span class="val" id="v-def">80</span></div>
+    <div class="curseur car"><span>❤️ Cardio</span><input type="range" id="f-car" min="70" max="95" value="80"><span class="val" id="v-car">80</span></div>
     <div class="note-base">Note de base (moyenne) <b id="f-note">50</b></div>
     <div style="text-align:center;font-size:17px">Postes joués (un ou plusieurs) :</div>
     <div class="choix-postes" id="f-postes"></div>
@@ -279,6 +279,9 @@ const EQUIPES = {
   B: { nom: 'Bleue',  maillot: '#4dabf7', emoji: '🔵', classe: 'bleu' },
 };
 const TITULAIRES = 5;
+const STAT_MIN = 70, STAT_MAX = 95;   // les statistiques vont de 70 à 95
+const borner = v => Math.min(STAT_MAX, Math.max(STAT_MIN, Math.round(+v) || STAT_MIN));
+const remettreDansLesBornes = j => { j.att = borner(j.att); j.def = borner(j.def); j.car = borner(j.car); return j; };
 
 /* ================== Données ================== */
 let etat = { joueurs: [], tirage: null, tri: 'note' };
@@ -286,6 +289,7 @@ function charger() {
   try {
     const brut = localStorage.getItem(CLE);
     if (brut) etat = Object.assign(etat, JSON.parse(brut));
+    etat.joueurs.forEach(remettreDansLesBornes);
   } catch (e) { /* stockage indisponible : on continue sans */ }
 }
 function sauver() {
@@ -301,8 +305,8 @@ const $ = id => document.getElementById(id);
 
 /* ================== Le petit bonhomme ================== */
 function couleurNote(n) {
-  if (n >= 80) return '#ffd43b';   // or
-  if (n >= 65) return '#dee2e6';   // argent
+  if (n >= 88) return '#ffd43b';   // or
+  if (n >= 80) return '#dee2e6';   // argent
   return '#f0b27a';                // bronze
 }
 function cheveux(style, c) {
@@ -364,7 +368,7 @@ function rendreJoueurs() {
     const postes = j.postes.length
       ? j.postes.map(p => { const P = POSTES.find(x => x.id === p); return `<span class="poste ${p}">${P.icone} ${P.court}</span>`; }).join('')
       : '<span class="poste" style="background:#fff">Tous postes</span>';
-    const barre = (lib, v, c) => `<div class="stat"><span>${lib}</span><span class="barre"><i style="width:${v}%;background:${c}"></i></span><span>${v}</span></div>`;
+    const barre = (lib, v, c) => `<div class="stat"><span>${lib}</span><span class="barre"><i style="width:${10 + (v - STAT_MIN) * 90 / (STAT_MAX - STAT_MIN)}%;background:${c}"></i></span><span>${v}</span></div>`;
     return `<article class="carte ${j.absent ? 'absent' : ''}" data-id="${j.id}">
       <label class="presence" onclick="event.stopPropagation()"><input type="checkbox" data-presence="${j.id}" ${j.absent ? '' : 'checked'}> ${j.absent ? 'Absent' : 'Là'}</label>
       <span class="note-badge">${n}</span>
@@ -381,7 +385,7 @@ let brouillon = null;
 function ouvrirFormulaire(id) {
   const j = id ? trouver(id) : null;
   brouillon = j ? JSON.parse(JSON.stringify(j)) : {
-    id: null, prenom: '', nom: '', att: 50, def: 50, car: 50, postes: [],
+    id: null, prenom: '', nom: '', att: 80, def: 80, car: 80, postes: [],
     peau: PEAUX[hasard(PEAUX.length)], coupe: COUPES[hasard(COUPES.length)], cheveux: COULEURS[hasard(COULEURS.length)], absent: false,
   };
   $('form-titre').textContent = j ? 'Modifier le joueur' : 'Nouveau joueur';
@@ -663,7 +667,8 @@ function exemples() {
     ['Sofiane', 'Amrani', 72, 45, 60, ['A']], ['Julien', 'Petit', 35, 70, 45, ['G', 'D']], ['Noah', 'Faure', 62, 58, 88, ['M']],
     ['Adam', 'Roux', 70, 70, 70, []], ['Enzo', 'Blanc', 48, 52, 64, ['D']], ['Ilyes', 'Moreau', 80, 60, 58, ['A', 'M']]];
   etat.joueurs = noms.map(([prenom, nom, att, def, car, postes], i) => ({
-    id: 'j' + Date.now().toString(36) + i, prenom, nom, att, def, car, postes,
+    id: 'j' + Date.now().toString(36) + i, prenom, nom, postes,
+    ...remettreDansLesBornes({ att: 70 + (att - 30) * 25 / 60, def: 70 + (def - 30) * 25 / 60, car: 70 + (car - 30) * 25 / 60 }),
     peau: PEAUX[i % PEAUX.length], coupe: COUPES[(i * 5) % COUPES.length], cheveux: COULEURS[(i * 7) % COULEURS.length], absent: false,
   }));
   sauver(); rendreJoueurs(); toast('12 joueurs ajoutés (tu peux les supprimer)');
@@ -735,7 +740,7 @@ $('fichier').onchange = e => {
   f.text().then(t => {
     const d = JSON.parse(t);
     if (!Array.isArray(d.joueurs)) throw new Error();
-    etat.joueurs = d.joueurs; etat.tirage = null; sauver(); montrer('joueurs'); toast(`📥 ${d.joueurs.length} joueurs chargés`);
+    etat.joueurs = d.joueurs.map(remettreDansLesBornes); etat.tirage = null; sauver(); montrer('joueurs'); toast(`📥 ${d.joueurs.length} joueurs chargés`);
   }).catch(() => toast('Fichier pas reconnu 😕'));
   e.target.value = '';
 };
