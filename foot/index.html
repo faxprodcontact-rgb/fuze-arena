@@ -240,9 +240,9 @@ footer button{background:none;border:none;text-decoration:underline;font-size:17
       <label>Prénom<input id="f-prenom" maxlength="20" required></label>
       <label>Nom<input id="f-nom" maxlength="20"></label>
     </div>
-    <div class="curseur att"><span>⚡ Attaque</span><input type="range" id="f-att" min="70" max="95" value="80"><span class="val" id="v-att">80</span></div>
-    <div class="curseur def"><span>🛡️ Défense</span><input type="range" id="f-def" min="70" max="95" value="80"><span class="val" id="v-def">80</span></div>
-    <div class="curseur car"><span>❤️ Cardio</span><input type="range" id="f-car" min="70" max="95" value="80"><span class="val" id="v-car">80</span></div>
+    <div class="curseur att"><span>⚡ Attaque</span><input type="range" id="f-att" min="75" max="90" value="82"><span class="val" id="v-att">82</span></div>
+    <div class="curseur def"><span>🛡️ Défense</span><input type="range" id="f-def" min="75" max="90" value="82"><span class="val" id="v-def">82</span></div>
+    <div class="curseur car"><span>❤️ Cardio</span><input type="range" id="f-car" min="75" max="90" value="82"><span class="val" id="v-car">82</span></div>
     <div class="note-base">Note de base (moyenne) <b id="f-note">50</b></div>
     <div style="text-align:center;font-size:17px">Postes joués (un ou plusieurs) :</div>
     <div class="choix-postes" id="f-postes"></div>
@@ -279,7 +279,7 @@ const EQUIPES = {
   B: { nom: 'Bleue',  maillot: '#4dabf7', emoji: '🔵', classe: 'bleu' },
 };
 const TITULAIRES = 5;
-const STAT_MIN = 70, STAT_MAX = 95;   // les statistiques vont de 70 à 95
+const STAT_MIN = 75, STAT_MAX = 90;   // les statistiques vont de 75 à 90
 const borner = v => Math.min(STAT_MAX, Math.max(STAT_MIN, Math.round(+v) || STAT_MIN));
 const remettreDansLesBornes = j => { j.att = borner(j.att); j.def = borner(j.def); j.car = borner(j.car); return j; };
 
@@ -289,6 +289,11 @@ function charger() {
   try {
     const brut = localStorage.getItem(CLE);
     if (brut) etat = Object.assign(etat, JSON.parse(brut));
+    // Joueurs notés avant sur 70-95 : on les ramène sur 75-90 en gardant les écarts entre eux
+    if (etat.echelle !== '75-90') {
+      etat.joueurs.forEach(j => ['att', 'def', 'car'].forEach(k => { j[k] = 75 + (+j[k] - 70) * 15 / 25; }));
+      etat.echelle = '75-90';
+    }
     etat.joueurs.forEach(remettreDansLesBornes);
   } catch (e) { /* stockage indisponible : on continue sans */ }
 }
@@ -305,7 +310,7 @@ const $ = id => document.getElementById(id);
 
 /* ================== Le petit bonhomme ================== */
 function couleurNote(n) {
-  if (n >= 88) return '#ffd43b';   // or
+  if (n >= 86) return '#ffd43b';   // or
   if (n >= 80) return '#dee2e6';   // argent
   return '#f0b27a';                // bronze
 }
@@ -385,7 +390,7 @@ let brouillon = null;
 function ouvrirFormulaire(id) {
   const j = id ? trouver(id) : null;
   brouillon = j ? JSON.parse(JSON.stringify(j)) : {
-    id: null, prenom: '', nom: '', att: 80, def: 80, car: 80, postes: [],
+    id: null, prenom: '', nom: '', att: 82, def: 82, car: 82, postes: [],
     peau: PEAUX[hasard(PEAUX.length)], coupe: COUPES[hasard(COUPES.length)], cheveux: COULEURS[hasard(COULEURS.length)], absent: false,
   };
   $('form-titre').textContent = j ? 'Modifier le joueur' : 'Nouveau joueur';
@@ -668,7 +673,7 @@ function exemples() {
     ['Adam', 'Roux', 70, 70, 70, []], ['Enzo', 'Blanc', 48, 52, 64, ['D']], ['Ilyes', 'Moreau', 80, 60, 58, ['A', 'M']]];
   etat.joueurs = noms.map(([prenom, nom, att, def, car, postes], i) => ({
     id: 'j' + Date.now().toString(36) + i, prenom, nom, postes,
-    ...remettreDansLesBornes({ att: 70 + (att - 30) * 25 / 60, def: 70 + (def - 30) * 25 / 60, car: 70 + (car - 30) * 25 / 60 }),
+    ...remettreDansLesBornes({ att: 75 + (att - 30) * 15 / 60, def: 75 + (def - 30) * 15 / 60, car: 75 + (car - 30) * 15 / 60 }),
     peau: PEAUX[i % PEAUX.length], coupe: COUPES[(i * 5) % COUPES.length], cheveux: COULEURS[(i * 7) % COULEURS.length], absent: false,
   }));
   sauver(); rendreJoueurs(); toast('12 joueurs ajoutés (tu peux les supprimer)');
